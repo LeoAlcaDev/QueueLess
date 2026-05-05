@@ -1,0 +1,40 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+
+server:
+  forward-headers-strategy: framework
+  error:
+    include-message: never
+    include-binding-errors: never
+
+logging:
+  level:
+    root: WARN
+    pe.edu.utec.queueless: INFO
+
+queueless:
+  pago:
+    gateway: ${PAGO_GATEWAY:mercadopago}
+  storage:
+    impl: s3
+  firebase:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never

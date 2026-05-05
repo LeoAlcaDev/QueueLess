@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: queueless-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: queueless
+      POSTGRES_USER: queueless
+      POSTGRES_PASSWORD: queueless
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U queueless -d queueless" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Adminer: UI ligera para inspeccionar la base en local.
+  # Disponible en http://localhost:8081
+  adminer:
+    image: adminer:latest
+    container_name: queueless-adminer
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres-data:

@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/queueless
+    username: queueless
+    password: queueless
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    # En dev también corremos las migraciones específicas de seeds de demo (V99)
+    locations: classpath:db/migration
+
+logging:
+  level:
+    root: INFO
+    pe.edu.utec.queueless: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+
+queueless:
+  pago:
+    gateway: mock
+  storage:
+    impl: local
+  firebase:
+    enabled: false

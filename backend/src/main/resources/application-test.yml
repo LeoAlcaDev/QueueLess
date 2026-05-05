@@ -1,0 +1,23 @@
+spring:
+  # TestContainers maneja la URL en runtime; estos defaults se sobreescriben
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    # En tests NO cargamos los seeds de demo (V99)
+    locations: classpath:db/migration
+    target: 2
+
+logging:
+  level:
+    root: WARN
+    pe.edu.utec.queueless: INFO
+
+queueless:
+  pago:
+    gateway: mock
+  storage:
+    impl: local
+  firebase:
+    enabled: false

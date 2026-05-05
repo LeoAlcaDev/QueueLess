@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "QueueLess",
+    "slug": "queueless",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": { "backgroundColor": "#22C55E" },
+    "ios": { "supportsTablet": true },
+    "android": { "adaptiveIcon": { "backgroundColor": "#22C55E" } }
+  }
+}
