@@ -4,6 +4,8 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
+import static java.util.Map.entry;
+
 /**
  * Estados de un Pedido y reglas de transición válidas.
  *
@@ -51,19 +53,19 @@ public enum EstadoPedido {
         EXPIRADO
     );
 
-    private static final Map<EstadoPedido, Set<EstadoPedido>> TRANSICIONES = Map.of(
-        PENDIENTE_PAGO,             EnumSet.of(PAGADO_BUSCANDO_REPARTIDOR, PAGADO_ESPERANDO_COMERCIO,
-                                               CANCELADO_POR_CLIENTE),
-        PAGADO_BUSCANDO_REPARTIDOR, EnumSet.of(PAGADO_ESPERANDO_COMERCIO, CANCELADO_POR_CLIENTE),
-        PAGADO_ESPERANDO_COMERCIO,  EnumSet.of(ACEPTADO, CANCELADO_POR_COMERCIO, CANCELADO_POR_CLIENTE),
-        ACEPTADO,                   EnumSet.of(EN_PREPARACION, CANCELADO_POR_COMERCIO),
-        EN_PREPARACION,             EnumSet.of(LISTO_PARA_RECOGER, LISTO_PARA_DELIVERY, CANCELADO_POR_COMERCIO),
-        LISTO_PARA_RECOGER,         EnumSet.of(ENTREGADO, EXPIRADO),
-        LISTO_PARA_DELIVERY,        EnumSet.of(ENTREGADO),
-        ENTREGADO,                  EnumSet.noneOf(EstadoPedido.class),
-        CANCELADO_POR_CLIENTE,      EnumSet.noneOf(EstadoPedido.class),
-        CANCELADO_POR_COMERCIO,     EnumSet.noneOf(EstadoPedido.class),
-        EXPIRADO,                   EnumSet.noneOf(EstadoPedido.class)
+    private static final Map<EstadoPedido, Set<EstadoPedido>> TRANSICIONES = Map.ofEntries(
+        entry(PENDIENTE_PAGO,             EnumSet.of(PAGADO_BUSCANDO_REPARTIDOR, PAGADO_ESPERANDO_COMERCIO,
+            CANCELADO_POR_CLIENTE)),
+        entry(PAGADO_BUSCANDO_REPARTIDOR, EnumSet.of(PAGADO_ESPERANDO_COMERCIO, CANCELADO_POR_CLIENTE)),
+        entry(PAGADO_ESPERANDO_COMERCIO,  EnumSet.of(ACEPTADO, CANCELADO_POR_COMERCIO, CANCELADO_POR_CLIENTE)),
+        entry(ACEPTADO,                   EnumSet.of(EN_PREPARACION, CANCELADO_POR_COMERCIO)),
+        entry(EN_PREPARACION,             EnumSet.of(LISTO_PARA_RECOGER, LISTO_PARA_DELIVERY, CANCELADO_POR_COMERCIO)),
+        entry(LISTO_PARA_RECOGER,         EnumSet.of(ENTREGADO, EXPIRADO)),
+        entry(LISTO_PARA_DELIVERY,        EnumSet.of(ENTREGADO)),
+        entry(ENTREGADO,                  EnumSet.noneOf(EstadoPedido.class)),
+        entry(CANCELADO_POR_CLIENTE,      EnumSet.noneOf(EstadoPedido.class)),
+        entry(CANCELADO_POR_COMERCIO,     EnumSet.noneOf(EstadoPedido.class)),
+        entry(EXPIRADO,                   EnumSet.noneOf(EstadoPedido.class))
     );
 
     public boolean puedeTransicionarA(EstadoPedido nuevo) {
