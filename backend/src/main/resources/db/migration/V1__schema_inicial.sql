@@ -52,7 +52,6 @@ CREATE TABLE perfil_comercio (
 
 CREATE TABLE perfil_repartidor (
     usuario_id           BIGINT PRIMARY KEY REFERENCES usuario(id) ON DELETE CASCADE,
-    medio_transporte     VARCHAR(30),
     calificacion_promedio NUMERIC(3,2),
     total_entregas       INTEGER NOT NULL DEFAULT 0,
     disponible           BOOLEAN NOT NULL DEFAULT FALSE,

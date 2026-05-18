@@ -42,8 +42,8 @@ BEGIN
     INSERT INTO perfil_comercio (usuario_id, ruc, contacto_telefono) VALUES
         (2, '20512345678', '999111222');
 
-    INSERT INTO perfil_repartidor (usuario_id, medio_transporte, calificacion_promedio, total_entregas, disponible) VALUES
-        (1, 'A pie', 4.85, 5, FALSE);
+    INSERT INTO perfil_repartidor (usuario_id, calificacion_promedio, total_entregas, disponible) VALUES
+        (1, 4.85, 5, FALSE);
 
     -- Camila tiene 250 QueuePoints porque también es repartidora (5 entregas x 50)
     INSERT INTO movimiento_queuepoints (usuario_id, tipo, monto, referencia_tipo, descripcion) VALUES
