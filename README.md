@@ -14,7 +14,7 @@ ciclo 2026-1, UTEC.
 ## Estructura del repositorio
 
 ```
-queueless/
+Queueless/
 ├── backend/              Spring Boot 3 + Java 21 + PostgreSQL
 ├── web/                  React + TypeScript + Tailwind (panel del comercio)
 ├── mobile/               React Native + Expo (app cliente / repartidor / comercio)
@@ -41,10 +41,10 @@ docker compose up -d
 
 # 2. Arrancar backend en perfil dev (carga datos seed)
 cd backend
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+./mvnw spring-boot:run "-Dspring-boot.run.profiles=dev"
 
-# 3. La API queda en http://localhost:8080
-# 4. Swagger UI:    http://localhost:8080/swagger-ui.html
+# 3. La API queda en http://localhost:8090
+# 4. Swagger UI:    http://localhost:8090/swagger-ui.html
 ```
 
 ### Tests

@@ -20,9 +20,6 @@ public class PerfilRepartidor {
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;
 
-    @Column(name = "medio_transporte", length = 30)
-    private String medioTransporte;
-
     @Column(name = "calificacion_promedio", precision = 3, scale = 2)
     private BigDecimal calificacionPromedio;
 

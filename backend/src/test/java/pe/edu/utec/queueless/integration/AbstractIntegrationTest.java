@@ -10,6 +10,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 /**
  * Clase base para tests de integración. Levanta un Postgres real en un contenedor
  * y conecta Spring Boot a él. Hereda de aquí para tests *IT.java.
+ *
+ * <p>El endpoint de Docker se configura en pom.xml (DOCKER_HOST) para que tanto
+ * Windows como Linux/CI funcionen sin tocar variables de entorno del sistema.
  */
 @Testcontainers
 @SpringBootTest
