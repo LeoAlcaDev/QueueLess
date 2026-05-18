@@ -1,12 +1,14 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/queueless
+    url: jdbc:postgresql://localhost:5467/queueless
     username: queueless
     password: queueless
     driver-class-name: org.postgresql.Driver
   flyway:
-    # En dev también corremos las migraciones específicas de seeds de demo (V99)
     locations: classpath:db/migration
+
+server:
+  port: 8090
 
 logging:
   level:
