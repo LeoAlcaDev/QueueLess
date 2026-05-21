@@ -104,7 +104,7 @@ menos `QueuelessApplicationTests.contextLoads()`.
 
 ## Estructura
 
-Ver [`docs/decisiones/ADR-0001-feature-first.md`](../docs/decisiones/ADR-0001-feature-first.md)
+Ver [`docs/decisiones/ADR-0001-estructura-feature-first.md`](../docs/decisiones/ADR-0001-estructura-feature-first.md)
 para la racional de la organización por feature.
 
 ```
