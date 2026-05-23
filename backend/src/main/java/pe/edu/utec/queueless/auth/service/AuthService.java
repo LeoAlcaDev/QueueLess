@@ -13,6 +13,7 @@ import pe.edu.utec.queueless.auth.dto.RegisterRequest;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 import pe.edu.utec.queueless.usuario.repository.UsuarioRepository;
+import pe.edu.utec.queueless.usuario.service.PerfilService;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +24,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
     private final AuthenticationManager authenticationManager;
+    private final PerfilService perfilService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -39,7 +41,7 @@ public class AuthService {
             .build();
         usuario = usuarioRepository.save(usuario);
 
-        // TODO Semana 1: crear los perfiles vacíos correspondientes a cada rol activado
+        perfilService.crearPerfilesParaRoles(usuario, usuario.getRoles());
 
         String token = jwtService.generateToken(userDetailsService.loadUserByUsername(usuario.getEmail()));
         return buildResponse(token, usuario);
