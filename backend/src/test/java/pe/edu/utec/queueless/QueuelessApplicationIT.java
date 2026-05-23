@@ -7,7 +7,7 @@ import pe.edu.utec.queueless.integration.AbstractIntegrationTest;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class QueuelessApplicationTests extends AbstractIntegrationTest {
+class QueuelessApplicationIT extends AbstractIntegrationTest {
 
     @Test
     void contextLoads() {

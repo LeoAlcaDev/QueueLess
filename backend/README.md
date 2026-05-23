@@ -45,7 +45,7 @@ Swagger UI en `http://localhost:8090/swagger-ui.html`.
 ## Tests con TestContainers
 
 Los tests de integración (los que heredan de `AbstractIntegrationTest`,
-incluido `QueuelessApplicationTests`) levantan un Postgres efímero con
+incluido `QueuelessApplicationIT`) levantan un Postgres efímero con
 TestContainers. Requiere **Docker Desktop corriendo**.
 
 ### Setup en Windows (una vez por máquina)
@@ -99,8 +99,11 @@ tests.
 ./mvnw verify     # unit + integration; requiere el setup de arriba
 ```
 
-Esperado en `verify`: pasan los 5 tests de `PedidoStateMachineTest` y al
-menos `QueuelessApplicationTests.contextLoads()`.
+`mvn test` corre solo los unit tests y pasa sin Docker (entre ellos los 5
+de `PedidoStateMachineTest`). `mvn verify` agrega los tests de integración,
+entre ellos `QueuelessApplicationIT.contextLoads()`, que arranca el contexto
+completo con TestContainers; por eso necesita Docker corriendo o se ejecuta
+en CI Linux.
 
 ## Estructura
 
