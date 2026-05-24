@@ -67,8 +67,12 @@ public class Pedido {
     @Column(name = "cancelado_at")
     private Instant canceladoAt;
 
-    @Column(name = "razon_cancelacion", columnDefinition = "TEXT")
-    private String razonCancelacion;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "motivo_cancelacion", length = 40)
+    private MotivoCancelacion motivoCancelacion;
+
+    @Column(name = "detalle_cancelacion", columnDefinition = "TEXT")
+    private String detalleCancelacion;
 
     @Column(name = "updated_at", insertable = false, updatable = false)
     private Instant updatedAt;
