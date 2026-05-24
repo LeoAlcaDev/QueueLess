@@ -18,12 +18,12 @@ BEGIN
 
     -- ---------- Usuarios demo ----------
     -- Password de todos los demos: "password123"
-    -- Hash BCrypt de "password123": $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
+    -- Hash BCrypt de "password123": $2a$10$ecAdBXqZr8.SUW3Plm9MleJFDq./jk9xluyZAOpCS8ZQcd.rYFxXi
     INSERT INTO usuario (id, email, password_hash, nombre_completo) VALUES
-        (1, 'camila.rojas@utec.edu.pe',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Camila Rojas'),
-        (2, 'comercio.cafe@utec.edu.pe', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Café del Bloque A (gestor)'),
-        (3, 'diego.martinez@utec.edu.pe','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Diego Martínez'),
-        (4, 'lucia.silva@utec.edu.pe',   '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Lucía Silva');
+        (1, 'camila.rojas@utec.edu.pe',  '$2a$10$ecAdBXqZr8.SUW3Plm9MleJFDq./jk9xluyZAOpCS8ZQcd.rYFxXi', 'Camila Rojas'),
+        (2, 'comercio.cafe@utec.edu.pe', '$2a$10$ecAdBXqZr8.SUW3Plm9MleJFDq./jk9xluyZAOpCS8ZQcd.rYFxXi', 'Café del Bloque A (gestor)'),
+        (3, 'diego.martinez@utec.edu.pe','$2a$10$ecAdBXqZr8.SUW3Plm9MleJFDq./jk9xluyZAOpCS8ZQcd.rYFxXi', 'Diego Martínez'),
+        (4, 'lucia.silva@utec.edu.pe',   '$2a$10$ecAdBXqZr8.SUW3Plm9MleJFDq./jk9xluyZAOpCS8ZQcd.rYFxXi', 'Lucía Silva');
 
     -- Roles activos por usuario
     INSERT INTO usuario_roles (usuario_id, rol) VALUES

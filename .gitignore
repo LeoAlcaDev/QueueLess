@@ -65,6 +65,9 @@ tmp/
 temp/
 *.tmp
 
+# ---------- Uploads locales (fotos de productos en dev) ----------
+uploads/
+
 # -------Contexto Propio ----------
 QueueLess_Estado_del_Proyecto.md
 

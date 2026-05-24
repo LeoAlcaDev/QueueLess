@@ -35,6 +35,15 @@ public class PuntoDeVenta extends BaseEntity {
     @Builder.Default
     private Boolean abierto = true;
 
+    /**
+     * Existencia del local en el sistema (soft delete). Cuando un comercio da de
+     * baja un local pasa a false y deja de aparecer en cualquier listado, pero la
+     * fila se conserva para los pedidos historicos. No confundir con "abierto".
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean activo = true;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gestor_usuario_id", nullable = false)
     private Usuario gestor;

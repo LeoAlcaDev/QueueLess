@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
@@ -49,6 +50,13 @@ public class GlobalExceptionHandler {
             .map(this::mapFieldError)
             .toList();
         return build(HttpStatus.BAD_REQUEST, "Errores de validación", request, fieldErrors);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleMalformedBody(HttpMessageNotReadableException ex,
+                                                             HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST,
+            "El cuerpo de la petición no se puede leer", request, null);
     }
 
     @ExceptionHandler(Exception.class)
