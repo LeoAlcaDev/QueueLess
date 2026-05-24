@@ -53,6 +53,15 @@ public enum EstadoPedido {
         EXPIRADO
     );
 
+    /** Estados que un pedido tiene mientras está vivo en la cola de un comercio. */
+    public static final Set<EstadoPedido> ACTIVOS_PARA_COMERCIO = EnumSet.of(
+        PAGADO_ESPERANDO_COMERCIO,
+        ACEPTADO,
+        EN_PREPARACION,
+        LISTO_PARA_RECOGER,
+        LISTO_PARA_DELIVERY
+    );
+
     private static final Map<EstadoPedido, Set<EstadoPedido>> TRANSICIONES = Map.ofEntries(
         entry(PENDIENTE_PAGO,             EnumSet.of(PAGADO_BUSCANDO_REPARTIDOR, PAGADO_ESPERANDO_COMERCIO,
             CANCELADO_POR_CLIENTE)),
