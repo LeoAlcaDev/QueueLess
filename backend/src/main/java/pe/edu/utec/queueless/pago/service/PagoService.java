@@ -33,9 +33,6 @@ import java.time.Instant;
 @Transactional
 public class PagoService {
 
-    private static final String METODO_MOCK = "MOCK";
-    private static final String METODO_MERCADOPAGO = "MERCADOPAGO";
-
     private final PagoRepository pagoRepository;
     private final PedidoService pedidoService;
     private final PaymentGateway paymentGateway;
@@ -134,7 +131,7 @@ public class PagoService {
 
     @Transactional(readOnly = true)
     public Pago findById(Long id) {
-        return pagoRepository.findById(id)
+        return pagoRepository.findByIdWithPedido(id)
             .orElseThrow(() -> new ResourceNotFoundException("Pago", id));
     }
 
@@ -145,8 +142,6 @@ public class PagoService {
     }
 
     private String metodoActual() {
-        return paymentGateway.getClass().getSimpleName().toLowerCase().contains("mercadopago")
-            ? METODO_MERCADOPAGO
-            : METODO_MOCK;
+        return paymentGateway.getMetodoPago();
     }
 }

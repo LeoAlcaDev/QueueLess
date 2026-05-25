@@ -1,7 +1,10 @@
 package pe.edu.utec.queueless.pago.gateway;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;
@@ -9,6 +12,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.security.InvalidKeyException;
+import java.util.Arrays;
 import java.util.HexFormat;
 
 /**
@@ -30,13 +34,30 @@ import java.util.HexFormat;
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "queueless.pago.gateway", havingValue = "mercadopago")
 public class MercadoPagoSignatureValidator {
 
     private final String secret;
+    private final Environment environment;
 
     public MercadoPagoSignatureValidator(
-            @Value("${queueless.pago.mercadopago.webhook-secret:}") String secret) {
+            @Value("${queueless.pago.mercadopago.webhook-secret:}") String secret,
+            Environment environment) {
         this.secret = secret;
+        this.environment = environment;
+    }
+
+    @PostConstruct
+    void validarConfiguracion() {
+        if (secret == null || secret.isBlank()) {
+            boolean esProd = Arrays.stream(environment.getActiveProfiles())
+                .anyMatch(p -> p.toLowerCase().contains("prod"));
+            if (esProd) {
+                throw new IllegalStateException(
+                    "MERCADOPAGO_WEBHOOK_SECRET vacío en perfil de producción. " +
+                    "Configurá la variable de entorno para habilitar la validación de firma del webhook.");
+            }
+        }
     }
 
     public boolean isValid(String signatureHeader, String requestId, String dataId) {

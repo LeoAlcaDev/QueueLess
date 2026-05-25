@@ -2,6 +2,7 @@ package pe.edu.utec.queueless.pago;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.env.Environment;
 import pe.edu.utec.queueless.pago.gateway.MercadoPagoSignatureValidator;
 
 import javax.crypto.Mac;
@@ -10,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HexFormat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 /**
  * Verifica la validación de firma del webhook de MercadoPago.
@@ -20,22 +22,22 @@ class MercadoPagoSignatureValidatorTest {
 
     private static final String SECRET = "test-secret-xyz";
 
-    private static String hmacHex(String message, String key) throws Exception {
+    private static String hmacHex(String message) throws Exception {
         Mac mac = Mac.getInstance("HmacSHA256");
-        mac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        mac.init(new SecretKeySpec(MercadoPagoSignatureValidatorTest.SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
         return HexFormat.of().formatHex(mac.doFinal(message.getBytes(StandardCharsets.UTF_8)));
     }
 
     @Test
     @DisplayName("firma válida con secret correcto: pasa")
     void firmaValidaPasa() throws Exception {
-        MercadoPagoSignatureValidator validator = new MercadoPagoSignatureValidator(SECRET);
+        MercadoPagoSignatureValidator validator = new MercadoPagoSignatureValidator(SECRET, mock(Environment.class));
         String ts = "1700000000";
         String requestId = "req-123";
         String dataId = "987654321";
         String hash = hmacHex(
-            "id:%s;request-id:%s;ts:%s;".formatted(dataId, requestId, ts),
-            SECRET);
+            "id:%s;request-id:%s;ts:%s;".formatted(dataId, requestId, ts)
+        );
         String header = "ts=" + ts + ",v1=" + hash;
 
         assertThat(validator.isValid(header, requestId, dataId)).isTrue();
@@ -44,7 +46,7 @@ class MercadoPagoSignatureValidatorTest {
     @Test
     @DisplayName("firma con hash incorrecto: rechazada")
     void firmaInvalidaRechazada() {
-        MercadoPagoSignatureValidator validator = new MercadoPagoSignatureValidator(SECRET);
+        MercadoPagoSignatureValidator validator = new MercadoPagoSignatureValidator(SECRET, mock(Environment.class));
         String header = "ts=1700000000,v1=" + "0".repeat(64);
 
         assertThat(validator.isValid(header, "req-123", "987654321")).isFalse();
@@ -53,7 +55,7 @@ class MercadoPagoSignatureValidatorTest {
     @Test
     @DisplayName("header malformado (sin v1) es rechazado")
     void headerSinHashRechazado() {
-        MercadoPagoSignatureValidator validator = new MercadoPagoSignatureValidator(SECRET);
+        MercadoPagoSignatureValidator validator = new MercadoPagoSignatureValidator(SECRET, mock(Environment.class));
 
         assertThat(validator.isValid("ts=1700000000", "req-123", "987654321")).isFalse();
     }
@@ -61,7 +63,7 @@ class MercadoPagoSignatureValidatorTest {
     @Test
     @DisplayName("sin secret configurado, la validación pasa (dev local)")
     void sinSecretValidacionRelajada() {
-        MercadoPagoSignatureValidator validator = new MercadoPagoSignatureValidator("");
+        MercadoPagoSignatureValidator validator = new MercadoPagoSignatureValidator("", mock(Environment.class));
 
         assertThat(validator.isValid(null, null, "987654321")).isTrue();
     }

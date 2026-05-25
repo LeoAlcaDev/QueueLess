@@ -72,6 +72,7 @@ class PagoServiceTest {
             if (p.getId() == null) p.setId(100L);
             return p;
         });
+        when(paymentGateway.getMetodoPago()).thenReturn("MOCK");
         when(paymentGateway.iniciarCobro(any(Pago.class)))
             .thenReturn(new IniciarCobroResult("mock-ref-123", "http://checkout/x"));
 

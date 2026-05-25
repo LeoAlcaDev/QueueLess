@@ -19,4 +19,10 @@ public interface PaymentGateway {
      * Emite un reembolso por el monto total del pago.
      */
     void reembolsar(Pago pago);
+
+    /**
+     * Identificador del modo de pago que representa esta implementación
+     * (p. ej. {@code "MOCK"}, {@code "MERCADOPAGO"}). Se persiste en {@code Pago.metodo}.
+     */
+    String getMetodoPago();
 }
