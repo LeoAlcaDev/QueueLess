@@ -245,6 +245,29 @@ public class PedidoService {
         return toResponse(pagado);
     }
 
+    /**
+     * Cambia el tipo de entrega del pedido a recojo en tienda y lo transiciona a
+     * PAGADO_ESPERANDO_COMERCIO. NO valida que el pedido sea del cliente que
+     * llama: recibe el pedido ya resuelto por el caller (en Fase 5,
+     * {@link pe.edu.utec.queueless.delivery.service.SolicitudDeliveryService},
+     * que valida el dueño con {@link #buscarPedidoDelCliente}). Solo aplica
+     * mientras el pedido está buscando repartidor; en otro estado, o si ya es de
+     * recojo en tienda, es un error de negocio.
+     */
+    @Transactional
+    public PedidoResponse cambiarAPickup(Pedido pedido) {
+        if (pedido.getEstado() != EstadoPedido.PAGADO_BUSCANDO_REPARTIDOR) {
+            throw new BusinessRuleException(
+                "Solo se puede cambiar a recojo en tienda mientras se busca repartidor");
+        }
+        if (pedido.getTipoEntrega() != TipoEntrega.DELIVERY) {
+            throw new BusinessRuleException("El pedido ya es de recojo en tienda");
+        }
+        pedido.setTipoEntrega(TipoEntrega.PICKUP);
+        Pedido actualizado = aplicarTransicion(pedido, EstadoPedido.PAGADO_ESPERANDO_COMERCIO);
+        return toResponse(actualizado);
+    }
+
     private Pedido aplicarTransicion(Pedido pedido, EstadoPedido nuevoEstado) {
         EstadoPedido anterior = pedido.getEstado();
         pedido.transicionarA(nuevoEstado);
@@ -412,8 +435,13 @@ public class PedidoService {
         }
     }
 
-    /** Devuelve el pedido si es del cliente; si es ajeno, 404 (no revelamos que existe). */
-    private Pedido buscarPedidoDelCliente(Usuario cliente, Long pedidoId) {
+    /**
+     * Devuelve el pedido si es del cliente; si es ajeno, 404 (no revelamos que
+     * existe). Es público porque el módulo de delivery lo reutiliza para
+     * resolver el dueño del pedido antes de reintentar la búsqueda o cambiar a
+     * recojo en tienda.
+     */
+    public Pedido buscarPedidoDelCliente(Usuario cliente, Long pedidoId) {
         Pedido pedido = findById(pedidoId);
         if (!pedido.getCliente().getId().equals(cliente.getId())) {
             throw new ResourceNotFoundException("Pedido", pedidoId);

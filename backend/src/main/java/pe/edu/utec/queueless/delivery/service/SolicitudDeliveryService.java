@@ -11,6 +11,7 @@ import pe.edu.utec.queueless.delivery.entity.EstadoSolicitudDelivery;
 import pe.edu.utec.queueless.delivery.entity.SolicitudDelivery;
 import pe.edu.utec.queueless.delivery.event.SolicitudDeliveryCreadaEvent;
 import pe.edu.utec.queueless.delivery.repository.SolicitudDeliveryRepository;
+import pe.edu.utec.queueless.pedido.dto.PedidoResponse;
 import pe.edu.utec.queueless.pedido.entity.EstadoPedido;
 import pe.edu.utec.queueless.pedido.entity.Pedido;
 import pe.edu.utec.queueless.pedido.entity.TipoEntrega;
@@ -175,6 +176,81 @@ public class SolicitudDeliveryService {
         log.info("Repartidor {} confirmó entrega de solicitud {} (pedido {})",
             repartidor.getId(), solicitudId, solicitud.getPedido().getId());
         return toResponse(actualizada);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Acciones del cliente durante la búsqueda
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Reactiva la búsqueda de repartidor reusando la misma solicitud (la columna
+     * pedido_id es única, así que no se crea otra fila): la deja de nuevo en
+     * BUSCANDO con una ventana de timeout nueva y vuelve a publicar el evento
+     * para notificar a los repartidores. Solo aplica si la búsqueda anterior ya
+     * venció o quedó sin repartidor.
+     *
+     * <p>No se protege contra reintentos simultáneos del mismo cliente sobre el
+     * mismo pedido: dos peticiones a la vez podrían reactivar la solicitud y
+     * publicar dos eventos, generando dos rondas de notificaciones. La mitigación
+     * (tomar la solicitud con bloqueo al reactivar, o un campo de versión en la
+     * entidad) queda para una fase futura; en la práctica, la app deshabilita el
+     * botón mientras la primera petición está en curso.
+     */
+    @Transactional
+    public SolicitudDeliveryResponse reintentarBusqueda(Usuario cliente, Long pedidoId) {
+        Pedido pedido = pedidoService.buscarPedidoDelCliente(cliente, pedidoId);
+        if (pedido.getEstado() != EstadoPedido.PAGADO_BUSCANDO_REPARTIDOR) {
+            throw new BusinessRuleException(
+                "Solo se puede reintentar mientras el pedido está buscando repartidor");
+        }
+        SolicitudDelivery solicitud = findByPedidoId(pedidoId);
+        boolean busquedaVigente = solicitud.getEstado() == EstadoSolicitudDelivery.BUSCANDO
+            && solicitud.getBusquedaFinAt().isAfter(Instant.now());
+        if (busquedaVigente) {
+            throw new BusinessRuleException(
+                "Tu búsqueda actual sigue activa, esperá a que termine");
+        }
+
+        Instant ahora = Instant.now();
+        solicitud.setEstado(EstadoSolicitudDelivery.BUSCANDO);
+        solicitud.setRepartidor(null);
+        solicitud.setAsignadoAt(null);
+        solicitud.setBusquedaInicioAt(ahora);
+        solicitud.setBusquedaFinAt(ahora.plus(timeoutMinutos, ChronoUnit.MINUTES));
+        SolicitudDelivery reactivada = repository.save(solicitud);
+        log.info("Búsqueda reiniciada para pedido {} (solicitud {})", pedidoId, reactivada.getId());
+
+        eventPublisher.publishEvent(new SolicitudDeliveryCreadaEvent(reactivada.getId()));
+        return toResponse(reactivada);
+    }
+
+    /**
+     * Cambia el pedido a recojo en tienda y cierra la solicitud de delivery, todo
+     * en la misma transacción. Valida que el pedido sea del cliente antes de
+     * tocar nada; si es ajeno, responde como inexistente.
+     */
+    @Transactional
+    public PedidoResponse cambiarAPickup(Usuario cliente, Long pedidoId) {
+        Pedido pedido = pedidoService.buscarPedidoDelCliente(cliente, pedidoId);
+        PedidoResponse respuesta = pedidoService.cambiarAPickup(pedido);
+        cancelarSolicitudDelPedido(pedidoId);
+        return respuesta;
+    }
+
+    /**
+     * Deja la solicitud del pedido en CANCELADO (la usa el cambio a recojo en
+     * tienda). Si el pedido no tuviera solicitud, no hace nada.
+     */
+    @Transactional
+    public void cancelarSolicitudDelPedido(Long pedidoId) {
+        SolicitudDelivery solicitud = repository.findByPedidoId(pedidoId).orElse(null);
+        if (solicitud == null) {
+            return;
+        }
+        solicitud.setEstado(EstadoSolicitudDelivery.CANCELADO);
+        repository.save(solicitud);
+        log.info("Solicitud {} cancelada por cambio a recojo en tienda (pedido {})",
+            solicitud.getId(), pedidoId);
     }
 
     // ---------------------------------------------------------------------------

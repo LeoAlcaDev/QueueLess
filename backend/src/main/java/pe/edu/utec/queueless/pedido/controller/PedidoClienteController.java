@@ -7,6 +7,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import pe.edu.utec.queueless.delivery.dto.SolicitudDeliveryResponse;
+import pe.edu.utec.queueless.delivery.service.SolicitudDeliveryService;
 import pe.edu.utec.queueless.pedido.dto.CancelarPedidoRequest;
 import pe.edu.utec.queueless.pedido.dto.CrearPedidoRequest;
 import pe.edu.utec.queueless.pedido.dto.PedidoResponse;
@@ -24,6 +26,7 @@ import java.util.List;
 public class PedidoClienteController {
 
     private final PedidoService pedidoService;
+    private final SolicitudDeliveryService solicitudDeliveryService;
     private final UsuarioService usuarioService;
 
     @PostMapping
@@ -58,5 +61,23 @@ public class PedidoClienteController {
         String razon = request == null ? null : request.getRazon();
         PedidoResponse cancelado = pedidoService.cancelarPorCliente(cliente, id, razon);
         return ResponseEntity.ok(ApiResponse.ok(cancelado, "Pedido cancelado"));
+    }
+
+    @PostMapping("/{id}/solicitud-delivery/reintentar")
+    public ResponseEntity<ApiResponse<SolicitudDeliveryResponse>> reintentarBusqueda(
+            Authentication authentication,
+            @PathVariable Long id) {
+        Usuario cliente = usuarioService.findByEmail(authentication.getName());
+        SolicitudDeliveryResponse nueva = solicitudDeliveryService.reintentarBusqueda(cliente, id);
+        return ResponseEntity.ok(ApiResponse.ok(nueva, "Búsqueda reiniciada"));
+    }
+
+    @PostMapping("/{id}/cambiar-a-pickup")
+    public ResponseEntity<ApiResponse<PedidoResponse>> cambiarAPickup(
+            Authentication authentication,
+            @PathVariable Long id) {
+        Usuario cliente = usuarioService.findByEmail(authentication.getName());
+        PedidoResponse actualizado = solicitudDeliveryService.cambiarAPickup(cliente, id);
+        return ResponseEntity.ok(ApiResponse.ok(actualizado, "Pedido cambiado a recojo en tienda"));
     }
 }
