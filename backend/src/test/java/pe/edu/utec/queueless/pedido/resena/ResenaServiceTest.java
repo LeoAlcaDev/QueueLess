@@ -128,6 +128,7 @@ class ResenaServiceTest {
     @Test
     @DisplayName("reseña a REPARTIDOR requiere SolicitudDelivery con repartidor asignado")
     void resenaRepartidorRequiereSolicitud() {
+        pedido.setTipoEntrega(TipoEntrega.DELIVERY);
         when(pedidoService.findById(77L)).thenReturn(pedido);
         when(resenaRepository.existsByPedidoIdAndObjetivoTipo(77L, ObjetivoResena.REPARTIDOR))
             .thenReturn(false);

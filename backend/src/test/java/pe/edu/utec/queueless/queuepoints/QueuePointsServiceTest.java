@@ -14,6 +14,7 @@ import pe.edu.utec.queueless.queuepoints.service.QueuePointsService;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -83,7 +84,9 @@ class QueuePointsServiceTest {
     void canjearSaldoInsuficienteFalla() {
         when(repository.findFirstByTipoAndReferenciaTipoAndReferenciaId(
             TipoMovimiento.CANJEADO, "PEDIDO", 10L)).thenReturn(Optional.empty());
-        when(repository.calcularSaldo(1L)).thenReturn(20);
+        MovimientoQueuePoints ganado = MovimientoQueuePoints.builder()
+            .usuario(usuario).tipo(TipoMovimiento.GANADO).monto(20).build();
+        when(repository.findByUsuarioIdForUpdate(1L)).thenReturn(List.of(ganado));
 
         assertThatThrownBy(() -> service.canjear(usuario, 50, "PEDIDO", 10L, null))
             .isInstanceOf(BusinessRuleException.class)
@@ -96,7 +99,9 @@ class QueuePointsServiceTest {
     void canjearConSaldoSuficiente() {
         when(repository.findFirstByTipoAndReferenciaTipoAndReferenciaId(
             TipoMovimiento.CANJEADO, "PEDIDO", 10L)).thenReturn(Optional.empty());
-        when(repository.calcularSaldo(1L)).thenReturn(100);
+        MovimientoQueuePoints ganado = MovimientoQueuePoints.builder()
+            .usuario(usuario).tipo(TipoMovimiento.GANADO).monto(100).build();
+        when(repository.findByUsuarioIdForUpdate(1L)).thenReturn(List.of(ganado));
         when(repository.save(any(MovimientoQueuePoints.class)))
             .thenAnswer(i -> i.getArgument(0));
 
