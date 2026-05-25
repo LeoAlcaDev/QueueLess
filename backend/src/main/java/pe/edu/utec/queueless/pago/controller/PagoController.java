@@ -14,8 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 import pe.edu.utec.queueless.pago.dto.IniciarPagoRequest;
 import pe.edu.utec.queueless.pago.dto.IniciarPagoResponse;
 import pe.edu.utec.queueless.pago.dto.PagoResponse;
+import pe.edu.utec.queueless.pago.entity.Pago;
 import pe.edu.utec.queueless.pago.service.PagoService;
 import pe.edu.utec.queueless.shared.dto.ApiResponse;
+import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 import pe.edu.utec.queueless.usuario.service.UsuarioService;
 
@@ -38,7 +40,14 @@ public class PagoController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<PagoResponse>> consultar(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.ok(PagoResponse.from(pagoService.findById(id))));
+    public ResponseEntity<ApiResponse<PagoResponse>> consultar(
+            Authentication authentication,
+            @PathVariable Long id) {
+        Usuario cliente = usuarioService.findByEmail(authentication.getName());
+        Pago pago = pagoService.findById(id);
+        if (!pago.getPedido().getCliente().getId().equals(cliente.getId())) {
+            throw new BusinessRuleException("El pago no pertenece al cliente");
+        }
+        return ResponseEntity.ok(ApiResponse.ok(PagoResponse.from(pago)));
     }
 }

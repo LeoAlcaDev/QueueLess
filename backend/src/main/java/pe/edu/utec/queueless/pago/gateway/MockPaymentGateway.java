@@ -32,4 +32,9 @@ public class MockPaymentGateway implements PaymentGateway {
         log.info("[MOCK] Reembolso emitido para pago {} (monto {})",
             pago.getId(), pago.getMonto());
     }
+
+    @Override
+    public String getMetodoPago() {
+        return "MOCK";
+    }
 }

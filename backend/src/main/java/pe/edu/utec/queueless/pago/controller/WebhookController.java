@@ -66,7 +66,18 @@ public class WebhookController {
             return ResponseEntity.ok().build();
         }
 
-        Long pagoId = Long.valueOf(payment.getExternalReference());
+        String extRef = payment.getExternalReference();
+        if (extRef == null || extRef.isBlank()) {
+            log.warn("Webhook MP: payment {} sin external_reference; descartado", dataId);
+            return ResponseEntity.ok().build();
+        }
+        long pagoId;
+        try {
+            pagoId = Long.parseLong(extRef);
+        } catch (NumberFormatException ex) {
+            log.warn("Webhook MP: external_reference '{}' no es numérico; descartado", extRef);
+            return ResponseEntity.ok().build();
+        }
         pagoService.confirmarPorId(pagoId, dataId);
         return ResponseEntity.ok().build();
     }

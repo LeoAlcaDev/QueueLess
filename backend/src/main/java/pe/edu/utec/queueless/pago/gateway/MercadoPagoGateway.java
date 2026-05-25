@@ -97,6 +97,20 @@ public class MercadoPagoGateway implements PaymentGateway {
     }
 
     @Override
+    public String getMetodoPago() {
+        return "MERCADOPAGO";
+    }
+
+    /**
+     * Emite un reembolso total contra MercadoPago.
+     *
+     * <p><b>Precondición:</b> {@code pago.getReferenciaExterna()} debe contener el
+     * <em>payment_id</em> real (no el preference_id inicial). Esto se garantiza
+     * llamando a este únicamente sobre pagos en estado CONFIRMADO, ya que la
+     * confirmación vía webhook reemplaza la referencia externa con el payment_id.
+     * Ver {@link pe.edu.utec.queueless.pago.entity.Pago#getReferenciaExterna()}.
+     */
+    @Override
     public void reembolsar(Pago pago) {
         String paymentId = pago.getReferenciaExterna();
         if (paymentId == null || paymentId.isBlank()) {

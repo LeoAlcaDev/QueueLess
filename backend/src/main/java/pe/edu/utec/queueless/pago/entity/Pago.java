@@ -30,6 +30,19 @@ public class Pago {
     @Column(nullable = false, length = 30)
     private EstadoPago estado;
 
+    /**
+     * Referencia externa de la pasarela de pagos. Su significado evoluciona a lo largo
+     * del ciclo de vida del pago:
+     * <ul>
+     *   <li><b>Tras {@code iniciarCobro}</b>: contiene el preference_id de MercadoPago
+     *       (o la referencia mock en dev). Identifica el "intent de cobro".</li>
+     *   <li><b>Tras la confirmación por webhook</b>: se reemplaza por el payment_id real
+     *       (vía {@code PagoService.confirmarPorId}). A partir de aquí es el id que
+     *       MercadoPago espera para emitir reembolsos.</li>
+     * </ul>
+     * Por esto, {@code reembolsar} solo debe llamarse sobre pagos en estado CONFIRMADO,
+     * garantizando que la referencia ya corresponde al payment_id.
+     */
     @Column(name = "referencia_externa", length = 150)
     private String referenciaExterna;
 
