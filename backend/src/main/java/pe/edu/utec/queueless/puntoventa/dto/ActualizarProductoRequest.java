@@ -11,6 +11,7 @@ import lombok.Setter;
 import pe.edu.utec.queueless.puntoventa.entity.TipoPreparacion;
 
 import java.math.BigDecimal;
+import java.time.LocalTime;
 
 // No incluye puntoDeVentaId: un producto pertenece siempre al mismo local, no se mueve.
 @Getter @Setter
@@ -33,4 +34,15 @@ public class ActualizarProductoRequest {
 
     @NotNull(message = "El tipo de preparacion es obligatorio")
     private TipoPreparacion tipoPreparacion;
+
+    // Horario de servicio (opcional). Las ventanas por lote aplican solo cuando
+    // tieneVentanaDePedido es true. Las combinaciones válidas se validan en el service.
+    private LocalTime horarioServicioInicio;
+    private LocalTime horarioServicioFin;
+
+    private Boolean tieneVentanaDePedido;
+    private LocalTime ventanaPedidoInicio;
+    private LocalTime ventanaPedidoFin;
+    private LocalTime ventanaRecojoInicio;
+    private LocalTime ventanaRecojoFin;
 }
