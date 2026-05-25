@@ -9,7 +9,9 @@ import java.util.UUID;
 
 /**
  * Pasarela "mock" para desarrollo y tests: no llama a ningún servicio externo
- * y devuelve referencias deterministas locales.
+ * y devuelve referencias deterministas locales. La confirmación se simula
+ * con el endpoint {@code POST /api/pago/webhook/mock} expuesto cuando este
+ * gateway está activo.
  */
 @Slf4j
 @Component
@@ -17,11 +19,12 @@ import java.util.UUID;
 public class MockPaymentGateway implements PaymentGateway {
 
     @Override
-    public String iniciarCobro(Pago pago) {
+    public IniciarCobroResult iniciarCobro(Pago pago) {
         String ref = "mock-" + UUID.randomUUID();
-        log.info("[MOCK] Cobro iniciado para pago {} (monto {}). Referencia: {}",
-            pago.getId(), pago.getMonto(), ref);
-        return ref;
+        String url = "/api/pago/webhook/mock?referencia=" + ref;
+        log.info("[MOCK] Cobro iniciado para pago {} (monto {}). Referencia: {} URL: {}",
+            pago.getId(), pago.getMonto(), ref, url);
+        return new IniciarCobroResult(ref, url);
     }
 
     @Override
