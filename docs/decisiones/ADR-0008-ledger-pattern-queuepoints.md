@@ -2,7 +2,7 @@
 
 ## Contexto
 
-QueuePoints son los puntos que el sistema otorga a los repartidores cuando completan una entrega. Cada entrega vale 50 puntos (configurable en `application.yml`). Los puntos se pueden acumular y eventualmente canjear como descuento en pedidos futuros, expirar, o ser revertidos si una entrega fue marcada por error.
+QueuePoints son los puntos que el sistema otorga a los repartidores cuando completan una entrega. Cada entrega vale 50 puntos (configurable en `application.yml`). Los puntos se pueden acumular y eventualmente canjear como descuento en pedidos futuros. El modelo también contempla, como parte del diseño, la posibilidad de revertir movimientos cuando una entrega fue marcada por error o cuando un pedido al que se aplicaron puntos canjeados termina cancelado, y eventualmente expirar puntos por antigüedad. La implementación de esos dos flujos (revertir y expirar) está diferida a fases futuras; ver "Estado actual de implementación y flujos futuros" más abajo.
 
 La pregunta de diseño es simple en apariencia pero crítica: **¿dónde y cómo guardamos el saldo de puntos de cada usuario?**
 
@@ -21,7 +21,7 @@ Modelamos esto con una entidad `MovimientoQueuePoints`:
 public class MovimientoQueuePoints {
     private Long id;
     private Usuario usuario;
-    private TipoMovimiento tipo;       // GANADO, CANJEADO, EXPIRADO, REVERTIDO
+    private TipoMovimiento tipo;       // 4 valores en el diseño; 2 activos hoy
     private Integer monto;             // siempre positivo
     private String referenciaTipo;     // "PEDIDO", "ENTREGA", "BONO"
     private Long referenciaId;
@@ -29,6 +29,8 @@ public class MovimientoQueuePoints {
     private Instant createdAt;
 }
 ```
+
+El enum `TipoMovimiento` está diseñado con cuatro valores, pero en código solo se materializan dos por ahora (`GANADO` y `CANJEADO`). Los otros dos quedan como parte del diseño y se activan en fases posteriores; el detalle está en la sección "Estado actual de implementación y flujos futuros".
 
 **No existe** un campo `puntos` ni en Usuario ni en PerfilRepartidor.
 
@@ -45,6 +47,8 @@ WHERE usuario_id = 42;
 ```
 
 (En código JPA esto se hace con un query derivado o JPQL; el cálculo es el mismo.)
+
+Una nota sobre este SQL: incluye `EXPIRADO` porque es parte del diseño completo del ledger. El query JPQL real en `MovimientoQueuePointsRepository.calcularSaldo` solo suma `GANADO` y resta `CANJEADO` por ahora, porque `EXPIRADO` y `REVERTIDO` no se materializan todavía. Cuando se activen, se amplía la expresión en el query. Mantenemos el SQL del ADR con los cuatro tipos para que quede visible el cálculo completo.
 
 ## Por qué ledger y no un campo `puntos`
 
@@ -105,7 +109,7 @@ La próxima vez que alguien consulta el saldo de Camila, ese movimiento ya está
 Reglas que definimos para mantener el ledger consistente:
 
 - **`monto` siempre positivo.** El signo lo determina el `tipo`. Esto evita confusión y permite el CHECK constraint `monto > 0`.
-- **`tipo` controla la dirección del movimiento.** `GANADO` suma, `CANJEADO` resta, `EXPIRADO` resta, `REVERTIDO` resta el monto del movimiento original.
+- **`tipo` controla la dirección del movimiento.** `GANADO` suma; `CANJEADO`, `EXPIRADO` y `REVERTIDO` restan. Los dos últimos están en el diseño pero su implementación está diferida (ver sección de estado actual abajo). Cuando se activen, ya existirá la columna `tipo` para soportarlos sin migración de schema, solo agregando los valores al CHECK constraint.
 - **Cada movimiento tiene una referencia.** `referenciaTipo` y `referenciaId` apuntan al origen (PEDIDO, ENTREGA, BONO). Eso permite ir desde un movimiento hasta el evento que lo causó.
 - **Los movimientos son inmutables.** Nunca se hace UPDATE en `movimiento_queuepoints`. Si hay que corregir algo, se inserta un movimiento nuevo de tipo `REVERTIDO`.
 - **Solo el repartidor gana QueuePoints.** El cliente NO gana QueuePoints (al menos en el MVP). Esto es una decisión de producto, no técnica.
@@ -116,6 +120,61 @@ Hay variantes del patrón ledger que sí descartamos para este proyecto:
 
 - **No agregamos partida doble (double-entry).** En contabilidad real, cada movimiento tiene dos entradas (débito en una cuenta, crédito en otra) para que el sistema siempre cuadre. Acá tenemos un solo "lado": el saldo de un usuario. No hay otra cuenta del otro lado. Eso simplifica el modelo sin perder las propiedades importantes.
 - **No precomputamos saldo en cache.** Recalcular el saldo desde los movimientos cada vez que se consulta es barato con un índice en `usuario_id`. Mientras la cantidad de movimientos por usuario sea razonable (cientos en un año típico), no hace falta cache. Si en el futuro un usuario tiene millones de movimientos, evaluamos snapshots periódicos.
+
+## Estado actual de implementación y flujos futuros
+
+Esta sección refleja qué partes del diseño ya están en código y qué partes quedan como trabajo pendiente. La idea es que el lector no se confunda entre lo que el sistema hace hoy y lo que está pensado para más adelante.
+
+### Tipos de movimiento por estado de implementación
+
+Al cierre de Fase 5:
+
+| Tipo | Estado | Disparador | Resultado |
+|---|---|---|---|
+| `GANADO` | **Implementado** | `EntregaCompletadaListener` reacciona a la transición del pedido a `ENTREGADO` cuando hay `SolicitudDelivery`. | INSERT en `movimiento_queuepoints` con monto 50 (configurable). Idempotente por `(referenciaTipo, referenciaId)`. |
+| `CANJEADO` | **Implementado** | El cliente invoca `POST /api/me/queuepoints/canjear` con monto y referencia. | INSERT con el monto solicitado, previa validación de saldo suficiente. Idempotente por `(referenciaTipo, referenciaId)`. |
+| `EXPIRADO` | **Diseñado, diferido** | Job programado que detectaría puntos `GANADO` con `created_at` anterior a un umbral (por ejemplo, 1 año) y aún no consumidos. | INSERT por el monto expirado. Falta decidir el umbral exacto y el orden en que se cuentan los puntos a expirar (los más viejos primero, o el saldo completo en bloque). |
+| `REVERTIDO` | **Diseñado, diferido** | Listener que reaccionaría a la cancelación de un pedido para deshacer movimientos `GANADO` o `CANJEADO` asociados a ese pedido. | INSERT por el mismo monto del movimiento original, manteniendo el original intacto. |
+
+El CHECK constraint actual de la tabla `movimiento_queuepoints` solo permite los valores `GANADO` y `CANJEADO` (línea 227 de `V1__schema_inicial.sql`). Cuando se activen los otros dos tipos, hace falta una migración nueva que amplíe el CHECK. El resto del modelo (la columna `tipo`, los índices) ya está listo para soportarlos sin más cambios.
+
+### Política de devolución de puntos cuando un pedido se cancela
+
+Cuando se implemente el flujo `REVERTIDO`, la regla general es:
+
+> **Si los puntos se aplicaron a un pedido que termina cancelado, se devuelven (movimiento `REVERTIDO`) salvo que la cancelación sea por culpa del cliente sin que el servicio prometido haya fallado.**
+
+En concreto:
+
+| Estado terminal del pedido | ¿Se devuelven los puntos que el cliente canjeó? |
+|---|---|
+| `CANCELADO_POR_COMERCIO` (cualquier estado de origen) | Sí, siempre |
+| `CANCELADO_POR_CLIENTE` desde `PAGADO_BUSCANDO_REPARTIDOR` o `PAGADO_ESPERANDO_COMERCIO` | Sí (el servicio nunca arrancó) |
+| `CANCELADO_POR_CLIENTE` desde `ACEPTADO` o `EN_PREPARACION` | No (responsabilidad del cliente). Hoy no aplica porque `CANCELABLES_POR_CLIENTE` no incluye estos estados (ver ADR-0013). |
+| `EXPIRADO` (cliente no recogió un pedido listo) | No (responsabilidad del cliente) |
+
+**Sobre los puntos que el repartidor habría ganado**: la tabla solo cubre los puntos que el cliente canjeó. Los puntos del repartidor solo se otorgan al transicionar el pedido a `ENTREGADO`, así que en cualquier estado terminal de cancelación el repartidor nunca llegó a ganarlos. No hay nada que devolver.
+
+La implementación sería un listener nuevo en el módulo `queuepoints/` que reacciona a las transiciones de cancelación, busca movimientos `CANJEADO` con `referenciaId` del pedido, y por cada uno inserta un movimiento `REVERTIDO` por el mismo monto y la misma referencia.
+
+En Fase 5 dejamos un comentario `TODO` en el código del listener apuntando a esta sección. La implementación real queda diferida.
+
+### Política de expiración por antigüedad
+
+La política de cuándo expirar puntos (por ejemplo, 1 año desde que se ganaron y no se usaron) **no está decidida**. Cuando se decida, queda pendiente:
+
+- Definir el umbral de antigüedad (¿1 año? ¿6 meses? ¿lo decide el usuario?).
+- Definir si la expiración aplica al saldo en orden cronológico (los puntos más viejos se cuentan como gastados primero al canjear) o si se calcula sobre el saldo completo en bloque.
+- Definir si el sistema avisa al usuario antes de expirar puntos.
+
+Hoy no hay urgencia: el saldo de QueuePoints es chico (50 puntos por entrega, descuentos modestos), así que un usuario tardaría meses o años en acumular puntos que mereciera expirar. Cuando los datos reales muestren que tiene sentido activar el flujo, se documenta la política específica y se implementa.
+
+### Por qué dejamos estos flujos diferidos
+
+Dos razones:
+
+1. **Foco del MVP.** Fase 5 cierra el flujo principal: ganar puntos al entregar, canjear puntos para descuento. Eso es lo que la propuesta del proyecto promete al usuario. Revertir y expirar son refinamientos que mejoran la experiencia pero no son bloqueantes.
+2. **Menos código sin uso real.** Implementar un listener de reversión sin tener todavía el canje integrado al flujo de pago (que es trabajo de una fase posterior) sería agregar código que no se ejercita end-to-end. Preferimos esperar a tener la integración completa antes de meter el listener.
 
 ## Alternativas consideradas
 
@@ -184,9 +243,12 @@ Ejemplo concreto: el `EntregaCompletadaListener` debería verificar que ya no ex
 ## Referencias
 
 - `backend/src/main/java/pe/edu/utec/queueless/queuepoints/entity/MovimientoQueuePoints.java` — la entidad.
-- `backend/src/main/java/pe/edu/utec/queueless/queuepoints/entity/TipoMovimiento.java` — los tipos posibles.
-- `backend/src/main/java/pe/edu/utec/queueless/queuepoints/service/QueuePointsService.java` — service (con TODOs de Semana 3).
+- `backend/src/main/java/pe/edu/utec/queueless/queuepoints/entity/TipoMovimiento.java` — los tipos posibles (dos activos al cierre de Fase 5).
+- `backend/src/main/java/pe/edu/utec/queueless/queuepoints/service/QueuePointsService.java` — service con `registrarGanancia`, `canjear` y consultas de saldo y movimientos.
 - `backend/src/main/java/pe/edu/utec/queueless/queuepoints/listener/EntregaCompletadaListener.java` — listener que dispara movimientos al completar entregas.
+- `backend/src/main/java/pe/edu/utec/queueless/queuepoints/controller/QueuePointsController.java` — endpoints `/saldo`, `/movimientos` y `/canjear`.
 - `backend/src/main/resources/db/migration/V1__schema_inicial.sql` — tabla `movimiento_queuepoints` con sus constraints.
 - ADR-0003 — Modelo de 12 entidades (este es subdetalle de la decisión 12).
 - ADR-0009 — Eventos de dominio (mecanismo por el cual los movimientos se disparan).
+- ADR-0013 — Integración con pasarela de pagos (política de qué estados gatillan reembolso y, en consecuencia, devolución de puntos).
+- ADR-0014 — Flujo de delivery, matching y opciones del cliente (contexto del listener `EntregaCompletadaListener` y de la futura reversión de puntos por cancelación).
