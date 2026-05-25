@@ -6,6 +6,7 @@ import pe.edu.utec.queueless.delivery.entity.SolicitudDelivery;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 public interface SolicitudDeliveryRepository extends JpaRepository<SolicitudDelivery, Long> {
     List<SolicitudDelivery> findByEstado(EstadoSolicitudDelivery estado);
@@ -15,4 +16,6 @@ public interface SolicitudDeliveryRepository extends JpaRepository<SolicitudDeli
         EstadoSolicitudDelivery estado, Instant cutoff);
 
     List<SolicitudDelivery> findByRepartidorIdOrderByAsignadoAtDesc(Long repartidorId);
+
+    Optional<SolicitudDelivery> findByPedidoId(Long pedidoId);
 }
