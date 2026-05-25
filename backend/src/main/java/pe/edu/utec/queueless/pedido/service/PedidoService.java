@@ -24,6 +24,7 @@ import pe.edu.utec.queueless.puntoventa.repository.ProductoRepository;
 import pe.edu.utec.queueless.puntoventa.repository.PuntoDeVentaRepository;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
+import pe.edu.utec.queueless.shared.util.TiempoLima;
 import pe.edu.utec.queueless.usuario.entity.Rol;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
@@ -31,7 +32,6 @@ import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,7 +42,6 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class PedidoService {
 
-    private static final ZoneId ZONA_LIMA = ZoneId.of("America/Lima");
     private static final DateTimeFormatter FORMATO_FECHA_CODIGO = DateTimeFormatter.ofPattern("yyMMdd");
     private static final String ALFABETO_CODIGO = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int LONGITUD_SUFIJO_CODIGO = 5;
@@ -112,7 +111,7 @@ public class PedidoService {
     public PedidoResponse crear(Usuario cliente, CrearPedidoRequest request) {
         validarEsCliente(cliente);
         PuntoDeVenta local = buscarLocalAtendiendo(request.getPuntoDeVentaId());
-        validarHorarioDeAtencion(local, LocalTime.now(ZONA_LIMA));
+        validarHorarioDeAtencion(local, TiempoLima.ahora());
         validarZonaEntrega(request);
 
         Pedido pedido = Pedido.builder()
@@ -358,7 +357,7 @@ public class PedidoService {
     }
 
     private String construirCodigo() {
-        String fecha = LocalDate.now(ZONA_LIMA).format(FORMATO_FECHA_CODIGO);
+        String fecha = LocalDate.now(TiempoLima.ZONA).format(FORMATO_FECHA_CODIGO);
         StringBuilder sufijo = new StringBuilder(LONGITUD_SUFIJO_CODIGO);
         for (int i = 0; i < LONGITUD_SUFIJO_CODIGO; i++) {
             sufijo.append(ALFABETO_CODIGO.charAt(RANDOM.nextInt(ALFABETO_CODIGO.length())));
