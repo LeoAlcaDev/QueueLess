@@ -70,6 +70,20 @@ BEGIN
         (3, 'Roll California',   '8 piezas. Palta, kanikama, pepino.',                         18.00, 'Almuerzos', 'PREPARADO',   TRUE),
         (3, 'Edamame',           'Vainas hervidas con sal de mar.',                             6.00, 'Snacks',    'PREPARADO',   TRUE);
 
+    -- ---------- Productos demo con reglas de horario ----------
+    -- Uno con horario de servicio (solo en la mañana) y uno por lote (almuerzo del
+    -- día), para probar la disponibilidad por franja y la validación al pedir.
+    INSERT INTO producto (punto_de_venta_id, nombre, descripcion, precio, categoria,
+                          tipo_preparacion, disponible,
+                          horario_servicio_inicio, horario_servicio_fin,
+                          tiene_ventana_de_pedido,
+                          ventana_pedido_inicio, ventana_pedido_fin,
+                          ventana_recojo_inicio, ventana_recojo_fin) VALUES
+        (1, 'Desayuno completo', 'Huevos, pan, jugo y fruta. Solo por la mañana.',                 16.00, 'Desayunos', 'PREPARADO', TRUE,
+            '07:00', '10:30', FALSE, NULL, NULL, NULL, NULL),
+        (1, 'Almuerzo del día',  'Menú del día preparado por lote. Se pide temprano y se recoge al mediodía.', 15.00, 'Almuerzos', 'PREPARADO', TRUE,
+            NULL, NULL, TRUE, '11:00', '13:00', '12:30', '14:00');
+
     -- Sincronizar las secuencias después del INSERT con IDs explícitos
     PERFORM setval('usuario_id_seq', (SELECT MAX(id) FROM usuario));
     PERFORM setval('punto_de_venta_id_seq', (SELECT MAX(id) FROM punto_de_venta));

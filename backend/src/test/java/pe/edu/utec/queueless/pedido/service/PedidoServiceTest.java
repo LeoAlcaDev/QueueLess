@@ -446,6 +446,70 @@ class PedidoServiceTest {
     }
 
     // ----------------------------------------------------------------------
+    // Horario de servicio y ventana del producto (lógica pura, con horas fijas)
+    // ----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("producto sin horario de servicio se puede pedir a cualquier hora")
+    void servicioProductoSinHorarioPermite() {
+        Producto producto = producto(1L, local(10L, usuario(2L, Rol.COMERCIO), true), "10.00", true);
+        assertThatCode(() -> service.validarHorarioDeServicio(producto, LocalTime.of(23, 0)))
+            .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("dentro del horario de servicio del producto no lanza excepción")
+    void servicioProductoDentroPermite() {
+        Producto producto = producto(1L, local(10L, usuario(2L, Rol.COMERCIO), true), "10.00", true);
+        producto.setHorarioServicioInicio(LocalTime.of(7, 0));
+        producto.setHorarioServicioFin(LocalTime.of(10, 30));
+        assertThatCode(() -> service.validarHorarioDeServicio(producto, LocalTime.of(8, 0)))
+            .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("fuera del horario de servicio del producto lanza BusinessRuleException")
+    void servicioProductoFueraFalla() {
+        Producto producto = producto(1L, local(10L, usuario(2L, Rol.COMERCIO), true), "10.00", true);
+        producto.setHorarioServicioInicio(LocalTime.of(7, 0));
+        producto.setHorarioServicioFin(LocalTime.of(10, 30));
+        assertThatThrownBy(() -> service.validarHorarioDeServicio(producto, LocalTime.of(12, 0)))
+            .isInstanceOf(BusinessRuleException.class)
+            .hasMessageContaining("solo se sirve");
+    }
+
+    @Test
+    @DisplayName("producto que no es por lote no valida ventana de pedido")
+    void ventanaProductoNoLotePermite() {
+        Producto producto = producto(1L, local(10L, usuario(2L, Rol.COMERCIO), true), "10.00", true);
+        assertThatCode(() -> service.validarVentanaDePedido(producto, LocalTime.of(23, 0)))
+            .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("dentro de la ventana de pedido del producto por lote no lanza excepción")
+    void ventanaProductoDentroPermite() {
+        Producto producto = producto(1L, local(10L, usuario(2L, Rol.COMERCIO), true), "10.00", true);
+        producto.setTieneVentanaDePedido(true);
+        producto.setVentanaPedidoInicio(LocalTime.of(11, 0));
+        producto.setVentanaPedidoFin(LocalTime.of(13, 0));
+        assertThatCode(() -> service.validarVentanaDePedido(producto, LocalTime.of(12, 0)))
+            .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("fuera de la ventana de pedido del producto por lote lanza BusinessRuleException")
+    void ventanaProductoFueraFalla() {
+        Producto producto = producto(1L, local(10L, usuario(2L, Rol.COMERCIO), true), "10.00", true);
+        producto.setTieneVentanaDePedido(true);
+        producto.setVentanaPedidoInicio(LocalTime.of(11, 0));
+        producto.setVentanaPedidoFin(LocalTime.of(13, 0));
+        assertThatThrownBy(() -> service.validarVentanaDePedido(producto, LocalTime.of(14, 0)))
+            .isInstanceOf(BusinessRuleException.class)
+            .hasMessageContaining("solo se puede pedir");
+    }
+
+    // ----------------------------------------------------------------------
     // Factories
     // ----------------------------------------------------------------------
 
