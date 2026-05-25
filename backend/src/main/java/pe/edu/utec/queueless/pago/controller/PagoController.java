@@ -17,7 +17,7 @@ import pe.edu.utec.queueless.pago.dto.PagoResponse;
 import pe.edu.utec.queueless.pago.entity.Pago;
 import pe.edu.utec.queueless.pago.service.PagoService;
 import pe.edu.utec.queueless.shared.dto.ApiResponse;
-import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
+import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 import pe.edu.utec.queueless.usuario.service.UsuarioService;
 
@@ -46,7 +46,7 @@ public class PagoController {
         Usuario cliente = usuarioService.findByEmail(authentication.getName());
         Pago pago = pagoService.findById(id);
         if (!pago.getPedido().getCliente().getId().equals(cliente.getId())) {
-            throw new BusinessRuleException("El pago no pertenece al cliente");
+            throw new ResourceNotFoundException("Pago", id);
         }
         return ResponseEntity.ok(ApiResponse.ok(PagoResponse.from(pago)));
     }

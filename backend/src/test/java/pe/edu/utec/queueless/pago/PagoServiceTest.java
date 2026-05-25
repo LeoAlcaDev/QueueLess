@@ -20,6 +20,7 @@ import pe.edu.utec.queueless.pedido.entity.Pedido;
 import pe.edu.utec.queueless.pedido.entity.TipoEntrega;
 import pe.edu.utec.queueless.pedido.service.PedidoService;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
+import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
 import java.math.BigDecimal;
@@ -91,13 +92,13 @@ class PagoServiceTest {
     }
 
     @Test
-    @DisplayName("iniciar pago de pedido ajeno lanza BusinessRuleException")
+    @DisplayName("iniciar pago de pedido ajeno responde como no encontrado (404)")
     void iniciarPedidoAjenoFalla() {
         when(pedidoService.findById(42L)).thenReturn(pedido);
 
         assertThatThrownBy(() -> pagoService.iniciar(42L, 99L))
-            .isInstanceOf(BusinessRuleException.class)
-            .hasMessageContaining("no pertenece");
+            .isInstanceOf(ResourceNotFoundException.class)
+            .hasMessageContaining("no existe");
         verify(paymentGateway, never()).iniciarCobro(any());
     }
 
