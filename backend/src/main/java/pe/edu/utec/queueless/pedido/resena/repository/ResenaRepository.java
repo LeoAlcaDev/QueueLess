@@ -7,5 +7,13 @@ import pe.edu.utec.queueless.pedido.resena.entity.Resena;
 import java.util.List;
 
 public interface ResenaRepository extends JpaRepository<Resena, Long> {
-    List<Resena> findByObjetivoTipoAndObjetivoId(ObjetivoResena tipo, Long objetivoId);
+
+    List<Resena> findByObjetivoTipoAndObjetivoIdOrderByCreatedAtDesc(
+        ObjetivoResena tipo, Long objetivoId);
+
+    /**
+     * Para validar que no exista ya una reseña sobre el mismo objetivo en el
+     * mismo pedido (el schema lo refuerza con un UNIQUE (pedido_id, objetivo_tipo)).
+     */
+    boolean existsByPedidoIdAndObjetivoTipo(Long pedidoId, ObjetivoResena objetivoTipo);
 }
