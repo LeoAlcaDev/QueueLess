@@ -40,10 +40,19 @@ public enum EstadoPedido {
         EN_PREPARACION
     );
 
-    /** Estados que gatillan reembolso automático al cancelar. */
+    /**
+     * Estados que gatillan reembolso automático al cancelar.
+     *
+     * <p>Incluye todos los estados en los que el pedido ya tiene pago confirmado:
+     * desde los estados PAGADO_* hasta los estados post-aceptación (ACEPTADO,
+     * EN_PREPARACION). Si el comercio cancela desde cualquiera de estos estados,
+     * el cliente recibe el reembolso completo porque el servicio no fue prestado.
+     */
     public static final Set<EstadoPedido> GATILLAN_REEMBOLSO = EnumSet.of(
         PAGADO_BUSCANDO_REPARTIDOR,
-        PAGADO_ESPERANDO_COMERCIO
+        PAGADO_ESPERANDO_COMERCIO,
+        ACEPTADO,
+        EN_PREPARACION
     );
 
     public static final Set<EstadoPedido> TERMINALES = EnumSet.of(
