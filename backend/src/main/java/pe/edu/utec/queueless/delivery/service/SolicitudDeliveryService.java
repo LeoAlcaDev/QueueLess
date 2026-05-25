@@ -89,8 +89,11 @@ public class SolicitudDeliveryService {
             throw new BusinessRuleException(
                 "Solo los pedidos DELIVERY requieren solicitud de delivery");
         }
+        // Releemos el pedido dentro de esta transacción: si el listener nos pasa
+        // uno cargado en otra sesión, sus asociaciones perezosas (el punto de
+        // venta) quedarían sin inicializar al construir la solicitud.
         return repository.findByPedidoId(pedido.getId())
-            .orElseGet(() -> insertarSolicitud(pedido));
+            .orElseGet(() -> insertarSolicitud(pedidoService.findById(pedido.getId())));
     }
 
     private SolicitudDelivery insertarSolicitud(Pedido pedido) {
