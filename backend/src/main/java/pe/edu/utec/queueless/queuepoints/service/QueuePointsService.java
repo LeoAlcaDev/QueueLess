@@ -10,6 +10,7 @@ import pe.edu.utec.queueless.queuepoints.entity.MovimientoQueuePoints;
 import pe.edu.utec.queueless.queuepoints.entity.TipoMovimiento;
 import pe.edu.utec.queueless.queuepoints.repository.MovimientoQueuePointsRepository;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
+import pe.edu.utec.queueless.shared.exception.InsufficientPointsException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
 import java.util.ArrayList;
@@ -87,7 +88,7 @@ public class QueuePointsService {
         Integer saldoActual = repository.calcularSaldo(usuario.getId());
         int saldo = saldoActual == null ? 0 : saldoActual;
         if (saldo < monto) {
-            throw new BusinessRuleException(
+            throw new InsufficientPointsException(
                 "Saldo insuficiente para canjear " + monto + " puntos (saldo actual: " + saldo + ")");
         }
         return guardar(usuario, TipoMovimiento.CANJEADO, monto, referenciaTipo, referenciaId, descripcion);

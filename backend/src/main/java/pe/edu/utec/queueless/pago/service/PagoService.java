@@ -15,6 +15,8 @@ import pe.edu.utec.queueless.pedido.entity.Pedido;
 import pe.edu.utec.queueless.pedido.entity.TipoEntrega;
 import pe.edu.utec.queueless.pedido.service.PedidoService;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
+import pe.edu.utec.queueless.shared.exception.DuplicateResourceException;
+import pe.edu.utec.queueless.shared.exception.PaymentException;
 import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
 
 import java.time.Instant;
@@ -54,7 +56,7 @@ public class PagoService {
                 "Solo se puede iniciar el pago de un pedido en PENDIENTE_PAGO");
         }
         if (pagoRepository.existsByPedidoId(pedidoId)) {
-            throw new BusinessRuleException("El pedido ya tiene un pago iniciado");
+            throw new DuplicateResourceException("El pedido ya tiene un pago iniciado");
         }
 
         Pago pago = Pago.builder()
@@ -111,7 +113,7 @@ public class PagoService {
             return pago;
         }
         if (pago.getEstado() != EstadoPago.PENDIENTE) {
-            throw new BusinessRuleException(
+            throw new PaymentException(
                 "No se puede confirmar un pago en estado " + pago.getEstado());
         }
 
