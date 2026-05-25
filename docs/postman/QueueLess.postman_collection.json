@@ -1,0 +1,400 @@
+{
+  "info": {
+    "name": "QueueLess API - E2E",
+    "_postman_id": "queueless-e2e-collection",
+    "description": "Coleccion end-to-end de QueueLess (CS2031 - DBP).\n\nValida el flujo completo contra el backend en dev (http://localhost:8090):\nautenticacion, alta de local y producto por el comercio, catalogo publico,\nflujo PICKUP completo, reseña, pago real + flujo DELIVERY con repartidor, y\nQueuePoints.\n\nUso: ejecutar las carpetas en orden (o 'Run collection'). Cada request guarda\nlos tokens e IDs que necesita el siguiente en variables de coleccion, asi que no\nhay que copiar nada a mano. Requiere la base con el seed de dev (V99) cargada.\n\nVariable baseUrl: cambiala por la URL del deployment para correrla en produccion.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8090" },
+    { "key": "emailCliente", "value": "diego.martinez@utec.edu.pe" },
+    { "key": "emailComercio", "value": "comercio.cafe@utec.edu.pe" },
+    { "key": "emailRepartidor", "value": "camila.rojas@utec.edu.pe" },
+    { "key": "password", "value": "password123" },
+    { "key": "tokenCliente", "value": "" },
+    { "key": "tokenComercio", "value": "" },
+    { "key": "tokenRepartidor", "value": "" },
+    { "key": "puntoDeVentaId", "value": "" },
+    { "key": "productoId", "value": "" },
+    { "key": "pedidoId", "value": "" },
+    { "key": "pedidoIdDelivery", "value": "" },
+    { "key": "pagoId", "value": "" },
+    { "key": "referenciaExterna", "value": "" },
+    { "key": "solicitudId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Register (cliente nuevo)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('registro 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('devuelve token', function () { pm.expect(pm.response.json().data.token).to.be.a('string'); });"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"nuevo.{{$timestamp}}@utec.edu.pe\",\n  \"password\": \"password123\",\n  \"nombreCompleto\": \"Cliente Nuevo\",\n  \"roles\": [\"CLIENTE\"]\n}" },
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api","auth","register"] }
+          }
+        },
+        {
+          "name": "Login cliente",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('login 200', function () { pm.response.to.have.status(200); });",
+              "pm.collectionVariables.set('tokenCliente', pm.response.json().data.token);"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{emailCliente}}\",\n  \"password\": \"{{password}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"] }
+          }
+        },
+        {
+          "name": "Login comercio",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('login 200', function () { pm.response.to.have.status(200); });",
+              "pm.collectionVariables.set('tokenComercio', pm.response.json().data.token);"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{emailComercio}}\",\n  \"password\": \"{{password}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"] }
+          }
+        },
+        {
+          "name": "Login repartidor",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('login 200', function () { pm.response.to.have.status(200); });",
+              "pm.collectionVariables.set('tokenRepartidor', pm.response.json().data.token);"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{emailRepartidor}}\",\n  \"password\": \"{{password}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"] }
+          }
+        },
+        {
+          "name": "Login con password mala (401)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('credenciales invalidas 401', function () { pm.response.to.have.status(401); });"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{emailCliente}}\",\n  \"password\": \"incorrecta\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Usuario y perfil",
+      "item": [
+        {
+          "name": "Mi usuario",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{tokenCliente}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/usuarios/me", "host": ["{{baseUrl}}"], "path": ["api","usuarios","me"] }
+          }
+        },
+        {
+          "name": "Sin token (403)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('rechaza anonimo', function () { pm.expect(pm.response.code).to.be.oneOf([401, 403]); });" ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/usuarios/me", "host": ["{{baseUrl}}"], "path": ["api","usuarios","me"] }
+          }
+        },
+        {
+          "name": "Mis perfiles",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{tokenCliente}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/me/perfiles", "host": ["{{baseUrl}}"], "path": ["api","me","perfiles"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Comercio - alta de local y producto",
+      "item": [
+        {
+          "name": "Crear punto de venta",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200', function () { pm.response.to.have.status(200); });",
+            "pm.collectionVariables.set('puntoDeVentaId', pm.response.json().data.id);"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{tokenComercio}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Local E2E\",\n  \"ubicacion\": \"Bloque A - 1er piso\",\n  \"horarioApertura\": \"00:00\",\n  \"horarioCierre\": \"23:59\",\n  \"tiempoPromedioDeclarado\": 10\n}" },
+            "url": { "raw": "{{baseUrl}}/api/comercio/puntos-de-venta", "host": ["{{baseUrl}}"], "path": ["api","comercio","puntos-de-venta"] }
+          }
+        },
+        {
+          "name": "Crear producto",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200', function () { pm.response.to.have.status(200); });",
+            "pm.collectionVariables.set('productoId', pm.response.json().data.id);"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{tokenComercio}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"puntoDeVentaId\": {{puntoDeVentaId}},\n  \"nombre\": \"Cafe E2E\",\n  \"descripcion\": \"Cafe de prueba end-to-end\",\n  \"precio\": 7.00,\n  \"categoria\": \"Bebidas\",\n  \"tipoPreparacion\": \"PREPARADO\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/comercio/productos", "host": ["{{baseUrl}}"], "path": ["api","comercio","productos"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Catalogo publico",
+      "item": [
+        {
+          "name": "Listar puntos de venta",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/api/puntos-de-venta", "host": ["{{baseUrl}}"], "path": ["api","puntos-de-venta"] } }
+        },
+        {
+          "name": "Detalle de un punto de venta",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/api/puntos-de-venta/{{puntoDeVentaId}}", "host": ["{{baseUrl}}"], "path": ["api","puntos-de-venta","{{puntoDeVentaId}}"] } }
+        },
+        {
+          "name": "Productos del local",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/api/puntos-de-venta/{{puntoDeVentaId}}/productos", "host": ["{{baseUrl}}"], "path": ["api","puntos-de-venta","{{puntoDeVentaId}}","productos"] } }
+        },
+        {
+          "name": "Tiempo estimado",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200', function () { pm.response.to.have.status(200); });",
+            "pm.test('devuelve minutos', function () { pm.expect(pm.response.json().minutos).to.be.a('number'); });"
+          ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/api/puntos-de-venta/{{puntoDeVentaId}}/tiempo-estimado", "host": ["{{baseUrl}}"], "path": ["api","puntos-de-venta","{{puntoDeVentaId}}","tiempo-estimado"] } }
+        },
+        {
+          "name": "Punto de venta inexistente (404)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('404', function () { pm.response.to.have.status(404); });" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/api/puntos-de-venta/999999", "host": ["{{baseUrl}}"], "path": ["api","puntos-de-venta","999999"] } }
+        }
+      ]
+    },
+    {
+      "name": "5. Flujo PICKUP (cliente + comercio)",
+      "item": [
+        {
+          "name": "Crear pedido PICKUP",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('creado 201', function () { pm.response.to.have.status(201); });",
+            "pm.collectionVariables.set('pedidoId', pm.response.json().data.id);"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{tokenCliente}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"puntoDeVentaId\": {{puntoDeVentaId}},\n  \"tipoEntrega\": \"PICKUP\",\n  \"items\": [\n    { \"productoId\": {{productoId}}, \"cantidad\": 2 }\n  ]\n}" },
+            "url": { "raw": "{{baseUrl}}/api/cliente/pedidos", "host": ["{{baseUrl}}"], "path": ["api","cliente","pedidos"] }
+          }
+        },
+        {
+          "name": "Simular pago (dev)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{tokenCliente}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/dev/pedidos/{{pedidoId}}/simular-pago", "host": ["{{baseUrl}}"], "path": ["api","dev","pedidos","{{pedidoId}}","simular-pago"] }
+          }
+        },
+        {
+          "name": "Cliente consulta su pedido",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{tokenCliente}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/cliente/pedidos/{{pedidoId}}", "host": ["{{baseUrl}}"], "path": ["api","cliente","pedidos","{{pedidoId}}"] }
+          }
+        },
+        {
+          "name": "Comercio ve su cola",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{tokenComercio}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/comercio/pedidos/cola", "host": ["{{baseUrl}}"], "path": ["api","comercio","pedidos","cola"] }
+          }
+        },
+        {
+          "name": "Comercio acepta",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{tokenComercio}}" } ], "url": { "raw": "{{baseUrl}}/api/comercio/pedidos/{{pedidoId}}/aceptar", "host": ["{{baseUrl}}"], "path": ["api","comercio","pedidos","{{pedidoId}}","aceptar"] } }
+        },
+        {
+          "name": "Comercio inicia preparacion",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{tokenComercio}}" } ], "url": { "raw": "{{baseUrl}}/api/comercio/pedidos/{{pedidoId}}/iniciar-preparacion", "host": ["{{baseUrl}}"], "path": ["api","comercio","pedidos","{{pedidoId}}","iniciar-preparacion"] } }
+        },
+        {
+          "name": "Comercio marca listo",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{tokenComercio}}" } ], "url": { "raw": "{{baseUrl}}/api/comercio/pedidos/{{pedidoId}}/marcar-listo", "host": ["{{baseUrl}}"], "path": ["api","comercio","pedidos","{{pedidoId}}","marcar-listo"] } }
+        },
+        {
+          "name": "Comercio marca entregado",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200', function () { pm.response.to.have.status(200); });",
+            "pm.test('estado ENTREGADO', function () { pm.expect(pm.response.json().data.estado).to.eql('ENTREGADO'); });"
+          ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{tokenComercio}}" } ], "url": { "raw": "{{baseUrl}}/api/comercio/pedidos/{{pedidoId}}/marcar-entregado", "host": ["{{baseUrl}}"], "path": ["api","comercio","pedidos","{{pedidoId}}","marcar-entregado"] } }
+        }
+      ]
+    },
+    {
+      "name": "6. Resena",
+      "item": [
+        {
+          "name": "Cliente deja resena del local",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('creada 201', function () { pm.response.to.have.status(201); });" ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{tokenCliente}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"objetivoTipo\": \"PUNTO_DE_VENTA\",\n  \"calificacion\": 5,\n  \"comentario\": \"Todo excelente, rapido y rico.\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/cliente/pedidos/{{pedidoId}}/resenas", "host": ["{{baseUrl}}"], "path": ["api","cliente","pedidos","{{pedidoId}}","resenas"] }
+          }
+        },
+        {
+          "name": "Resenas publicas del local",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/api/puntos-de-venta/{{puntoDeVentaId}}/resenas", "host": ["{{baseUrl}}"], "path": ["api","puntos-de-venta","{{puntoDeVentaId}}","resenas"] } }
+        }
+      ]
+    },
+    {
+      "name": "7. Flujo DELIVERY (pago real + repartidor)",
+      "item": [
+        {
+          "name": "Crear pedido DELIVERY",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('creado 201', function () { pm.response.to.have.status(201); });",
+            "pm.collectionVariables.set('pedidoIdDelivery', pm.response.json().data.id);"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{tokenCliente}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"puntoDeVentaId\": {{puntoDeVentaId}},\n  \"tipoEntrega\": \"DELIVERY\",\n  \"zonaEntrega\": \"Bloque C - piso 8\",\n  \"items\": [\n    { \"productoId\": {{productoId}}, \"cantidad\": 1 }\n  ]\n}" },
+            "url": { "raw": "{{baseUrl}}/api/cliente/pedidos", "host": ["{{baseUrl}}"], "path": ["api","cliente","pedidos"] }
+          }
+        },
+        {
+          "name": "Cliente inicia pago",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200', function () { pm.response.to.have.status(200); });",
+            "var d = pm.response.json().data;",
+            "pm.collectionVariables.set('pagoId', d.pagoId);",
+            "pm.collectionVariables.set('referenciaExterna', d.referenciaExterna);"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{tokenCliente}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"pedidoId\": {{pedidoIdDelivery}}\n}" },
+            "url": { "raw": "{{baseUrl}}/api/cliente/pagos/iniciar", "host": ["{{baseUrl}}"], "path": ["api","cliente","pagos","iniciar"] }
+          }
+        },
+        {
+          "name": "Webhook mock confirma el pago",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/pago/webhook/mock?referencia={{referenciaExterna}}", "host": ["{{baseUrl}}"], "path": ["api","pago","webhook","mock"], "query": [ { "key": "referencia", "value": "{{referenciaExterna}}" } ] }
+          }
+        },
+        {
+          "name": "Cliente consulta su pago",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{tokenCliente}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/cliente/pagos/{{pagoId}}", "host": ["{{baseUrl}}"], "path": ["api","cliente","pagos","{{pagoId}}"] }
+          }
+        },
+        {
+          "name": "Repartidor ve pedidos disponibles",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200', function () { pm.response.to.have.status(200); });",
+            "var lista = pm.response.json().data;",
+            "var mio = lista.find(function (s) { return s.pedidoId == pm.collectionVariables.get('pedidoIdDelivery'); });",
+            "if (mio) { pm.collectionVariables.set('solicitudId', mio.id); } else if (lista.length > 0) { pm.collectionVariables.set('solicitudId', lista[0].id); }"
+          ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{tokenRepartidor}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/repartidor/pedidos-disponibles", "host": ["{{baseUrl}}"], "path": ["api","repartidor","pedidos-disponibles"] }
+          }
+        },
+        {
+          "name": "Repartidor acepta la solicitud",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{tokenRepartidor}}" } ], "url": { "raw": "{{baseUrl}}/api/repartidor/solicitudes/{{solicitudId}}/aceptar", "host": ["{{baseUrl}}"], "path": ["api","repartidor","solicitudes","{{solicitudId}}","aceptar"] } }
+        },
+        {
+          "name": "Comercio acepta",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{tokenComercio}}" } ], "url": { "raw": "{{baseUrl}}/api/comercio/pedidos/{{pedidoIdDelivery}}/aceptar", "host": ["{{baseUrl}}"], "path": ["api","comercio","pedidos","{{pedidoIdDelivery}}","aceptar"] } }
+        },
+        {
+          "name": "Comercio inicia preparacion",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{tokenComercio}}" } ], "url": { "raw": "{{baseUrl}}/api/comercio/pedidos/{{pedidoIdDelivery}}/iniciar-preparacion", "host": ["{{baseUrl}}"], "path": ["api","comercio","pedidos","{{pedidoIdDelivery}}","iniciar-preparacion"] } }
+        },
+        {
+          "name": "Comercio marca listo (para delivery)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{tokenComercio}}" } ], "url": { "raw": "{{baseUrl}}/api/comercio/pedidos/{{pedidoIdDelivery}}/marcar-listo", "host": ["{{baseUrl}}"], "path": ["api","comercio","pedidos","{{pedidoIdDelivery}}","marcar-listo"] } }
+        },
+        {
+          "name": "Repartidor confirma recogida",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{tokenRepartidor}}" } ], "url": { "raw": "{{baseUrl}}/api/repartidor/solicitudes/{{solicitudId}}/confirmar-recogida", "host": ["{{baseUrl}}"], "path": ["api","repartidor","solicitudes","{{solicitudId}}","confirmar-recogida"] } }
+        },
+        {
+          "name": "Repartidor confirma entrega",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{tokenRepartidor}}" } ], "url": { "raw": "{{baseUrl}}/api/repartidor/solicitudes/{{solicitudId}}/confirmar-entrega", "host": ["{{baseUrl}}"], "path": ["api","repartidor","solicitudes","{{solicitudId}}","confirmar-entrega"] } }
+        }
+      ]
+    },
+    {
+      "name": "8. QueuePoints (repartidor)",
+      "item": [
+        {
+          "name": "Saldo del repartidor",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": { "method": "GET", "header": [ { "key": "Authorization", "value": "Bearer {{tokenRepartidor}}" } ], "url": { "raw": "{{baseUrl}}/api/me/queuepoints/saldo", "host": ["{{baseUrl}}"], "path": ["api","me","queuepoints","saldo"] } }
+        },
+        {
+          "name": "Movimientos del repartidor",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', function () { pm.response.to.have.status(200); });" ] } } ],
+          "request": { "method": "GET", "header": [ { "key": "Authorization", "value": "Bearer {{tokenRepartidor}}" } ], "url": { "raw": "{{baseUrl}}/api/me/queuepoints/movimientos", "host": ["{{baseUrl}}"], "path": ["api","me","queuepoints","movimientos"] } }
+        }
+      ]
+    }
+  ]
+}
