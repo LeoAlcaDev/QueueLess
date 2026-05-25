@@ -45,7 +45,7 @@ public class QueuePointsService {
     }
 
     public List<MovimientoResponse> historialDe(Usuario usuario) {
-        return repository.findByUsuarioIdOrderByCreatedAtDesc(usuario.getId())
+        return repository.findByUsuarioIdOrderByCreatedAtDescIdDesc(usuario.getId())
             .stream().map(MovimientoResponse::from).toList();
     }
 
@@ -78,10 +78,10 @@ public class QueuePointsService {
         if (existente.isPresent()) {
             return existente.get();
         }
-        // SELECT FOR UPDATE: serializa canjes concurrentes del mismo usuario para
-        // que el segundo hilo vea el saldo ya reducido por el primero.
-        List<MovimientoQueuePoints> movimientos = repository.findByUsuarioIdForUpdate(usuario.getId());
-        int saldo = calcularSaldoDesde(movimientos);
+        // SELECT FOR UPDATE sobre una sola fila: serializa canjes concurrentes del
+        // mismo usuario sin cargar todos los movimientos (ni afectar el orden del historial).
+        repository.findFirstByUsuarioIdOrderByIdDesc(usuario.getId());
+        int saldo = repository.calcularSaldo(usuario.getId());
         if (saldo < monto) {
             throw new BusinessRuleException(
                 "Saldo insuficiente para canjear " + monto + " puntos (saldo actual: " + saldo + ")");
@@ -100,17 +100,6 @@ public class QueuePointsService {
             return existente.get();
         }
         return guardar(usuario, tipo, monto, referenciaTipo, referenciaId, descripcion);
-    }
-
-    /**
-     * El unique no vive en el schema (ver ADR-0008, "Riesgo de duplicación"):
-     * buscamos antes de insertar. La ventana entre SELECT e INSERT bajo carga
-     * concurrente es aceptable para el MVP porque los listeners async corren
-     * con espacio suficiente entre reintentos.
-     */
-    private int calcularSaldoDesde(List<MovimientoQueuePoints> movimientos) {
-        return movimientos.stream().mapToInt(m ->
-            m.getTipo() == TipoMovimiento.GANADO ? m.getMonto() : -m.getMonto()).sum();
     }
 
     private Optional<MovimientoQueuePoints> buscarExistente(TipoMovimiento tipo,

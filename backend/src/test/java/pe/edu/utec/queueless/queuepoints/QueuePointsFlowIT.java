@@ -86,7 +86,7 @@ class QueuePointsFlowIT extends AbstractIntegrationTest {
             .hasMessageContaining("Saldo insuficiente");
 
         // No quedó persistido ningún movimiento de canje
-        boolean hayCanje = repository.findByUsuarioIdOrderByCreatedAtDesc(usuario.getId()).stream()
+        boolean hayCanje = repository.findByUsuarioIdOrderByCreatedAtDescIdDesc(usuario.getId()).stream()
             .anyMatch(m -> m.getTipo() == TipoMovimiento.CANJEADO);
         assertThat(hayCanje).isFalse();
     }

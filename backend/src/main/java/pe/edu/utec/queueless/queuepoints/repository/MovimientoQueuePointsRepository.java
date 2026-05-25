@@ -13,16 +13,17 @@ import java.util.Optional;
 
 public interface MovimientoQueuePointsRepository extends JpaRepository<MovimientoQueuePoints, Long> {
 
-    List<MovimientoQueuePoints> findByUsuarioIdOrderByCreatedAtDesc(Long usuarioId);
+    /** Historial ordenado del más reciente al más antiguo; id como desempate para timestamps iguales. */
+    List<MovimientoQueuePoints> findByUsuarioIdOrderByCreatedAtDescIdDesc(Long usuarioId);
 
     /**
-     * SELECT FOR UPDATE sobre todos los movimientos del usuario: serializa los
-     * canjes concurrentes para el mismo usuario evitando que dos hilos lean el
-     * mismo saldo y ambos procedan al débito.
+     * SELECT FOR UPDATE sobre el movimiento más reciente del usuario: serializa
+     * canjes concurrentes sin cargar toda la tabla ni afectar el orden del historial.
+     * Si el usuario no tiene movimientos devuelve vacío (el saldo es 0 y el canje
+     * fallará por saldo insuficiente, por lo que no se necesita el lock).
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT m FROM MovimientoQueuePoints m WHERE m.usuario.id = :usuarioId")
-    List<MovimientoQueuePoints> findByUsuarioIdForUpdate(@Param("usuarioId") Long usuarioId);
+    Optional<MovimientoQueuePoints> findFirstByUsuarioIdOrderByIdDesc(Long usuarioId);
 
     /**
      * Idempotencia del ledger (ADR-0008): si ya existe un movimiento del mismo

@@ -21,7 +21,6 @@ import pe.edu.utec.queueless.pedido.dto.PedidoResponse;
 import pe.edu.utec.queueless.pedido.entity.EstadoPedido;
 import pe.edu.utec.queueless.pedido.entity.Pedido;
 import pe.edu.utec.queueless.pedido.entity.TipoEntrega;
-import pe.edu.utec.queueless.pedido.event.PedidoEstadoCambiadoEvent;
 import pe.edu.utec.queueless.pedido.repository.PedidoRepository;
 import pe.edu.utec.queueless.pedido.service.PedidoService;
 import pe.edu.utec.queueless.puntoventa.dto.CrearProductoRequest;
@@ -128,10 +127,9 @@ class DeliveryFlowIT extends AbstractIntegrationTest {
             solicitudDeliveryRepository.findById(solicitud.getId()).orElseThrow();
         assertThat(solicitudFinal.getEstado()).isEqualTo(EstadoSolicitudDelivery.ENTREGADO);
 
-        // El listener async no corre dentro de la TX; lo invocamos a mano para
-        // verificar que registra los 50 QueuePoints
-        entregaCompletadaListener.onEntregaCompletada(
-            new PedidoEstadoCambiadoEvent(ctx.pedido.getId(), EstadoPedido.LISTO_PARA_DELIVERY, EstadoPedido.ENTREGADO));
+        // El listener async no corre dentro de la TX; invocamos el proceso de negocio
+        // directamente para verificar que registra los 50 QueuePoints
+        entregaCompletadaListener.procesarEntrega(ctx.pedido.getId());
 
         SaldoResponse saldo = queuePointsService.saldoDe(ctx.repartidor);
         assertThat(saldo.getSaldo()).isEqualTo(50);
@@ -155,13 +153,12 @@ class DeliveryFlowIT extends AbstractIntegrationTest {
         solicitudDeliveryService.confirmarRecogida(ctx.repartidor, solicitud.getId());
         solicitudDeliveryService.confirmarEntrega(ctx.repartidor, solicitud.getId());
 
-        PedidoEstadoCambiadoEvent event = new PedidoEstadoCambiadoEvent(
-            ctx.pedido.getId(), EstadoPedido.LISTO_PARA_DELIVERY, EstadoPedido.ENTREGADO);
-        entregaCompletadaListener.onEntregaCompletada(event);
-        entregaCompletadaListener.onEntregaCompletada(event); // reentrega
+        // Invocamos dos veces el proceso de negocio para verificar idempotencia
+        entregaCompletadaListener.procesarEntrega(ctx.pedido.getId());
+        entregaCompletadaListener.procesarEntrega(ctx.pedido.getId()); // reentrega
 
         List<MovimientoQueuePoints> movs =
-            movimientoRepository.findByUsuarioIdOrderByCreatedAtDesc(ctx.repartidor.getId());
+            movimientoRepository.findByUsuarioIdOrderByCreatedAtDescIdDesc(ctx.repartidor.getId());
         long movsDeEntrega = movs.stream()
             .filter(m -> m.getTipo() == TipoMovimiento.GANADO
                 && "PEDIDO".equals(m.getReferenciaTipo())

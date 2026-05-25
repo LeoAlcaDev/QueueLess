@@ -14,7 +14,6 @@ import pe.edu.utec.queueless.queuepoints.service.QueuePointsService;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -82,11 +81,13 @@ class QueuePointsServiceTest {
     @Test
     @DisplayName("canjear con saldo insuficiente lanza BusinessRuleException")
     void canjearSaldoInsuficienteFalla() {
-        when(repository.findFirstByTipoAndReferenciaTipoAndReferenciaId(
-            TipoMovimiento.CANJEADO, "PEDIDO", 10L)).thenReturn(Optional.empty());
         MovimientoQueuePoints ganado = MovimientoQueuePoints.builder()
             .usuario(usuario).tipo(TipoMovimiento.GANADO).monto(20).build();
-        when(repository.findByUsuarioIdForUpdate(1L)).thenReturn(List.of(ganado));
+        ganado.setId(1L);
+        when(repository.findFirstByTipoAndReferenciaTipoAndReferenciaId(
+            TipoMovimiento.CANJEADO, "PEDIDO", 10L)).thenReturn(Optional.empty());
+        when(repository.findFirstByUsuarioIdOrderByIdDesc(1L)).thenReturn(Optional.of(ganado));
+        when(repository.calcularSaldo(1L)).thenReturn(20);
 
         assertThatThrownBy(() -> service.canjear(usuario, 50, "PEDIDO", 10L, null))
             .isInstanceOf(BusinessRuleException.class)
@@ -97,11 +98,13 @@ class QueuePointsServiceTest {
     @Test
     @DisplayName("canjear con saldo suficiente inserta movimiento CANJEADO")
     void canjearConSaldoSuficiente() {
-        when(repository.findFirstByTipoAndReferenciaTipoAndReferenciaId(
-            TipoMovimiento.CANJEADO, "PEDIDO", 10L)).thenReturn(Optional.empty());
         MovimientoQueuePoints ganado = MovimientoQueuePoints.builder()
             .usuario(usuario).tipo(TipoMovimiento.GANADO).monto(100).build();
-        when(repository.findByUsuarioIdForUpdate(1L)).thenReturn(List.of(ganado));
+        ganado.setId(1L);
+        when(repository.findFirstByTipoAndReferenciaTipoAndReferenciaId(
+            TipoMovimiento.CANJEADO, "PEDIDO", 10L)).thenReturn(Optional.empty());
+        when(repository.findFirstByUsuarioIdOrderByIdDesc(1L)).thenReturn(Optional.of(ganado));
+        when(repository.calcularSaldo(1L)).thenReturn(100);
         when(repository.save(any(MovimientoQueuePoints.class)))
             .thenAnswer(i -> i.getArgument(0));
 
