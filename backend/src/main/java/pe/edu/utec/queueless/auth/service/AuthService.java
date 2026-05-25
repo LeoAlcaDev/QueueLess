@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utec.queueless.auth.dto.AuthResponse;
 import pe.edu.utec.queueless.auth.dto.LoginRequest;
 import pe.edu.utec.queueless.auth.dto.RegisterRequest;
-import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
+import pe.edu.utec.queueless.shared.exception.DuplicateResourceException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 import pe.edu.utec.queueless.usuario.repository.UsuarioRepository;
 import pe.edu.utec.queueless.usuario.service.PerfilService;
@@ -29,7 +29,7 @@ public class AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (usuarioRepository.existsByEmail(request.getEmail())) {
-            throw new BusinessRuleException("Ya existe un usuario con ese correo");
+            throw new DuplicateResourceException("Ya existe un usuario con ese correo");
         }
 
         Usuario usuario = Usuario.builder()

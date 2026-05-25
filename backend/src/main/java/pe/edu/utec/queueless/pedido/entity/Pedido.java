@@ -3,7 +3,7 @@ package pe.edu.utec.queueless.pedido.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import pe.edu.utec.queueless.puntoventa.entity.PuntoDeVenta;
-import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
+import pe.edu.utec.queueless.shared.exception.InvalidStateTransitionException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
 import java.math.BigDecimal;
@@ -88,7 +88,7 @@ public class Pedido {
      */
     public void transicionarA(EstadoPedido nuevoEstado) {
         if (!estado.puedeTransicionarA(nuevoEstado)) {
-            throw new BusinessRuleException(
+            throw new InvalidStateTransitionException(
                 "Transición inválida: %s → %s".formatted(estado, nuevoEstado));
         }
         this.estado = nuevoEstado;
