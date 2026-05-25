@@ -1,30 +1,120 @@
 package pe.edu.utec.queueless.shared.storage;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.URI;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 /**
- * Implementación AWS S3 para producción.
+ * Implementación de almacenamiento sobre AWS S3 para producción. Sube las imágenes a
+ * un bucket de lectura pública y devuelve su URL pública directa. Se activa solo
+ * cuando {@code queueless.storage.impl=s3}; en dev y tests sigue el guardado local.
  *
- * <p>TODO Semana 3: implementar usando {@code S3Client} del SDK v2 ya incluido.
- * Bucket y región vienen de {@code queueless.storage.s3.*}.
+ * <p>Las credenciales de escritura no se configuran acá: el SDK de AWS las toma de las
+ * variables de entorno del servidor.
  */
 @Slf4j
 @Service
 @ConditionalOnProperty(name = "queueless.storage.impl", havingValue = "s3")
 public class S3StorageService implements StorageService {
 
+    private static final Set<String> EXTENSIONES_PERMITIDAS = Set.of("jpg", "jpeg", "png", "webp");
+    private static final Map<String, String> CONTENT_TYPES = Map.of(
+        "jpg", "image/jpeg",
+        "jpeg", "image/jpeg",
+        "png", "image/png",
+        "webp", "image/webp");
+
+    private final S3Client s3Client;
+    private final String bucket;
+    private final String region;
+
+    public S3StorageService(
+            @Value("${queueless.storage.s3.bucket}") String bucket,
+            @Value("${queueless.storage.s3.region}") String region) {
+        this(S3Client.builder().region(Region.of(region)).build(), bucket, region);
+    }
+
+    // Visible para los tests: permite inyectar un cliente S3 simulado.
+    S3StorageService(S3Client s3Client, String bucket, String region) {
+        this.s3Client = s3Client;
+        this.bucket = bucket;
+        this.region = region;
+    }
+
     @Override
     public String upload(String folder, MultipartFile file) {
-        // TODO: usar S3Client.putObject(...) y devolver la URL pública del objeto
-        throw new UnsupportedOperationException("S3StorageService aún no implementado");
+        if (file == null || file.isEmpty()) {
+            throw new BusinessRuleException("El archivo a subir esta vacio");
+        }
+        String extension = extraerExtension(file.getOriginalFilename());
+        if (!EXTENSIONES_PERMITIDAS.contains(extension)) {
+            throw new BusinessRuleException("Extension de archivo no permitida: " + extension);
+        }
+
+        String key = folder + "/" + UUID.randomUUID() + "." + extension;
+        PutObjectRequest request = PutObjectRequest.builder()
+            .bucket(bucket)
+            .key(key)
+            .contentType(CONTENT_TYPES.get(extension))
+            .build();
+        try {
+            s3Client.putObject(request, RequestBody.fromBytes(file.getBytes()));
+        } catch (IOException ex) {
+            throw new UncheckedIOException("No se pudo leer el archivo a subir", ex);
+        }
+        return urlPublica(key);
     }
 
     @Override
     public void delete(String url) {
-        // TODO
-        throw new UnsupportedOperationException("S3StorageService aún no implementado");
+        if (url == null || url.isBlank()) {
+            return;
+        }
+        String key = extraerKey(url);
+        if (key.isBlank()) {
+            return;
+        }
+        // Si el objeto ya no existe, S3 responde OK igual; borrar algo ausente no es un error.
+        s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
+    }
+
+    private String urlPublica(String key) {
+        return "https://%s.s3.%s.amazonaws.com/%s".formatted(bucket, region, key);
+    }
+
+    private String extraerKey(String url) {
+        // La URL pública es https://{bucket}.s3.{region}.amazonaws.com/{key};
+        // el path empieza con "/", que quitamos para quedarnos con la key.
+        String path = URI.create(url).getPath();
+        if (path == null || path.isEmpty()) {
+            return "";
+        }
+        return path.startsWith("/") ? path.substring(1) : path;
+    }
+
+    private String extraerExtension(String nombreOriginal) {
+        if (nombreOriginal == null) {
+            return "";
+        }
+        int punto = nombreOriginal.lastIndexOf('.');
+        if (punto < 0 || punto == nombreOriginal.length() - 1) {
+            return "";
+        }
+        return nombreOriginal.substring(punto + 1).toLowerCase();
     }
 }

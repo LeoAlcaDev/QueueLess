@@ -42,6 +42,29 @@ Adoptamos la **pirámide de testing clásica**, con énfasis en la base:
 
 Los 5 tests de `PedidoStateMachineTest` son la **referencia de estilo** para todos los unit tests futuros del proyecto. Cualquier nueva lógica de dominio se testea siguiendo ese mismo patrón.
 
+## Tests que llegan en Fase 6
+
+La Fase 6 (tiempos de espera, notificaciones push, jobs de scheduling, S3 y
+hardening de producción) suma su propia tanda de pruebas, siguiendo la misma
+convención de nombres (`*Test.java` para unit, `*IT.java` para integración):
+
+- **Modelo de tiempos de espera** (unit): pruebas del modelo de regresión por bins
+  con datos sintéticos, que verifican que cada celda promedia bien los tiempos
+  reales y que una celda sin datos cae al tiempo declarado del local (ver
+  ADR-0015).
+- **`CancelarPagosPendientesJobTest`** (unit): que el job cancela los pedidos
+  atascados en `PENDIENTE_PAGO` más allá del tiempo configurado y deja en paz a los
+  que siguen dentro del plazo. Sigue el patrón del `BusquedaTimeoutJobTest` que ya
+  existe.
+- **`JwtSecretValidator`** (unit): los cuatro casos del validador de secret —perfil
+  `prod` con el secret por defecto, con un secret demasiado corto y con un secret
+  válido, más perfil `dev` con el secret por defecto (ver ADR-0018).
+- **`PickupFlowIT`** (integración): el camino feliz completo de un pedido PICKUP de
+  punta a punta, como complemento del `DeliveryFlowIT` que ya cubre el flujo de
+  delivery.
+
+Con estas, la fase cierra con al menos seis pruebas nuevas.
+
 ## Por qué `@Disabled` en `QueuelessApplicationTests`
 
 `QueuelessApplicationTests` extiende `AbstractIntegrationTest`, que usa TestContainers para levantar un Postgres efímero. TestContainers usa por debajo la librería `docker-java`, que en Windows con Docker Desktop reciente (backend WSL2) tiene un bug conocido: no logra completar el handshake HTTP-sobre-pipe contra el daemon. El CLI de Docker funciona perfecto, pero la librería Java no.
@@ -178,3 +201,5 @@ assertThat(pedido.getPagadoAt()).isNotNull();
 - `backend/pom.xml` — configuración de `maven-surefire-plugin` y `maven-failsafe-plugin`.
 - `backend/README.md` — sección "Tests con TestContainers" con setup de Docker Desktop.
 - ADR-0009 — eventos de dominio (testing de listeners async tendrá su sección ahí).
+- ADR-0015 — Modelo de tiempos de espera (tests del modelo de regresión por bins con datos sintéticos).
+- ADR-0018 — Hardening del perfil de producción (tests del validador de secret de JWT).

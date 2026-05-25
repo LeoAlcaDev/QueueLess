@@ -26,4 +26,13 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     /** Para el job de expiración de pedidos no recogidos. */
     List<Pedido> findByEstadoAndListoAtBefore(EstadoPedido estado, Instant cutoff);
+
+    /** Cuenta los pedidos de un local en un estado. Lo usa el cálculo del tiempo de espera. */
+    int countByPuntoDeVentaIdAndEstado(Long puntoDeVentaId, EstadoPedido estado);
+
+    /** Pedidos entregados con sus tiempos completos; alimentan el entrenamiento del modelo de espera. */
+    List<Pedido> findByEstadoAndAceptadoAtIsNotNullAndListoAtIsNotNull(EstadoPedido estado);
+
+    /** Para el job que cancela los pedidos abandonados sin pagar. */
+    List<Pedido> findByEstadoAndCreadoAtBefore(EstadoPedido estado, Instant cutoff);
 }

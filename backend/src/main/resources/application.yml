@@ -37,10 +37,12 @@ queueless:
     busqueda-timeout-minutos: 4
   pedido:
     expiracion-minutos: 30
+    cancelacion-pago-pendiente-minutos: 60          # cancela pedidos sin pagar pasado este tiempo
   queuepoints:
     puntos-por-entrega: 50
   waittime:
     pedidos-minimos-fase2: 50
+    minutos-por-pedido-en-cola: 3                    # peso de cada pedido en cola (estrategia manual)
     retraining-cron: "0 */15 * * * *"               # cada 15 min
   storage:
     impl: ${STORAGE_IMPL:local}                     # local | s3

@@ -74,8 +74,13 @@ pe.edu.utec.queueless/
 ├── waittime/          Estrategia de tiempo de espera
 │   ├── strategy/
 │   ├── ml/
-│   └── service/
+│   ├── service/
+│   └── controller/
 ├── notification/      Firebase adapter, NotificationService, listeners
+│   ├── adapter/
+│   ├── dto/
+│   ├── listener/
+│   └── service/
 ├── scheduling/        Jobs @Scheduled
 ├── shared/            BaseEntity, exceptions, DTOs comunes, storage
 │   ├── domain/

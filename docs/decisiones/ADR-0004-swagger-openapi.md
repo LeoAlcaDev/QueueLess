@@ -92,17 +92,9 @@ El flujo típico de prueba en Swagger UI es:
   - Reducir superficie de ataque: cuanto menos expongas en prod, mejor.
   - El contrato OpenAPI se genera una vez al hacer release y se publica fuera del backend (idealmente en un site estático o en el repo de docs).
 
-La configuración para desactivar en prod sería:
-
-```yaml
-springdoc:
-  api-docs:
-    enabled: false
-  swagger-ui:
-    enabled: false
-```
-
-(Esto está pendiente de aplicar en `application-prod.yml`, lo dejamos como TODO.)
+La política de desactivación de Swagger UI en producción se define en
+`application-prod.yml` y está documentada en detalle en el ADR-0018 (Hardening del
+perfil de producción).
 
 ## Alternativas consideradas
 
@@ -186,5 +178,7 @@ Adoptamos code-first con springdoc.
 - `backend/src/main/java/pe/edu/utec/queueless/config/OpenApiConfig.java` — configuración.
 - `backend/pom.xml` — dependencia `springdoc-openapi-starter-webmvc-ui:2.6.0`.
 - `backend/src/main/resources/application.yml` — sección `springdoc:` con paths y opciones de UI.
+- `backend/src/main/resources/application-prod.yml` — desactivación de springdoc en producción.
+- ADR-0018 — Hardening del perfil de producción (desactivación de Swagger UI en producción).
 - Documentación oficial de springdoc: https://springdoc.org/
 - Especificación OpenAPI 3.0: https://spec.openapis.org/oas/v3.0.0
