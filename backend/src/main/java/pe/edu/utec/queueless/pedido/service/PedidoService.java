@@ -111,7 +111,8 @@ public class PedidoService {
     public PedidoResponse crear(Usuario cliente, CrearPedidoRequest request) {
         validarEsCliente(cliente);
         PuntoDeVenta local = buscarLocalAtendiendo(request.getPuntoDeVentaId());
-        validarHorarioDeAtencion(local, TiempoLima.ahora());
+        LocalTime ahora = TiempoLima.ahora();
+        validarHorarioDeAtencion(local, ahora);
         validarZonaEntrega(request);
 
         Pedido pedido = Pedido.builder()
@@ -122,7 +123,7 @@ public class PedidoService {
             .descuentoQpts(BigDecimal.ZERO)
             .build();
 
-        agregarItems(pedido, local, request.getItems());
+        agregarItems(pedido, local, request.getItems(), ahora);
         calcularTotales(pedido);
         pedido.setCodigo(generarCodigoUnico());
 
@@ -291,6 +292,39 @@ public class PedidoService {
         }
     }
 
+    /**
+     * Si el producto tiene horario de servicio, la hora dada debe caer dentro.
+     * Sin horario configurado no restringe. Es package-private para probar con
+     * horas fijas, igual que {@link #validarHorarioDeAtencion}.
+     */
+    void validarHorarioDeServicio(Producto producto, LocalTime ahora) {
+        LocalTime inicio = producto.getHorarioServicioInicio();
+        LocalTime fin = producto.getHorarioServicioFin();
+        if (inicio == null || fin == null) {
+            return;
+        }
+        if (ahora.isBefore(inicio) || ahora.isAfter(fin)) {
+            throw new BusinessRuleException(
+                "El producto '" + producto.getNombre() + "' solo se sirve de " + inicio + " a " + fin);
+        }
+    }
+
+    /**
+     * Si el producto es por lote, la hora dada debe caer dentro de su ventana de
+     * pedido. Si no es por lote, no restringe.
+     */
+    void validarVentanaDePedido(Producto producto, LocalTime ahora) {
+        if (!Boolean.TRUE.equals(producto.getTieneVentanaDePedido())) {
+            return;
+        }
+        LocalTime inicio = producto.getVentanaPedidoInicio();
+        LocalTime fin = producto.getVentanaPedidoFin();
+        if (ahora.isBefore(inicio) || ahora.isAfter(fin)) {
+            throw new BusinessRuleException(
+                "El producto '" + producto.getNombre() + "' solo se puede pedir de " + inicio + " a " + fin);
+        }
+    }
+
     private void validarZonaEntrega(CrearPedidoRequest request) {
         if (request.getTipoEntrega() != TipoEntrega.DELIVERY) {
             return;
@@ -301,9 +335,12 @@ public class PedidoService {
         }
     }
 
-    private void agregarItems(Pedido pedido, PuntoDeVenta local, List<ItemPedidoRequest> itemsRequest) {
+    private void agregarItems(Pedido pedido, PuntoDeVenta local, List<ItemPedidoRequest> itemsRequest,
+                              LocalTime ahora) {
         for (ItemPedidoRequest itemRequest : itemsRequest) {
             Producto producto = buscarProductoDisponibleDelLocal(local, itemRequest.getProductoId());
+            validarHorarioDeServicio(producto, ahora);
+            validarVentanaDePedido(producto, ahora);
             ItemPedido item = construirItem(pedido, producto, itemRequest.getCantidad());
             pedido.getItems().add(item);
         }
