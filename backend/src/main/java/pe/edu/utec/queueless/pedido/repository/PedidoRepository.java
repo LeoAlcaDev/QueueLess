@@ -32,4 +32,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     /** Pedidos entregados con sus tiempos completos; alimentan el entrenamiento del modelo de espera. */
     List<Pedido> findByEstadoAndAceptadoAtIsNotNullAndListoAtIsNotNull(EstadoPedido estado);
+
+    /** Para el job que cancela los pedidos abandonados sin pagar. */
+    List<Pedido> findByEstadoAndCreadoAtBefore(EstadoPedido estado, Instant cutoff);
 }

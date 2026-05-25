@@ -37,6 +37,7 @@ queueless:
     busqueda-timeout-minutos: 4
   pedido:
     expiracion-minutos: 30
+    cancelacion-pago-pendiente-minutos: 60          # cancela pedidos sin pagar pasado este tiempo
   queuepoints:
     puntos-por-entrega: 50
   waittime:
