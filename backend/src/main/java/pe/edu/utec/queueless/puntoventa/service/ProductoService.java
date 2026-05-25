@@ -1,7 +1,6 @@
 package pe.edu.utec.queueless.puntoventa.service;
 
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,13 +9,16 @@ import pe.edu.utec.queueless.puntoventa.dto.CrearProductoRequest;
 import pe.edu.utec.queueless.puntoventa.dto.ProductoResponse;
 import pe.edu.utec.queueless.puntoventa.entity.Producto;
 import pe.edu.utec.queueless.puntoventa.entity.PuntoDeVenta;
+import pe.edu.utec.queueless.puntoventa.entity.TipoPreparacion;
 import pe.edu.utec.queueless.puntoventa.repository.ProductoRepository;
 import pe.edu.utec.queueless.puntoventa.repository.PuntoDeVentaRepository;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
 import pe.edu.utec.queueless.shared.storage.StorageService;
+import pe.edu.utec.queueless.shared.util.TiempoLima;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -33,7 +35,6 @@ public class ProductoService {
     private final ProductoRepository repository;
     private final PuntoDeVentaRepository puntoDeVentaRepository;
     private final StorageService storageService;
-    private final ModelMapper modelMapper;
 
     // ---------------------------------------------------------------------------
     // Lectura
@@ -73,7 +74,16 @@ public class ProductoService {
             .categoria(request.getCategoria())
             .tipoPreparacion(request.getTipoPreparacion())
             .disponible(true)
+            .horarioServicioInicio(request.getHorarioServicioInicio())
+            .horarioServicioFin(request.getHorarioServicioFin())
+            .tieneVentanaDePedido(Boolean.TRUE.equals(request.getTieneVentanaDePedido()))
+            .ventanaPedidoInicio(request.getVentanaPedidoInicio())
+            .ventanaPedidoFin(request.getVentanaPedidoFin())
+            .ventanaRecojoInicio(request.getVentanaRecojoInicio())
+            .ventanaRecojoFin(request.getVentanaRecojoFin())
             .build();
+
+        validarConfiguracionDeHorarios(producto);
 
         Producto guardado = repository.save(producto);
         return toResponse(guardado);
@@ -88,6 +98,15 @@ public class ProductoService {
         producto.setPrecio(request.getPrecio());
         producto.setCategoria(request.getCategoria());
         producto.setTipoPreparacion(request.getTipoPreparacion());
+        producto.setHorarioServicioInicio(request.getHorarioServicioInicio());
+        producto.setHorarioServicioFin(request.getHorarioServicioFin());
+        producto.setTieneVentanaDePedido(Boolean.TRUE.equals(request.getTieneVentanaDePedido()));
+        producto.setVentanaPedidoInicio(request.getVentanaPedidoInicio());
+        producto.setVentanaPedidoFin(request.getVentanaPedidoFin());
+        producto.setVentanaRecojoInicio(request.getVentanaRecojoInicio());
+        producto.setVentanaRecojoFin(request.getVentanaRecojoFin());
+
+        validarConfiguracionDeHorarios(producto);
 
         Producto actualizado = repository.save(producto);
         return toResponse(actualizado);
@@ -154,15 +173,146 @@ public class ProductoService {
         }
     }
 
+    // ---------------------------------------------------------------------------
+    // Validación de la configuración de horarios (al crear y al actualizar)
+    // ---------------------------------------------------------------------------
+
+    private void validarConfiguracionDeHorarios(Producto producto) {
+        validarConfiguracionHorarioServicio(producto);
+        validarConfiguracionVentanas(producto);
+    }
+
+    /** Horario de servicio: o se dan inicio y fin (con inicio antes de fin), o ninguno. */
+    private void validarConfiguracionHorarioServicio(Producto producto) {
+        LocalTime inicio = producto.getHorarioServicioInicio();
+        LocalTime fin = producto.getHorarioServicioFin();
+        if (inicio == null && fin == null) {
+            return;
+        }
+        if (inicio == null || fin == null) {
+            throw new BusinessRuleException("El horario de servicio requiere inicio y fin, o ninguno");
+        }
+        if (!inicio.isBefore(fin)) {
+            throw new BusinessRuleException("El horario de servicio debe empezar antes de terminar");
+        }
+    }
+
+    private void validarConfiguracionVentanas(Producto producto) {
+        if (!Boolean.TRUE.equals(producto.getTieneVentanaDePedido())) {
+            validarSinVentanas(producto);
+            return;
+        }
+        if (producto.getTipoPreparacion() == TipoPreparacion.INSTANTANEO) {
+            throw new BusinessRuleException("Un producto instantáneo no puede tener ventana de pedido");
+        }
+        validarVentanasCompletas(producto);
+    }
+
+    /** Sin ventana de pedido, las cuatro franjas deben quedar vacías. */
+    private void validarSinVentanas(Producto producto) {
+        boolean algunaPresente = producto.getVentanaPedidoInicio() != null
+            || producto.getVentanaPedidoFin() != null
+            || producto.getVentanaRecojoInicio() != null
+            || producto.getVentanaRecojoFin() != null;
+        if (algunaPresente) {
+            throw new BusinessRuleException("Las ventanas solo aplican cuando tieneVentanaDePedido = true");
+        }
+    }
+
+    private void validarVentanasCompletas(Producto producto) {
+        LocalTime pedidoInicio = producto.getVentanaPedidoInicio();
+        LocalTime pedidoFin = producto.getVentanaPedidoFin();
+        LocalTime recojoInicio = producto.getVentanaRecojoInicio();
+        LocalTime recojoFin = producto.getVentanaRecojoFin();
+
+        if (pedidoInicio == null || pedidoFin == null || recojoInicio == null || recojoFin == null) {
+            throw new BusinessRuleException("Un producto por lote necesita las cuatro ventanas");
+        }
+        if (!pedidoInicio.isBefore(pedidoFin)) {
+            throw new BusinessRuleException("La ventana de pedido debe empezar antes de terminar");
+        }
+        if (!recojoInicio.isBefore(recojoFin)) {
+            throw new BusinessRuleException("La ventana de recojo debe empezar antes de terminar");
+        }
+        if (recojoFin.isBefore(pedidoFin)) {
+            throw new BusinessRuleException("La ventana de recojo no puede terminar antes que la de pedido");
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Mapeo a response (con disponibilidad calculada al vuelo)
+    // ---------------------------------------------------------------------------
+
     private ProductoResponse toResponse(Producto producto) {
-        return modelMapper.map(producto, ProductoResponse.class);
+        return toResponse(producto, TiempoLima.ahora());
+    }
+
+    private ProductoResponse toResponse(Producto producto, LocalTime ahora) {
+        ProductoResponse response = new ProductoResponse();
+        response.setId(producto.getId());
+        response.setNombre(producto.getNombre());
+        response.setDescripcion(producto.getDescripcion());
+        response.setPrecio(producto.getPrecio());
+        response.setFotoUrl(producto.getFotoUrl());
+        response.setCategoria(producto.getCategoria());
+        response.setTipoPreparacion(producto.getTipoPreparacion());
+        response.setDisponible(producto.getDisponible());
+
+        response.setHorarioServicioInicio(producto.getHorarioServicioInicio());
+        response.setHorarioServicioFin(producto.getHorarioServicioFin());
+        response.setTieneVentanaDePedido(producto.getTieneVentanaDePedido());
+        response.setVentanaPedidoInicio(producto.getVentanaPedidoInicio());
+        response.setVentanaPedidoFin(producto.getVentanaPedidoFin());
+        response.setVentanaRecojoInicio(producto.getVentanaRecojoInicio());
+        response.setVentanaRecojoFin(producto.getVentanaRecojoFin());
+
+        String razon = calcularRazonNoDisponible(producto, ahora);
+        response.setDisponibleAhora(razon == null);
+        response.setRazonNoDisponible(razon);
+        return response;
     }
 
     private List<ProductoResponse> toResponseList(List<Producto> productos) {
+        LocalTime ahora = TiempoLima.ahora();
         List<ProductoResponse> respuesta = new ArrayList<>();
         for (Producto producto : productos) {
-            respuesta.add(toResponse(producto));
+            respuesta.add(toResponse(producto, ahora));
         }
         return respuesta;
+    }
+
+    /**
+     * Texto de por qué el producto no se puede pedir a la hora dada, o null si sí
+     * se puede. Es package-private para probar el cálculo con horas fijas. El
+     * horario de servicio tiene prioridad sobre la ventana de pedido en el mensaje.
+     */
+    String calcularRazonNoDisponible(Producto producto, LocalTime ahora) {
+        if (fueraDeHorarioDeServicio(producto, ahora)) {
+            return "Disponible de " + producto.getHorarioServicioInicio()
+                + " a " + producto.getHorarioServicioFin();
+        }
+        if (fueraDeVentanaDePedido(producto, ahora)) {
+            return "Se puede pedir de " + producto.getVentanaPedidoInicio()
+                + " a " + producto.getVentanaPedidoFin();
+        }
+        return null;
+    }
+
+    private boolean fueraDeHorarioDeServicio(Producto producto, LocalTime ahora) {
+        LocalTime inicio = producto.getHorarioServicioInicio();
+        LocalTime fin = producto.getHorarioServicioFin();
+        if (inicio == null || fin == null) {
+            return false;
+        }
+        return ahora.isBefore(inicio) || ahora.isAfter(fin);
+    }
+
+    private boolean fueraDeVentanaDePedido(Producto producto, LocalTime ahora) {
+        if (!Boolean.TRUE.equals(producto.getTieneVentanaDePedido())) {
+            return false;
+        }
+        LocalTime inicio = producto.getVentanaPedidoInicio();
+        LocalTime fin = producto.getVentanaPedidoFin();
+        return ahora.isBefore(inicio) || ahora.isAfter(fin);
     }
 }
