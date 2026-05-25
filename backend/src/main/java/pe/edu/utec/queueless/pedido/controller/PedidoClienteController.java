@@ -3,37 +3,60 @@ package pe.edu.utec.queueless.pedido.controller;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import pe.edu.utec.queueless.pedido.dto.CancelarPedidoRequest;
 import pe.edu.utec.queueless.pedido.dto.CrearPedidoRequest;
-import pe.edu.utec.queueless.pedido.entity.Pedido;
+import pe.edu.utec.queueless.pedido.dto.PedidoResponse;
 import pe.edu.utec.queueless.pedido.service.PedidoService;
+import pe.edu.utec.queueless.shared.dto.ApiResponse;
+import pe.edu.utec.queueless.usuario.entity.Usuario;
+import pe.edu.utec.queueless.usuario.service.UsuarioService;
 
 import java.util.List;
 
-@Tag(name = "Pedidos (cliente)", description = "Endpoints para clientes: crear pedido, ver mis pedidos")
+@Tag(name = "Pedidos (cliente)", description = "Endpoints para clientes: crear, ver y cancelar sus pedidos")
 @RestController
 @RequestMapping("/api/cliente/pedidos")
 @RequiredArgsConstructor
 public class PedidoClienteController {
 
     private final PedidoService pedidoService;
+    private final UsuarioService usuarioService;
 
     @PostMapping
-    public ResponseEntity<Pedido> crear(@Valid @RequestBody CrearPedidoRequest request) {
-        // TODO Semana 2: extraer clienteId del SecurityContext
-        Long clienteId = 0L;
-        return ResponseEntity.ok(pedidoService.crear(clienteId, request));
+    public ResponseEntity<ApiResponse<PedidoResponse>> crear(
+            Authentication authentication,
+            @Valid @RequestBody CrearPedidoRequest request) {
+        Usuario cliente = usuarioService.findByEmail(authentication.getName());
+        PedidoResponse creado = pedidoService.crear(cliente, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(creado, "Pedido creado"));
     }
 
     @GetMapping
-    public ResponseEntity<List<Pedido>> misPedidos() {
-        Long clienteId = 0L;  // TODO
-        return ResponseEntity.ok(pedidoService.listarMisPedidos(clienteId));
+    public ResponseEntity<ApiResponse<List<PedidoResponse>>> misPedidos(Authentication authentication) {
+        Usuario cliente = usuarioService.findByEmail(authentication.getName());
+        return ResponseEntity.ok(ApiResponse.ok(pedidoService.listarMisPedidos(cliente)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Pedido> detalle(@PathVariable Long id) {
-        return ResponseEntity.ok(pedidoService.findById(id));
+    public ResponseEntity<ApiResponse<PedidoResponse>> detalle(
+            Authentication authentication,
+            @PathVariable Long id) {
+        Usuario cliente = usuarioService.findByEmail(authentication.getName());
+        return ResponseEntity.ok(ApiResponse.ok(pedidoService.verDetalleDeMiPedido(cliente, id)));
+    }
+
+    @PostMapping("/{id}/cancelar")
+    public ResponseEntity<ApiResponse<PedidoResponse>> cancelar(
+            Authentication authentication,
+            @PathVariable Long id,
+            @RequestBody(required = false) CancelarPedidoRequest request) {
+        Usuario cliente = usuarioService.findByEmail(authentication.getName());
+        String razon = request == null ? null : request.getRazon();
+        PedidoResponse cancelado = pedidoService.cancelarPorCliente(cliente, id, razon);
+        return ResponseEntity.ok(ApiResponse.ok(cancelado, "Pedido cancelado"));
     }
 }
