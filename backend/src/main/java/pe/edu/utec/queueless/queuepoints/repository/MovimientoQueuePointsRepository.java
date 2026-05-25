@@ -11,7 +11,15 @@ import java.util.Optional;
 
 public interface MovimientoQueuePointsRepository extends JpaRepository<MovimientoQueuePoints, Long> {
 
-    List<MovimientoQueuePoints> findByUsuarioIdOrderByCreatedAtDesc(Long usuarioId);
+    /**
+     * Movimientos del usuario, del más reciente al más antiguo. El desempate por
+     * id descendente garantiza un orden estable cuando varios movimientos
+     * comparten el mismo created_at: la columna usa DEFAULT CURRENT_TIMESTAMP y
+     * Postgres devuelve el timestamp del inicio de la transacción, así que los
+     * insertados en una misma transacción quedan con el mismo valor. Como id es
+     * una secuencia monótona, el último insertado queda primero.
+     */
+    List<MovimientoQueuePoints> findByUsuarioIdOrderByCreatedAtDescIdDesc(Long usuarioId);
 
     /**
      * Idempotencia del ledger (ADR-0008): si ya existe un movimiento del mismo

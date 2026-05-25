@@ -47,7 +47,7 @@ public class QueuePointsService {
 
     public List<MovimientoResponse> historialDe(Usuario usuario) {
         List<MovimientoQueuePoints> movimientos =
-            repository.findByUsuarioIdOrderByCreatedAtDesc(usuario.getId());
+            repository.findByUsuarioIdOrderByCreatedAtDescIdDesc(usuario.getId());
         List<MovimientoResponse> respuesta = new ArrayList<>();
         for (MovimientoQueuePoints mov : movimientos) {
             respuesta.add(MovimientoResponse.from(mov));

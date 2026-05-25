@@ -59,8 +59,16 @@ class QueuePointsFlowIT extends AbstractIntegrationTest {
 
         List<MovimientoResponse> historial = service.historialDe(usuario);
         assertThat(historial).hasSize(4);
-        // Orden esperado: del más reciente al más antiguo
+        // Orden esperado: del más reciente al más antiguo. Verificamos el orden
+        // completo para que un cambio futuro al order by se note de inmediato.
         assertThat(historial.get(0).getTipo()).isEqualTo(TipoMovimiento.CANJEADO);
+        assertThat(historial)
+            .extracting(MovimientoResponse::getTipo)
+            .containsExactly(
+                TipoMovimiento.CANJEADO,  // último insertado, id más alto
+                TipoMovimiento.GANADO,
+                TipoMovimiento.GANADO,
+                TipoMovimiento.GANADO);
     }
 
     @Test
@@ -86,7 +94,7 @@ class QueuePointsFlowIT extends AbstractIntegrationTest {
             .hasMessageContaining("Saldo insuficiente");
 
         // No quedó persistido ningún movimiento de canje
-        boolean hayCanje = repository.findByUsuarioIdOrderByCreatedAtDesc(usuario.getId()).stream()
+        boolean hayCanje = repository.findByUsuarioIdOrderByCreatedAtDescIdDesc(usuario.getId()).stream()
             .anyMatch(m -> m.getTipo() == TipoMovimiento.CANJEADO);
         assertThat(hayCanje).isFalse();
     }

@@ -185,7 +185,7 @@ class DeliveryFlowIT extends AbstractIntegrationTest {
             ctx.pedido().getId(), EstadoPedido.LISTO_PARA_DELIVERY, EstadoPedido.ENTREGADO));
 
         long movimientosDeEntrega = movimientoRepository
-            .findByUsuarioIdOrderByCreatedAtDesc(ctx.repartidor().getId()).stream()
+            .findByUsuarioIdOrderByCreatedAtDescIdDesc(ctx.repartidor().getId()).stream()
             .filter(m -> ctx.pedido().getId().equals(m.getReferenciaId()))
             .count();
         assertThat(movimientosDeEntrega).isEqualTo(1);
