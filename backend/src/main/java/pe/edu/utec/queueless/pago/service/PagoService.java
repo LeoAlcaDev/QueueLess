@@ -47,7 +47,7 @@ public class PagoService {
         Pedido pedido = pedidoService.findById(pedidoId);
 
         if (!pedido.getCliente().getId().equals(clienteId)) {
-            throw new BusinessRuleException("El pedido no pertenece al cliente");
+            throw new ResourceNotFoundException("Pedido", pedidoId);
         }
         if (pedido.getEstado() != EstadoPedido.PENDIENTE_PAGO) {
             throw new BusinessRuleException(
