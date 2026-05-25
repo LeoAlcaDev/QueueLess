@@ -33,7 +33,7 @@ public class PagoListener {
         if (esCancelacion && veniaConPago) {
             log.info("Gatillando reembolso para pedido {} (cancelación desde {})",
                 event.getPedidoId(), event.getEstadoAnterior());
-            // TODO Semana 2: reembolsoService.emitirReembolso(event.getPedidoId());
+            reembolsoService.emitirReembolso(event.getPedidoId());
         }
     }
 }

@@ -52,6 +52,7 @@ queueless:
     gateway: ${PAGO_GATEWAY:mock}                   # mock | mercadopago
     mercadopago:
       access-token: ${MERCADOPAGO_ACCESS_TOKEN:}
+      webhook-secret: ${MERCADOPAGO_WEBHOOK_SECRET:}
   firebase:
     enabled: ${FIREBASE_ENABLED:false}
     credentials-base64: ${FIREBASE_CREDENTIALS_JSON:}

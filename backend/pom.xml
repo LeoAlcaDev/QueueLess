@@ -23,6 +23,7 @@
         <modelmapper.version>3.2.1</modelmapper.version>
         <springdoc.version>2.6.0</springdoc.version>
         <firebase-admin.version>9.4.1</firebase-admin.version>
+        <mercadopago.version>2.1.27</mercadopago.version>
         <testcontainers.version>1.20.4</testcontainers.version>
     </properties>
 
@@ -117,6 +118,13 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
             <version>2.29.20</version>
+        </dependency>
+
+        <!-- MercadoPago SDK oficial (pasarela de pagos) -->
+        <dependency>
+            <groupId>com.mercadopago</groupId>
+            <artifactId>sdk-java</artifactId>
+            <version>${mercadopago.version}</version>
         </dependency>
 
         <!-- ========== Testing ========== -->

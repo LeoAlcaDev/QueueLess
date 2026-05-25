@@ -3,19 +3,26 @@ package pe.edu.utec.queueless.pago.gateway;
 import pe.edu.utec.queueless.pago.entity.Pago;
 
 /**
- * Adaptador hacia una pasarela de pagos externa (MercadoPago, Culqi, etc.).
+ * Adaptador hacia una pasarela de pagos externa (MercadoPago, Culqi, mock).
  * Implementaciones se seleccionan vía property {@code queueless.pago.gateway}.
  */
 public interface PaymentGateway {
 
     /**
-     * Inicia el cobro y devuelve la URL/referencia que el cliente debe usar
-     * para completar el pago (redirect o token).
+     * Inicia el cobro contra la pasarela y devuelve la referencia externa
+     * (a persistir para resolver webhooks) y la URL de checkout que el
+     * cliente debe abrir para completar el pago.
      */
-    String iniciarCobro(Pago pago);
+    IniciarCobroResult iniciarCobro(Pago pago);
 
     /**
      * Emite un reembolso por el monto total del pago.
      */
     void reembolsar(Pago pago);
+
+    /**
+     * Identificador del modo de pago que representa esta implementación
+     * (p. ej. {@code "MOCK"}, {@code "MERCADOPAGO"}). Se persiste en {@code Pago.metodo}.
+     */
+    String getMetodoPago();
 }
