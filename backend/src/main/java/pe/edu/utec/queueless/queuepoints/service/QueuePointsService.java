@@ -12,7 +12,6 @@ import pe.edu.utec.queueless.queuepoints.repository.MovimientoQueuePointsReposit
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,13 +45,8 @@ public class QueuePointsService {
     }
 
     public List<MovimientoResponse> historialDe(Usuario usuario) {
-        List<MovimientoQueuePoints> movimientos =
-            repository.findByUsuarioIdOrderByCreatedAtDesc(usuario.getId());
-        List<MovimientoResponse> respuesta = new ArrayList<>();
-        for (MovimientoQueuePoints mov : movimientos) {
-            respuesta.add(MovimientoResponse.from(mov));
-        }
-        return respuesta;
+        return repository.findByUsuarioIdOrderByCreatedAtDesc(usuario.getId())
+            .stream().map(MovimientoResponse::from).toList();
     }
 
     // ---------------------------------------------------------------------------
@@ -84,8 +78,10 @@ public class QueuePointsService {
         if (existente.isPresent()) {
             return existente.get();
         }
-        Integer saldoActual = repository.calcularSaldo(usuario.getId());
-        int saldo = saldoActual == null ? 0 : saldoActual;
+        // SELECT FOR UPDATE: serializa canjes concurrentes del mismo usuario para
+        // que el segundo hilo vea el saldo ya reducido por el primero.
+        List<MovimientoQueuePoints> movimientos = repository.findByUsuarioIdForUpdate(usuario.getId());
+        int saldo = calcularSaldoDesde(movimientos);
         if (saldo < monto) {
             throw new BusinessRuleException(
                 "Saldo insuficiente para canjear " + monto + " puntos (saldo actual: " + saldo + ")");
@@ -112,6 +108,11 @@ public class QueuePointsService {
      * concurrente es aceptable para el MVP porque los listeners async corren
      * con espacio suficiente entre reintentos.
      */
+    private int calcularSaldoDesde(List<MovimientoQueuePoints> movimientos) {
+        return movimientos.stream().mapToInt(m ->
+            m.getTipo() == TipoMovimiento.GANADO ? m.getMonto() : -m.getMonto()).sum();
+    }
+
     private Optional<MovimientoQueuePoints> buscarExistente(TipoMovimiento tipo,
                                                             String referenciaTipo,
                                                             Long referenciaId) {

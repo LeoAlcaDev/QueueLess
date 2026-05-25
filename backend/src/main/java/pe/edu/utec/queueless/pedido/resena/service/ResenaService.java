@@ -9,6 +9,7 @@ import pe.edu.utec.queueless.delivery.entity.SolicitudDelivery;
 import pe.edu.utec.queueless.delivery.repository.SolicitudDeliveryRepository;
 import pe.edu.utec.queueless.pedido.entity.EstadoPedido;
 import pe.edu.utec.queueless.pedido.entity.Pedido;
+import pe.edu.utec.queueless.pedido.entity.TipoEntrega;
 import pe.edu.utec.queueless.pedido.resena.dto.CrearResenaRequest;
 import pe.edu.utec.queueless.pedido.resena.dto.ResenaResponse;
 import pe.edu.utec.queueless.pedido.resena.entity.ObjetivoResena;
@@ -16,10 +17,8 @@ import pe.edu.utec.queueless.pedido.resena.entity.Resena;
 import pe.edu.utec.queueless.pedido.resena.repository.ResenaRepository;
 import pe.edu.utec.queueless.pedido.service.PedidoService;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
-import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -114,13 +113,17 @@ public class ResenaService {
         if (objetivoTipo == ObjetivoResena.PUNTO_DE_VENTA) {
             return pedido.getPuntoDeVenta().getId();
         }
+        if (pedido.getTipoEntrega() != TipoEntrega.DELIVERY) {
+            throw new BusinessRuleException(
+                "Solo se puede reseñar al repartidor en pedidos con entrega DELIVERY");
+        }
         SolicitudDelivery solicitud = solicitudDeliveryRepository.findByPedidoId(pedido.getId())
             .orElseThrow(() -> new BusinessRuleException(
                 "Este pedido no tuvo entrega por repartidor; no se puede reseñar a un repartidor"));
         if (solicitud.getEstado() != EstadoSolicitudDelivery.ENTREGADO
                 || solicitud.getRepartidor() == null) {
-            throw new ResourceNotFoundException(
-                "Repartidor de la entrega del pedido " + pedido.getId());
+            throw new BusinessRuleException(
+                "La entrega del pedido " + pedido.getId() + " aún no fue completada por un repartidor");
         }
         return solicitud.getRepartidor().getId();
     }
@@ -134,10 +137,6 @@ public class ResenaService {
     }
 
     private List<ResenaResponse> mapList(List<Resena> resenas) {
-        List<ResenaResponse> respuesta = new ArrayList<>();
-        for (Resena resena : resenas) {
-            respuesta.add(ResenaResponse.from(resena));
-        }
-        return respuesta;
+        return resenas.stream().map(ResenaResponse::from).toList();
     }
 }

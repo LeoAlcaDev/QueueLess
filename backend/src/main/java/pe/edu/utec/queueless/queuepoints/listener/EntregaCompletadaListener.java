@@ -42,27 +42,32 @@ public class EntregaCompletadaListener {
     @Async("queuelessTaskExecutor")
     @TransactionalEventListener
     public void onEntregaCompletada(PedidoEstadoCambiadoEvent event) {
-        if (event.getEstadoNuevo() != EstadoPedido.ENTREGADO) {
-            return;
+        try {
+            if (event.getEstadoNuevo() != EstadoPedido.ENTREGADO) {
+                return;
+            }
+            Long pedidoId = event.getPedidoId();
+            Optional<SolicitudDelivery> opt = solicitudDeliveryRepository.findByPedidoId(pedidoId);
+            if (opt.isEmpty()) {
+                log.debug("Pedido {} entregado sin SolicitudDelivery (pickup); no asigna QueuePoints",
+                    pedidoId);
+                return;
+            }
+            SolicitudDelivery solicitud = opt.get();
+            if (solicitud.getEstado() != EstadoSolicitudDelivery.ENTREGADO
+                    || solicitud.getRepartidor() == null) {
+                log.warn("SolicitudDelivery {} en estado {} sin repartidor; no asigna QueuePoints",
+                    solicitud.getId(), solicitud.getEstado());
+                return;
+            }
+            Usuario repartidor = solicitud.getRepartidor();
+            Pedido pedido = solicitud.getPedido();
+            String descripcion = "Entrega del pedido " + pedido.getCodigo();
+            queuePointsService.registrarGanancia(
+                repartidor, puntosPorEntrega, REFERENCIA_TIPO_PEDIDO, pedidoId, descripcion);
+        } catch (Exception e) {
+            log.error("Error asignando QueuePoints al repartidor del pedido {}: {}",
+                event.getPedidoId(), e.getMessage(), e);
         }
-        Long pedidoId = event.getPedidoId();
-        Optional<SolicitudDelivery> opt = solicitudDeliveryRepository.findByPedidoId(pedidoId);
-        if (opt.isEmpty()) {
-            log.debug("Pedido {} entregado sin SolicitudDelivery (pickup); no asigna QueuePoints",
-                pedidoId);
-            return;
-        }
-        SolicitudDelivery solicitud = opt.get();
-        if (solicitud.getEstado() != EstadoSolicitudDelivery.ENTREGADO
-                || solicitud.getRepartidor() == null) {
-            log.warn("SolicitudDelivery {} en estado {} sin repartidor; no asigna QueuePoints",
-                solicitud.getId(), solicitud.getEstado());
-            return;
-        }
-        Usuario repartidor = solicitud.getRepartidor();
-        Pedido pedido = solicitud.getPedido();
-        String descripcion = "Entrega del pedido " + pedido.getCodigo();
-        queuePointsService.registrarGanancia(
-            repartidor, puntosPorEntrega, REFERENCIA_TIPO_PEDIDO, pedidoId, descripcion);
     }
 }

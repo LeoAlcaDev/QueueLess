@@ -189,7 +189,7 @@ class DeliveryFlowIT extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("aceptar una solicitud ya asignada lanza BusinessRuleException (race condition)")
+    @DisplayName("aceptar una solicitud ya asignada lanza BusinessRuleException (state-machine guard; la cobertura de concurrencia real requiere dos hilos distintos)")
     void aceptarSolicitudYaAsignadaFalla() {
         Contexto ctx = prepararPedidoDelivery();
         IniciarPagoResponse iniciado =

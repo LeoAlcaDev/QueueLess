@@ -18,11 +18,12 @@ import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
 import pe.edu.utec.queueless.usuario.entity.Rol;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
-import pe.edu.utec.queueless.usuario.service.UsuarioService;
+
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -42,7 +43,6 @@ public class SolicitudDeliveryService {
 
     private final SolicitudDeliveryRepository repository;
     private final PedidoService pedidoService;
-    private final UsuarioService usuarioService;
     private final RepartidorMatchingService matchingService;
 
     @Value("${queueless.delivery.busqueda-timeout-minutos}")
@@ -104,7 +104,15 @@ public class SolicitudDeliveryService {
         SolicitudDelivery guardada = repository.save(solicitud);
         log.info("Solicitud de delivery {} creada para pedido {} (timeout {} min)",
             guardada.getId(), pedido.getId(), timeoutMinutos);
-        matchingService.iniciarBusqueda(guardada.getId());
+        // Diferir la notificación hasta AFTER_COMMIT para que la fila ya sea
+        // visible en la DB cuando el repartidor responda a la push y llame /aceptar.
+        Long solicitudId = guardada.getId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                matchingService.iniciarBusqueda(solicitudId);
+            }
+        });
         return guardada;
     }
 
@@ -116,7 +124,8 @@ public class SolicitudDeliveryService {
     @Transactional
     public SolicitudDeliveryResponse aceptar(Usuario repartidor, Long solicitudId) {
         validarEsRepartidor(repartidor);
-        SolicitudDelivery solicitud = buscarSolicitud(solicitudId);
+        SolicitudDelivery solicitud = repository.findByIdForUpdate(solicitudId)
+            .orElseThrow(() -> new ResourceNotFoundException("SolicitudDelivery", solicitudId));
         if (solicitud.getEstado() != EstadoSolicitudDelivery.BUSCANDO) {
             throw new BusinessRuleException(
                 "La solicitud ya no está disponible (estado actual: " + solicitud.getEstado() + ")");
@@ -132,7 +141,7 @@ public class SolicitudDeliveryService {
     /** Transición ASIGNADO → RECOGIDO; solo el repartidor asignado puede hacerla. */
     @Transactional
     public SolicitudDeliveryResponse confirmarRecogida(Usuario repartidor, Long solicitudId) {
-        SolicitudDelivery solicitud = buscarSolicitudDelRepartidor(repartidor, solicitudId);
+        SolicitudDelivery solicitud = buscarConLockParaRepartidor(repartidor, solicitudId);
         if (solicitud.getEstado() != EstadoSolicitudDelivery.ASIGNADO) {
             throw new BusinessRuleException(
                 "Solo se puede confirmar recogida desde ASIGNADO (estado actual: "
@@ -151,7 +160,7 @@ public class SolicitudDeliveryService {
      */
     @Transactional
     public SolicitudDeliveryResponse confirmarEntrega(Usuario repartidor, Long solicitudId) {
-        SolicitudDelivery solicitud = buscarSolicitudDelRepartidor(repartidor, solicitudId);
+        SolicitudDelivery solicitud = buscarConLockParaRepartidor(repartidor, solicitudId);
         if (solicitud.getEstado() != EstadoSolicitudDelivery.RECOGIDO) {
             throw new BusinessRuleException(
                 "Solo se puede confirmar entrega desde RECOGIDO (estado actual: "
@@ -182,6 +191,19 @@ public class SolicitudDeliveryService {
             .orElseThrow(() -> new ResourceNotFoundException("SolicitudDelivery", solicitudId));
     }
 
+    /** Versión con SELECT FOR UPDATE: usada en transiciones de escritura para evitar double-submit. */
+    private SolicitudDelivery buscarConLockParaRepartidor(Usuario repartidor, Long solicitudId) {
+        validarEsRepartidor(repartidor);
+        SolicitudDelivery solicitud = repository.findByIdForUpdate(solicitudId)
+            .orElseThrow(() -> new ResourceNotFoundException("SolicitudDelivery", solicitudId));
+        if (solicitud.getRepartidor() == null
+                || !solicitud.getRepartidor().getId().equals(repartidor.getId())) {
+            throw new BusinessRuleException("Esta solicitud no está asignada a vos");
+        }
+        return solicitud;
+    }
+
+    /** Versión sin lock: usada en lecturas (verDetalleParaRepartidor, listarMisEntregas). */
     private SolicitudDelivery buscarSolicitudDelRepartidor(Usuario repartidor, Long solicitudId) {
         validarEsRepartidor(repartidor);
         SolicitudDelivery solicitud = buscarSolicitud(solicitudId);
@@ -209,11 +231,7 @@ public class SolicitudDeliveryService {
     }
 
     private List<SolicitudDeliveryResponse> mapList(List<SolicitudDelivery> solicitudes) {
-        List<SolicitudDeliveryResponse> respuesta = new ArrayList<>();
-        for (SolicitudDelivery solicitud : solicitudes) {
-            respuesta.add(toResponse(solicitud));
-        }
-        return respuesta;
+        return solicitudes.stream().map(this::toResponse).toList();
     }
 
     private SolicitudDeliveryResponse toResponse(SolicitudDelivery solicitud) {

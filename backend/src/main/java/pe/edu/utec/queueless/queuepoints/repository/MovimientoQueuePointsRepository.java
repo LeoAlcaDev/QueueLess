@@ -1,6 +1,8 @@
 package pe.edu.utec.queueless.queuepoints.repository;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import pe.edu.utec.queueless.queuepoints.entity.MovimientoQueuePoints;
@@ -12,6 +14,15 @@ import java.util.Optional;
 public interface MovimientoQueuePointsRepository extends JpaRepository<MovimientoQueuePoints, Long> {
 
     List<MovimientoQueuePoints> findByUsuarioIdOrderByCreatedAtDesc(Long usuarioId);
+
+    /**
+     * SELECT FOR UPDATE sobre todos los movimientos del usuario: serializa los
+     * canjes concurrentes para el mismo usuario evitando que dos hilos lean el
+     * mismo saldo y ambos procedan al débito.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM MovimientoQueuePoints m WHERE m.usuario.id = :usuarioId")
+    List<MovimientoQueuePoints> findByUsuarioIdForUpdate(@Param("usuarioId") Long usuarioId);
 
     /**
      * Idempotencia del ledger (ADR-0008): si ya existe un movimiento del mismo

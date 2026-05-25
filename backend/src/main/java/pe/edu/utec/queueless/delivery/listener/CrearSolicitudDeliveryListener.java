@@ -31,14 +31,19 @@ public class CrearSolicitudDeliveryListener {
     @Async("queuelessTaskExecutor")
     @TransactionalEventListener
     public void onPedidoAceptado(PedidoEstadoCambiadoEvent event) {
-        if (event.getEstadoNuevo() != EstadoPedido.ACEPTADO) {
-            return;
+        try {
+            if (event.getEstadoNuevo() != EstadoPedido.ACEPTADO) {
+                return;
+            }
+            Pedido pedido = pedidoService.findById(event.getPedidoId());
+            if (pedido.getTipoEntrega() != TipoEntrega.DELIVERY) {
+                return;
+            }
+            solicitudDeliveryService.crearParaPedido(pedido);
+            log.debug("SolicitudDelivery asegurada para pedido {}", pedido.getId());
+        } catch (Exception e) {
+            log.error("Error creando SolicitudDelivery para pedido {}: {}",
+                event.getPedidoId(), e.getMessage(), e);
         }
-        Pedido pedido = pedidoService.findById(event.getPedidoId());
-        if (pedido.getTipoEntrega() != TipoEntrega.DELIVERY) {
-            return;
-        }
-        solicitudDeliveryService.crearParaPedido(pedido);
-        log.debug("SolicitudDelivery asegurada para pedido {}", pedido.getId());
     }
 }
