@@ -7,7 +7,7 @@ import pe.edu.utec.queueless.waittime.ml.BinRegressionModel;
 
 /**
  * Fase 2: modelo predictivo entrenado con datos históricos.
- * Solo se activa cuando hay suficientes pedidos completados
+ * Solo se usa cuando el local acumuló suficientes pedidos completados
  * (queueless.waittime.pedidos-minimos-fase2).
  */
 @Component
@@ -17,9 +17,8 @@ public class PredictiveStrategy implements WaitTimeStrategy {
     private final BinRegressionModel model;
 
     @Override
-    public int estimarMinutos(PuntoDeVenta puntoDeVenta) {
-        // TODO Semana 3: alimentar features (hora, día, cantidad de items en cola)
-        // y devolver predicción del modelo entrenado.
+    public int estimarMinutos(PuntoDeVenta puntoDeVenta, int pedidosEnCola) {
+        // El cálculo de features y la consulta por celda llegan junto con el modelo entrenado.
         return model.predecir(puntoDeVenta.getId());
     }
 }

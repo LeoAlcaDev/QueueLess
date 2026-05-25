@@ -7,6 +7,12 @@ import pe.edu.utec.queueless.puntoventa.entity.PuntoDeVenta;
  * Tenemos 2 implementaciones: manual declarada (Fase 1) y predictiva (Fase 2).
  */
 public interface WaitTimeStrategy {
-    /** Devuelve el tiempo estimado en minutos para un punto de venta dado. */
-    int estimarMinutos(PuntoDeVenta puntoDeVenta);
+
+    /**
+     * Devuelve el tiempo estimado en minutos para un punto de venta dado.
+     *
+     * @param puntoDeVenta  el local que se consulta
+     * @param pedidosEnCola pedidos del local en preparación al momento de la consulta
+     */
+    int estimarMinutos(PuntoDeVenta puntoDeVenta, int pedidosEnCola);
 }

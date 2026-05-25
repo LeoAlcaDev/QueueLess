@@ -1,19 +1,23 @@
 package pe.edu.utec.queueless.waittime.strategy;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import pe.edu.utec.queueless.puntoventa.entity.PuntoDeVenta;
 
 /**
- * Fase 1: usa el tiempo declarado por el comercio + cola actual.
+ * Fase 1: tiempo declarado por el comercio más el tamaño de la cola actual.
  *
- * <p>TODO Semana 3: sumar la cola actual de pedidos del PuntoDeVenta para
- * darle un componente dinámico al tiempo declarado.
+ * <p>El estimado es {@code tiempoPromedioDeclarado + pedidosEnCola × minutosPorPedidoEnCola}.
+ * El multiplicador es configurable; por defecto cada pedido en cola suma 3 minutos.
  */
 @Component
 public class ManualDeclaredStrategy implements WaitTimeStrategy {
 
+    @Value("${queueless.waittime.minutos-por-pedido-en-cola}")
+    private int minutosPorPedidoEnCola;
+
     @Override
-    public int estimarMinutos(PuntoDeVenta puntoDeVenta) {
-        return puntoDeVenta.getTiempoPromedioDeclarado();
+    public int estimarMinutos(PuntoDeVenta puntoDeVenta, int pedidosEnCola) {
+        return puntoDeVenta.getTiempoPromedioDeclarado() + pedidosEnCola * minutosPorPedidoEnCola;
     }
 }
