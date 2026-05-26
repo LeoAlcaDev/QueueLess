@@ -46,7 +46,7 @@ class WaitTimeServiceTest {
 
     @Test
     @DisplayName("un local inexistente o inactivo da 404")
-    void localInexistente() {
+    void shouldFallarWhenLocalInexistente() {
         when(puntoDeVentaRepository.findByIdAndActivoTrue(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.estimarMinutos(99L))
@@ -55,7 +55,7 @@ class WaitTimeServiceTest {
 
     @Test
     @DisplayName("con menos pedidos entregados que el umbral, usa la estrategia manual")
-    void pocosEntregadosUsaManual() {
+    void shouldUsarManualWhenPocosEntregados() {
         PuntoDeVenta local = local(1L);
         when(puntoDeVentaRepository.findByIdAndActivoTrue(1L)).thenReturn(Optional.of(local));
         when(pedidoRepository.countByPuntoDeVentaIdAndEstado(1L, EstadoPedido.EN_PREPARACION)).thenReturn(2);
@@ -69,7 +69,7 @@ class WaitTimeServiceTest {
 
     @Test
     @DisplayName("con pedidos entregados suficientes, usa la estrategia predictiva")
-    void muchosEntregadosUsaPredictiva() {
+    void shouldUsarPredictivaWhenMuchosEntregados() {
         PuntoDeVenta local = local(1L);
         when(puntoDeVentaRepository.findByIdAndActivoTrue(1L)).thenReturn(Optional.of(local));
         when(pedidoRepository.countByPuntoDeVentaIdAndEstado(1L, EstadoPedido.EN_PREPARACION)).thenReturn(2);

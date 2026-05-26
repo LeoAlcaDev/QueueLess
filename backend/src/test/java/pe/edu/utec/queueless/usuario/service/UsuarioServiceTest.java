@@ -51,7 +51,7 @@ class UsuarioServiceTest {
 
     @Test
     @DisplayName("activarRol agrega un rol nuevo y crea su perfil")
-    void activarRolNuevo() {
+    void shouldActivarRolWhenEsNuevo() {
         // Arrange
         Usuario usuario = usuarioConRoles(Set.of(Rol.CLIENTE));
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
@@ -68,7 +68,7 @@ class UsuarioServiceTest {
 
     @Test
     @DisplayName("activarRol con un rol ya activo lanza BusinessRuleException y no crea perfil")
-    void activarRolDuplicado() {
+    void shouldIgnorarRolWhenYaEstaActivo() {
         // Arrange
         Usuario usuario = usuarioConRoles(Set.of(Rol.CLIENTE));
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));

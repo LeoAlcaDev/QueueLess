@@ -85,7 +85,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("crear un pedido válido calcula el subtotal y el total a partir de los productos")
-    void crearCalculaTotales() {
+    void shouldCalcularTotalesWhenCreaPedido() {
         // Arrange
         Usuario cliente = usuario(1L, Rol.CLIENTE);
         PuntoDeVenta local = local(10L, usuario(2L, Rol.COMERCIO), true);
@@ -122,7 +122,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("crear con el local cerrado lanza BusinessRuleException")
-    void crearConLocalCerradoFalla() {
+    void shouldFallarWhenLocalCerrado() {
         // Arrange
         Usuario cliente = usuario(1L, Rol.CLIENTE);
         PuntoDeVenta cerrado = local(10L, usuario(2L, Rol.COMERCIO), false);
@@ -138,7 +138,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("crear con un producto no disponible lanza BusinessRuleException")
-    void crearConProductoNoDisponibleFalla() {
+    void shouldFallarWhenProductoNoDisponible() {
         // Arrange
         Usuario cliente = usuario(1L, Rol.CLIENTE);
         PuntoDeVenta local = local(10L, usuario(2L, Rol.COMERCIO), true);
@@ -156,7 +156,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("crear con un producto de otro local lanza BusinessRuleException")
-    void crearConProductoDeOtroLocalFalla() {
+    void shouldFallarWhenProductoEsDeOtroLocal() {
         // Arrange
         Usuario cliente = usuario(1L, Rol.CLIENTE);
         PuntoDeVenta local = local(10L, usuario(2L, Rol.COMERCIO), true);
@@ -175,7 +175,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("crear DELIVERY sin zona de entrega lanza BusinessRuleException")
-    void crearDeliverySinZonaFalla() {
+    void shouldFallarWhenDeliverySinZona() {
         // Arrange
         Usuario cliente = usuario(1L, Rol.CLIENTE);
         PuntoDeVenta local = local(10L, usuario(2L, Rol.COMERCIO), true);
@@ -195,7 +195,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("el cliente puede cancelar un pedido que sigue en PENDIENTE_PAGO")
-    void cancelarClienteDesdePendientePagoFunciona() {
+    void shouldCancelarWhenClienteDesdePendientePago() {
         // Arrange
         Usuario cliente = usuario(1L, Rol.CLIENTE);
         PuntoDeVenta local = local(10L, usuario(2L, Rol.COMERCIO), true);
@@ -214,7 +214,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("el cliente no puede cancelar un pedido que el comercio ya aceptó")
-    void cancelarClienteDesdeAceptadoFalla() {
+    void shouldFallarWhenClienteCancelaPedidoAceptado() {
         // Arrange
         Usuario cliente = usuario(1L, Rol.CLIENTE);
         PuntoDeVenta local = local(10L, usuario(2L, Rol.COMERCIO), true);
@@ -229,7 +229,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("cancelar un pedido ajeno se ve como inexistente (404)")
-    void cancelarPedidoAjenoDevuelve404() {
+    void shouldDevolver404WhenPedidoEsAjeno() {
         // Arrange
         Usuario cliente = usuario(1L, Rol.CLIENTE);
         Usuario otroCliente = usuario(2L, Rol.CLIENTE);
@@ -249,7 +249,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("aceptar un pedido de un local ajeno lanza BusinessRuleException")
-    void aceptarComoComercioAjenoFalla() {
+    void shouldFallarWhenComercioAceptaPedidoAjeno() {
         // Arrange
         Usuario gestorReal = usuario(2L, Rol.COMERCIO);
         Usuario otroGestor = usuario(3L, Rol.COMERCIO);
@@ -267,7 +267,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("marcar listo un pedido PICKUP lo deja LISTO_PARA_RECOGER")
-    void marcarListoPickupVaARecoger() {
+    void shouldIrARecogerWhenMarcaListoPickup() {
         // Arrange
         Usuario gestor = usuario(2L, Rol.COMERCIO);
         PuntoDeVenta local = local(10L, gestor, true);
@@ -285,7 +285,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("marcar listo un pedido DELIVERY lo deja LISTO_PARA_DELIVERY")
-    void marcarListoDeliveryVaADelivery() {
+    void shouldIrADeliveryWhenMarcaListoDelivery() {
         // Arrange
         Usuario gestor = usuario(2L, Rol.COMERCIO);
         PuntoDeVenta local = local(10L, gestor, true);
@@ -303,7 +303,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("el comercio no puede marcar entregado un pedido DELIVERY (eso lo hace el repartidor)")
-    void marcarEntregadoDeliveryFalla() {
+    void shouldFallarWhenMarcaEntregadoDelivery() {
         // Arrange
         Usuario gestor = usuario(2L, Rol.COMERCIO);
         PuntoDeVenta local = local(10L, gestor, true);
@@ -324,7 +324,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("rechazar un pedido que espera al comercio guarda el motivo")
-    void rechazarGuardaMotivo() {
+    void shouldGuardarMotivoWhenRechaza() {
         // Arrange
         Usuario gestor = usuario(2L, Rol.COMERCIO);
         PuntoDeVenta local = local(10L, gestor, true);
@@ -344,7 +344,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("rechazar un pedido que el comercio ya aceptó falla (para eso está cancelar)")
-    void rechazarPedidoAceptadoFalla() {
+    void shouldFallarWhenRechazaPedidoAceptado() {
         // Arrange
         Usuario gestor = usuario(2L, Rol.COMERCIO);
         PuntoDeVenta local = local(10L, gestor, true);
@@ -361,7 +361,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("el comercio cancela un pedido que ya estaba en preparación y guarda motivo y detalle")
-    void cancelarPorComercioDesdeEnPreparacionFunciona() {
+    void shouldCancelarWhenComercioDesdeEnPreparacion() {
         // Arrange
         Usuario gestor = usuario(2L, Rol.COMERCIO);
         PuntoDeVenta local = local(10L, gestor, true);
@@ -382,7 +382,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("el comercio no puede usar cancelar sobre un pedido que todavía no aceptó")
-    void cancelarPorComercioAntesDeAceptarFalla() {
+    void shouldFallarWhenComercioCancelaAntesDeAceptar() {
         // Arrange
         Usuario gestor = usuario(2L, Rol.COMERCIO);
         PuntoDeVenta local = local(10L, gestor, true);
@@ -403,7 +403,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("dentro del horario del local no lanza excepción")
-    void horarioDentroPermite() {
+    void shouldPermitirWhenHorarioDentro() {
         PuntoDeVenta local = localConHorario(LocalTime.of(8, 0), LocalTime.of(20, 0));
         assertThatCode(() -> service.validarHorarioDeAtencion(local, LocalTime.of(12, 0)))
             .doesNotThrowAnyException();
@@ -411,7 +411,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("antes de abrir o después de cerrar lanza BusinessRuleException")
-    void horarioFueraFalla() {
+    void shouldFallarWhenHorarioFuera() {
         PuntoDeVenta local = localConHorario(LocalTime.of(8, 0), LocalTime.of(20, 0));
         assertThatThrownBy(() -> service.validarHorarioDeAtencion(local, LocalTime.of(7, 0)))
             .isInstanceOf(BusinessRuleException.class)
@@ -422,7 +422,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("un local sin horario definido (null) permite el pedido")
-    void horarioNullPermite() {
+    void shouldPermitirWhenHorarioNull() {
         PuntoDeVenta local = localConHorario(null, null);
         assertThatCode(() -> service.validarHorarioDeAtencion(local, LocalTime.of(3, 0)))
             .doesNotThrowAnyException();
@@ -430,7 +430,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("apertura igual a cierre se trata como sin horario (permite)")
-    void horarioIgualPermite() {
+    void shouldPermitirWhenHorarioIgual() {
         PuntoDeVenta local = localConHorario(LocalTime.of(9, 0), LocalTime.of(9, 0));
         assertThatCode(() -> service.validarHorarioDeAtencion(local, LocalTime.of(18, 0)))
             .doesNotThrowAnyException();
@@ -438,7 +438,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("un horario que cruza medianoche se rechaza como configuración inválida")
-    void horarioNocturnoFalla() {
+    void shouldFallarWhenHorarioNocturno() {
         PuntoDeVenta local = localConHorario(LocalTime.of(18, 0), LocalTime.of(2, 0));
         assertThatThrownBy(() -> service.validarHorarioDeAtencion(local, LocalTime.of(20, 0)))
             .isInstanceOf(BusinessRuleException.class)
@@ -451,7 +451,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("producto sin horario de servicio se puede pedir a cualquier hora")
-    void servicioProductoSinHorarioPermite() {
+    void shouldPermitirWhenProductoSinHorario() {
         Producto producto = producto(1L, local(10L, usuario(2L, Rol.COMERCIO), true), "10.00", true);
         assertThatCode(() -> service.validarHorarioDeServicio(producto, LocalTime.of(23, 0)))
             .doesNotThrowAnyException();
@@ -459,7 +459,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("dentro del horario de servicio del producto no lanza excepción")
-    void servicioProductoDentroPermite() {
+    void shouldPermitirWhenProductoDentroDeHorario() {
         Producto producto = producto(1L, local(10L, usuario(2L, Rol.COMERCIO), true), "10.00", true);
         producto.setHorarioServicioInicio(LocalTime.of(7, 0));
         producto.setHorarioServicioFin(LocalTime.of(10, 30));
@@ -469,7 +469,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("fuera del horario de servicio del producto lanza BusinessRuleException")
-    void servicioProductoFueraFalla() {
+    void shouldFallarWhenProductoFueraDeHorario() {
         Producto producto = producto(1L, local(10L, usuario(2L, Rol.COMERCIO), true), "10.00", true);
         producto.setHorarioServicioInicio(LocalTime.of(7, 0));
         producto.setHorarioServicioFin(LocalTime.of(10, 30));
@@ -480,7 +480,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("producto que no es por lote no valida ventana de pedido")
-    void ventanaProductoNoLotePermite() {
+    void shouldPermitirWhenProductoNoEsLote() {
         Producto producto = producto(1L, local(10L, usuario(2L, Rol.COMERCIO), true), "10.00", true);
         assertThatCode(() -> service.validarVentanaDePedido(producto, LocalTime.of(23, 0)))
             .doesNotThrowAnyException();
@@ -488,7 +488,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("dentro de la ventana de pedido del producto por lote no lanza excepción")
-    void ventanaProductoDentroPermite() {
+    void shouldPermitirWhenProductoDentroDeVentana() {
         Producto producto = producto(1L, local(10L, usuario(2L, Rol.COMERCIO), true), "10.00", true);
         producto.setTieneVentanaDePedido(true);
         producto.setVentanaPedidoInicio(LocalTime.of(11, 0));
@@ -499,7 +499,7 @@ class PedidoServiceTest {
 
     @Test
     @DisplayName("fuera de la ventana de pedido del producto por lote lanza BusinessRuleException")
-    void ventanaProductoFueraFalla() {
+    void shouldFallarWhenProductoFueraDeVentana() {
         Producto producto = producto(1L, local(10L, usuario(2L, Rol.COMERCIO), true), "10.00", true);
         producto.setTieneVentanaDePedido(true);
         producto.setVentanaPedidoInicio(LocalTime.of(11, 0));

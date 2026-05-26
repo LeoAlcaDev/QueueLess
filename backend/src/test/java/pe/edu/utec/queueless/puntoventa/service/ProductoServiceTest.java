@@ -94,7 +94,7 @@ class ProductoServiceTest {
 
     @Test
     @DisplayName("crear un producto en un local ajeno lanza BusinessRuleException")
-    void crearEnLocalAjenoFalla() {
+    void shouldFallarWhenCreaEnLocalAjeno() {
         // Arrange
         Usuario comercio = usuario(2L);
         Usuario otro = usuario(3L);
@@ -108,7 +108,7 @@ class ProductoServiceTest {
 
     @Test
     @DisplayName("marcarDisponibilidad cambia el flag y guarda, sin borrar el producto")
-    void marcarDisponibilidadCambiaFlag() {
+    void shouldCambiarFlagWhenMarcaDisponibilidad() {
         // Arrange
         Usuario comercio = usuario(2L);
         Producto producto = producto(10L, localDe(comercio), true);
@@ -126,7 +126,7 @@ class ProductoServiceTest {
 
     @Test
     @DisplayName("eliminar marca el producto como no disponible, no lo borra de la base")
-    void eliminarMarcaNoDisponible() {
+    void shouldMarcarNoDisponibleWhenElimina() {
         // Arrange
         Usuario comercio = usuario(2L);
         Producto producto = producto(10L, localDe(comercio), true);
@@ -143,7 +143,7 @@ class ProductoServiceTest {
 
     @Test
     @DisplayName("subir una foto con tipo no permitido lanza BusinessRuleException y no sube nada")
-    void subirFotoTipoInvalidoFalla() {
+    void shouldFallarWhenFotoTipoInvalido() {
         // Arrange
         Usuario comercio = usuario(2L);
         Producto producto = producto(10L, localDe(comercio), true);
@@ -162,7 +162,7 @@ class ProductoServiceTest {
 
     @Test
     @DisplayName("crear con horario de servicio válido guarda el producto")
-    void crearConHorarioServicioValido() {
+    void shouldCrearWhenHorarioServicioValido() {
         // Arrange
         Usuario comercio = usuario(2L);
         when(puntoDeVentaRepository.findByIdAndActivoTrue(80L)).thenReturn(Optional.of(localDe(comercio)));
@@ -181,7 +181,7 @@ class ProductoServiceTest {
 
     @Test
     @DisplayName("crear con horario de servicio incompleto (solo inicio) falla")
-    void crearConHorarioServicioParcialFalla() {
+    void shouldFallarWhenHorarioServicioParcial() {
         Usuario comercio = usuario(2L);
         when(puntoDeVentaRepository.findByIdAndActivoTrue(80L)).thenReturn(Optional.of(localDe(comercio)));
         CrearProductoRequest request = preparadoRequest();
@@ -194,7 +194,7 @@ class ProductoServiceTest {
 
     @Test
     @DisplayName("crear por lote con las cuatro ventanas válidas guarda el producto")
-    void crearConVentanaValida() {
+    void shouldCrearWhenVentanaValida() {
         Usuario comercio = usuario(2L);
         when(puntoDeVentaRepository.findByIdAndActivoTrue(80L)).thenReturn(Optional.of(localDe(comercio)));
         when(repository.save(any(Producto.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
@@ -209,7 +209,7 @@ class ProductoServiceTest {
 
     @Test
     @DisplayName("crear por lote sin las cuatro ventanas falla")
-    void crearConVentanaIncompletaFalla() {
+    void shouldFallarWhenVentanaIncompleta() {
         Usuario comercio = usuario(2L);
         when(puntoDeVentaRepository.findByIdAndActivoTrue(80L)).thenReturn(Optional.of(localDe(comercio)));
         CrearProductoRequest request = conVentana(
@@ -223,7 +223,7 @@ class ProductoServiceTest {
 
     @Test
     @DisplayName("crear con recojo que termina antes que el pedido falla")
-    void crearConRecojoAntesDePedidoFalla() {
+    void shouldFallarWhenRecojoAntesDePedido() {
         Usuario comercio = usuario(2L);
         when(puntoDeVentaRepository.findByIdAndActivoTrue(80L)).thenReturn(Optional.of(localDe(comercio)));
         // recojo_fin 12:30 termina antes que pedido_fin 13:00
@@ -237,7 +237,7 @@ class ProductoServiceTest {
 
     @Test
     @DisplayName("crear con ventanas pero sin marcar por lote falla")
-    void crearConVentanasSinFlagFalla() {
+    void shouldFallarWhenVentanasSinFlag() {
         Usuario comercio = usuario(2L);
         when(puntoDeVentaRepository.findByIdAndActivoTrue(80L)).thenReturn(Optional.of(localDe(comercio)));
         CrearProductoRequest request = preparadoRequest();
@@ -252,7 +252,7 @@ class ProductoServiceTest {
 
     @Test
     @DisplayName("crear un producto instantáneo por lote falla")
-    void crearInstantaneoPorLoteFalla() {
+    void shouldFallarWhenInstantaneoPorLote() {
         Usuario comercio = usuario(2L);
         when(puntoDeVentaRepository.findByIdAndActivoTrue(80L)).thenReturn(Optional.of(localDe(comercio)));
         CrearProductoRequest request = conVentana(
@@ -266,7 +266,7 @@ class ProductoServiceTest {
 
     @Test
     @DisplayName("actualizar a instantáneo por lote falla")
-    void actualizarInstantaneoPorLoteFalla() {
+    void shouldFallarWhenActualizaInstantaneoPorLote() {
         Usuario comercio = usuario(2L);
         Producto producto = producto(10L, localDe(comercio), true);
         when(repository.findById(10L)).thenReturn(Optional.of(producto));
@@ -287,14 +287,14 @@ class ProductoServiceTest {
 
     @Test
     @DisplayName("calcularRazonNoDisponible: sin restricción devuelve null")
-    void razonSinRestriccionEsNull() {
+    void shouldEstarDisponibleWhenSinRestriccion() {
         Producto producto = producto(1L, localDe(usuario(2L)), true);
         assertThat(service.calcularRazonNoDisponible(producto, LocalTime.of(9, 0))).isNull();
     }
 
     @Test
     @DisplayName("calcularRazonNoDisponible: fuera del horario de servicio lo explica")
-    void razonFueraDeHorarioServicio() {
+    void shouldExplicarElHorarioWhenFueraDeServicio() {
         Producto producto = producto(1L, localDe(usuario(2L)), true);
         producto.setHorarioServicioInicio(LocalTime.of(7, 0));
         producto.setHorarioServicioFin(LocalTime.of(10, 30));
@@ -306,7 +306,7 @@ class ProductoServiceTest {
 
     @Test
     @DisplayName("calcularRazonNoDisponible: por lote fuera de la ventana de pedido lo explica")
-    void razonFueraDeVentanaPedido() {
+    void shouldExplicarLaVentanaWhenFueraDeVentanaPedido() {
         Producto producto = producto(1L, localDe(usuario(2L)), true);
         producto.setTieneVentanaDePedido(true);
         producto.setVentanaPedidoInicio(LocalTime.of(11, 0));

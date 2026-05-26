@@ -80,7 +80,7 @@ class PuntoDeVentaServiceTest {
 
     @Test
     @DisplayName("crear sin rol COMERCIO lanza BusinessRuleException y no guarda")
-    void crearSinRolComercioFalla() {
+    void shouldFallarWhenSinRolComercio() {
         // Arrange
         Usuario cliente = usuario(1L, Rol.CLIENTE);
 
@@ -92,7 +92,7 @@ class PuntoDeVentaServiceTest {
 
     @Test
     @DisplayName("crear con rol COMERCIO guarda el local y arranca abierto")
-    void crearConRolComercioGuarda() {
+    void shouldGuardarWhenTieneRolComercio() {
         // Arrange
         Usuario comercio = usuario(2L, Rol.COMERCIO);
         when(repository.save(any(PuntoDeVenta.class))).thenAnswer(invocacion -> {
@@ -112,7 +112,7 @@ class PuntoDeVentaServiceTest {
 
     @Test
     @DisplayName("actualizar un local de otro comercio lanza BusinessRuleException")
-    void actualizarLocalAjenoFalla() {
+    void shouldFallarWhenActualizaLocalAjeno() {
         // Arrange
         Usuario comercio = usuario(2L, Rol.COMERCIO);
         Usuario otroComercio = usuario(3L, Rol.COMERCIO);
@@ -127,7 +127,7 @@ class PuntoDeVentaServiceTest {
 
     @Test
     @DisplayName("actualizar un local inactivo se comporta como 404")
-    void actualizarLocalInactivoDevuelve404() {
+    void shouldDevolver404WhenLocalInactivo() {
         // Arrange
         Usuario comercio = usuario(2L, Rol.COMERCIO);
         when(repository.findByIdAndActivoTrue(50L)).thenReturn(Optional.empty());
@@ -139,7 +139,7 @@ class PuntoDeVentaServiceTest {
 
     @Test
     @DisplayName("cambiarEstado togglea el campo abierto del local")
-    void cambiarEstadoTogglea() {
+    void shouldAlternarEstadoWhenCambia() {
         // Arrange
         Usuario comercio = usuario(2L, Rol.COMERCIO);
         PuntoDeVenta propio = local(50L, comercio, true);
@@ -156,7 +156,7 @@ class PuntoDeVentaServiceTest {
 
     @Test
     @DisplayName("eliminar marca el local como inactivo (soft delete) sin borrarlo")
-    void eliminarMarcaInactivo() {
+    void shouldMarcarInactivoWhenElimina() {
         // Arrange
         Usuario comercio = usuario(2L, Rol.COMERCIO);
         PuntoDeVenta propio = local(50L, comercio, true);
@@ -173,7 +173,7 @@ class PuntoDeVentaServiceTest {
 
     @Test
     @DisplayName("eliminar un local ya inactivo es idempotente: no falla ni vuelve a guardar")
-    void eliminarEsIdempotente() {
+    void shouldSerIdempotenteWhenEliminaDosVeces() {
         // Arrange
         Usuario comercio = usuario(2L, Rol.COMERCIO);
         PuntoDeVenta yaInactivo = local(50L, comercio, false);

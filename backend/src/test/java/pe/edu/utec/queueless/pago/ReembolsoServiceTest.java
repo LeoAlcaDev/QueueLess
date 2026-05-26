@@ -31,7 +31,7 @@ class ReembolsoServiceTest {
 
     @Test
     @DisplayName("emite reembolso, marca pago como REEMBOLSADO y persiste")
-    void reembolsaCorrectamente() {
+    void shouldReembolsarWhenPagoConfirmado() {
         Pago pago = Pago.builder()
             .monto(new BigDecimal("30.00"))
             .metodo("MOCK")
@@ -51,7 +51,7 @@ class ReembolsoServiceTest {
 
     @Test
     @DisplayName("si el pago ya está REEMBOLSADO, no se llama al gateway (idempotencia)")
-    void noReembolsaDosVeces() {
+    void shouldNoReembolsarWhenYaReembolsado() {
         Pago pago = Pago.builder().estado(EstadoPago.REEMBOLSADO).build();
         pago.setId(1L);
         when(pagoRepository.findByPedidoId(42L)).thenReturn(Optional.of(pago));
@@ -63,7 +63,7 @@ class ReembolsoServiceTest {
 
     @Test
     @DisplayName("si no hay pago para el pedido, no falla y no llama al gateway")
-    void pedidoSinPagoEsNoOp() {
+    void shouldNoHacerNadaWhenPedidoSinPago() {
         when(pagoRepository.findByPedidoId(42L)).thenReturn(Optional.empty());
 
         reembolsoService.emitirReembolso(42L);

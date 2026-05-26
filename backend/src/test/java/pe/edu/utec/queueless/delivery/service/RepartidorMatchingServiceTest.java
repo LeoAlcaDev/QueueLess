@@ -36,7 +36,7 @@ class RepartidorMatchingServiceTest {
 
     @Test
     @DisplayName("notifica a cada repartidor disponible")
-    void notificaATodosLosDisponibles() {
+    void shouldNotificarATodosWhenHayDisponibles() {
         when(perfilRepartidorRepository.findByDisponibleTrue())
             .thenReturn(List.of(repartidor(1L), repartidor(2L), repartidor(3L)));
 
@@ -47,7 +47,7 @@ class RepartidorMatchingServiceTest {
 
     @Test
     @DisplayName("sin repartidores disponibles no notifica a nadie")
-    void manejaListaVacia() {
+    void shouldNoNotificarWhenSinDisponibles() {
         when(perfilRepartidorRepository.findByDisponibleTrue()).thenReturn(List.of());
 
         service.onSolicitudCreada(new SolicitudDeliveryCreadaEvent(50L));

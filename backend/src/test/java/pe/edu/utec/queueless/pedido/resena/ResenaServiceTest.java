@@ -71,7 +71,7 @@ class ResenaServiceTest {
 
     @Test
     @DisplayName("crear reseña PUNTO_DE_VENTA en pedido entregado: feliz camino")
-    void crearResenaLocalFelizCamino() {
+    void shouldCrearResenaWhenPedidoEntregado() {
         when(pedidoService.buscarPedidoDelCliente(cliente, PEDIDO_ID)).thenReturn(pedido);
         when(resenaRepository.existsByPedidoIdAndObjetivoTipo(PEDIDO_ID, ObjetivoResena.PUNTO_DE_VENTA))
             .thenReturn(false);
@@ -91,7 +91,7 @@ class ResenaServiceTest {
 
     @Test
     @DisplayName("no se puede reseñar un pedido que no está ENTREGADO")
-    void noSePuedeResenarPedidoNoEntregado() {
+    void shouldFallarWhenPedidoNoEntregado() {
         pedido.setEstado(EstadoPedido.EN_PREPARACION);
         when(pedidoService.buscarPedidoDelCliente(cliente, PEDIDO_ID)).thenReturn(pedido);
 
@@ -104,7 +104,7 @@ class ResenaServiceTest {
 
     @Test
     @DisplayName("un pedido ajeno se ve como inexistente (404), no como prohibido")
-    void otroUsuarioNoPuedeResenar() {
+    void shouldFallarWhenUsuarioNoEsDueno() {
         Usuario otro = Usuario.builder().email("o@utec.edu.pe").build();
         otro.setId(999L);
         when(pedidoService.buscarPedidoDelCliente(otro, PEDIDO_ID))
@@ -118,7 +118,7 @@ class ResenaServiceTest {
 
     @Test
     @DisplayName("no se permite duplicar la reseña sobre el mismo objetivo del pedido")
-    void noDuplicarResena() {
+    void shouldFallarWhenResenaDuplicada() {
         when(pedidoService.buscarPedidoDelCliente(cliente, PEDIDO_ID)).thenReturn(pedido);
         when(resenaRepository.existsByPedidoIdAndObjetivoTipo(PEDIDO_ID, ObjetivoResena.PUNTO_DE_VENTA))
             .thenReturn(true);
@@ -132,7 +132,7 @@ class ResenaServiceTest {
 
     @Test
     @DisplayName("reseña a REPARTIDOR requiere SolicitudDelivery con repartidor asignado")
-    void resenaRepartidorRequiereSolicitud() {
+    void shouldRequerirSolicitudWhenResenaRepartidor() {
         when(pedidoService.buscarPedidoDelCliente(cliente, PEDIDO_ID)).thenReturn(pedido);
         when(resenaRepository.existsByPedidoIdAndObjetivoTipo(PEDIDO_ID, ObjetivoResena.REPARTIDOR))
             .thenReturn(false);
