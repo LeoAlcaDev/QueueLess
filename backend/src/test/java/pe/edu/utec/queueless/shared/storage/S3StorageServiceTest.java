@@ -33,7 +33,7 @@ class S3StorageServiceTest {
 
     @Test
     @DisplayName("sube el archivo con la key, el tipo y el bucket correctos y devuelve la URL")
-    void subeYDevuelveUrl() {
+    void shouldSubirYDevolverUrlWhenArchivoValido() {
         MockMultipartFile archivo = new MockMultipartFile("file", "foto.jpg", "image/jpeg", new byte[]{1, 2, 3});
 
         String url = storage.upload("productos", archivo);
@@ -51,7 +51,7 @@ class S3StorageServiceTest {
 
     @Test
     @DisplayName("una extension no permitida se rechaza y no sube nada")
-    void extensionInvalida() {
+    void shouldFallarWhenExtensionInvalida() {
         MockMultipartFile archivo = new MockMultipartFile("file", "foto.gif", "image/gif", new byte[]{1, 2, 3});
 
         assertThatThrownBy(() -> storage.upload("productos", archivo))
@@ -61,7 +61,7 @@ class S3StorageServiceTest {
 
     @Test
     @DisplayName("un archivo vacio se rechaza y no sube nada")
-    void archivoVacio() {
+    void shouldFallarWhenArchivoVacio() {
         MockMultipartFile archivo = new MockMultipartFile("file", "foto.jpg", "image/jpeg", new byte[0]);
 
         assertThatThrownBy(() -> storage.upload("productos", archivo))

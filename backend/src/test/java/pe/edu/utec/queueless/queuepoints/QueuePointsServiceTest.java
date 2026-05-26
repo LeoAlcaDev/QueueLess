@@ -44,7 +44,7 @@ class QueuePointsServiceTest {
 
     @Test
     @DisplayName("registrarGanancia: si no existe movimiento previo, inserta uno GANADO")
-    void registrarGananciaFelizCamino() {
+    void shouldRegistrarGananciaWhenEntregaValida() {
         when(repository.findFirstByTipoAndReferenciaTipoAndReferenciaId(
             TipoMovimiento.GANADO, "PEDIDO", 42L)).thenReturn(Optional.empty());
         when(repository.save(any(MovimientoQueuePoints.class)))
@@ -64,7 +64,7 @@ class QueuePointsServiceTest {
 
     @Test
     @DisplayName("registrarGanancia: si ya existe movimiento con la misma referencia, no inserta de nuevo")
-    void registrarGananciaIdempotente() {
+    void shouldNoDuplicarGananciaWhenReferenciaRepetida() {
         MovimientoQueuePoints existente = MovimientoQueuePoints.builder()
             .usuario(usuario).tipo(TipoMovimiento.GANADO).monto(50)
             .referenciaTipo("PEDIDO").referenciaId(42L).build();
@@ -80,7 +80,7 @@ class QueuePointsServiceTest {
 
     @Test
     @DisplayName("canjear con saldo insuficiente lanza BusinessRuleException")
-    void canjearSaldoInsuficienteFalla() {
+    void shouldFallarWhenSaldoInsuficiente() {
         when(repository.findFirstByTipoAndReferenciaTipoAndReferenciaId(
             TipoMovimiento.CANJEADO, "PEDIDO", 10L)).thenReturn(Optional.empty());
         when(repository.calcularSaldo(1L)).thenReturn(20);
@@ -93,7 +93,7 @@ class QueuePointsServiceTest {
 
     @Test
     @DisplayName("canjear con saldo suficiente inserta movimiento CANJEADO")
-    void canjearConSaldoSuficiente() {
+    void shouldCanjearWhenSaldoSuficiente() {
         when(repository.findFirstByTipoAndReferenciaTipoAndReferenciaId(
             TipoMovimiento.CANJEADO, "PEDIDO", 10L)).thenReturn(Optional.empty());
         when(repository.calcularSaldo(1L)).thenReturn(100);

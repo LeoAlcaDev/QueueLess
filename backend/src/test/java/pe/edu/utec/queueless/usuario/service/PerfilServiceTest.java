@@ -60,7 +60,7 @@ class PerfilServiceTest {
 
     @Test
     @DisplayName("crearPerfilParaRol crea el PerfilCliente cuando aun no existe")
-    void creaPerfilClienteSiNoExiste() {
+    void shouldCrearPerfilClienteWhenNoExiste() {
         // Arrange
         Usuario usuario = usuario();
         when(perfilClienteRepository.existsById(7L)).thenReturn(false);
@@ -76,7 +76,7 @@ class PerfilServiceTest {
 
     @Test
     @DisplayName("crearPerfilParaRol no recrea el perfil si ya existe")
-    void noRecreaPerfilExistente() {
+    void shouldNoRecrearWhenPerfilYaExiste() {
         // Arrange
         Usuario usuario = usuario();
         when(perfilClienteRepository.existsById(7L)).thenReturn(true);
@@ -90,7 +90,7 @@ class PerfilServiceTest {
 
     @Test
     @DisplayName("crearPerfilesParaRoles crea solo los perfiles de los roles indicados")
-    void creaSoloLosRolesIndicados() {
+    void shouldCrearSoloLosPerfilesIndicadosWhenVariosRoles() {
         // Arrange
         Usuario usuario = usuario();
         when(perfilClienteRepository.existsById(7L)).thenReturn(false);

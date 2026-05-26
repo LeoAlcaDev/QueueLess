@@ -65,7 +65,7 @@ class PagoServiceTest {
 
     @Test
     @DisplayName("iniciar: crea Pago PENDIENTE, llama gateway y persiste referencia externa")
-    void iniciarFelizCamino() {
+    void shouldIniciarPagoWhenPedidoValido() {
         when(pedidoService.findById(42L)).thenReturn(pedido);
         when(pagoRepository.existsByPedidoId(42L)).thenReturn(false);
         when(pagoRepository.save(any(Pago.class))).thenAnswer(i -> {
@@ -93,7 +93,7 @@ class PagoServiceTest {
 
     @Test
     @DisplayName("iniciar pago de pedido ajeno responde como no encontrado (404)")
-    void iniciarPedidoAjenoFalla() {
+    void shouldFallarWhenIniciaPedidoAjeno() {
         when(pedidoService.findById(42L)).thenReturn(pedido);
 
         assertThatThrownBy(() -> pagoService.iniciar(42L, 99L))
@@ -104,7 +104,7 @@ class PagoServiceTest {
 
     @Test
     @DisplayName("iniciar sobre pedido fuera de PENDIENTE_PAGO falla")
-    void iniciarPedidoYaPagadoFalla() {
+    void shouldFallarWhenPedidoYaPagado() {
         pedido.setEstado(EstadoPedido.PAGADO_ESPERANDO_COMERCIO);
         when(pedidoService.findById(42L)).thenReturn(pedido);
 
@@ -115,7 +115,7 @@ class PagoServiceTest {
 
     @Test
     @DisplayName("confirmar pago PICKUP: marca CONFIRMADO y transiciona a PAGADO_ESPERANDO_COMERCIO")
-    void confirmarPickupTransicionaEsperandoComercio() {
+    void shouldTransicionarAEsperandoComercioWhenConfirmaPickup() {
         Pago pago = pagoBase();
         when(pagoRepository.findByReferenciaExterna("ref-1")).thenReturn(Optional.of(pago));
         when(pagoRepository.save(any(Pago.class))).thenAnswer(i -> i.getArgument(0));
@@ -129,7 +129,7 @@ class PagoServiceTest {
 
     @Test
     @DisplayName("confirmar pago DELIVERY: transiciona a PAGADO_BUSCANDO_REPARTIDOR")
-    void confirmarDeliveryTransicionaBuscandoRepartidor() {
+    void shouldTransicionarABuscandoRepartidorWhenConfirmaDelivery() {
         pedido.setTipoEntrega(TipoEntrega.DELIVERY);
         Pago pago = pagoBase();
         when(pagoRepository.findByReferenciaExterna("ref-2")).thenReturn(Optional.of(pago));
@@ -142,7 +142,7 @@ class PagoServiceTest {
 
     @Test
     @DisplayName("confirmar dos veces es idempotente (no re-transiciona el pedido)")
-    void confirmarEsIdempotente() {
+    void shouldSerIdempotenteWhenConfirmaDosVeces() {
         Pago pago = pagoBase();
         pago.setEstado(EstadoPago.CONFIRMADO);
         when(pagoRepository.findByReferenciaExterna("ref-3")).thenReturn(Optional.of(pago));

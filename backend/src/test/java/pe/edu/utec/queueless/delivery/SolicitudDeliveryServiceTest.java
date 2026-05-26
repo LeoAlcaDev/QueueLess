@@ -49,7 +49,7 @@ class SolicitudDeliveryServiceTest {
 
     @Test
     @DisplayName("aceptar deja la solicitud ASIGNADA y transiciona el pedido a esperar al comercio")
-    void aceptarTransicionaPedidoAEsperandoComercio() {
+    void shouldTransicionarPedidoWhenRepartidorAcepta() {
         Usuario repartidor = repartidor();
         Pedido pedido = pedidoConLocal(EstadoPedido.PAGADO_BUSCANDO_REPARTIDOR);
         SolicitudDelivery solicitud = solicitud(EstadoSolicitudDelivery.BUSCANDO, pedido);
@@ -65,7 +65,7 @@ class SolicitudDeliveryServiceTest {
 
     @Test
     @DisplayName("aceptar una solicitud que ya no está BUSCANDO falla y no toca el pedido")
-    void aceptarSolicitudYaTomadaFalla() {
+    void shouldFallarWhenSolicitudYaTomada() {
         Usuario repartidor = repartidor();
         SolicitudDelivery solicitud =
             solicitud(EstadoSolicitudDelivery.ASIGNADO, pedidoConLocal(EstadoPedido.PAGADO_ESPERANDO_COMERCIO));
@@ -80,7 +80,7 @@ class SolicitudDeliveryServiceTest {
 
     @Test
     @DisplayName("cambiar a pickup cancela la solicitud y delega el cambio del pedido")
-    void cambiarAPickupCancelaSolicitudYTransicionaPedido() {
+    void shouldCancelarSolicitudWhenClienteCambiaAPickup() {
         Usuario cliente = cliente();
         Pedido pedido = pedidoConLocal(EstadoPedido.PAGADO_BUSCANDO_REPARTIDOR);
         SolicitudDelivery solicitud = solicitud(EstadoSolicitudDelivery.BUSCANDO, pedido);
@@ -99,7 +99,7 @@ class SolicitudDeliveryServiceTest {
 
     @Test
     @DisplayName("reintentar mientras la búsqueda sigue vigente falla y no republica el evento")
-    void reintentarBusquedaConSolicitudActivaFalla() {
+    void shouldFallarWhenReintentaConSolicitudActiva() {
         Usuario cliente = cliente();
         Pedido pedido = pedidoSimple(EstadoPedido.PAGADO_BUSCANDO_REPARTIDOR);
         SolicitudDelivery solicitud = solicitud(EstadoSolicitudDelivery.BUSCANDO, pedido);

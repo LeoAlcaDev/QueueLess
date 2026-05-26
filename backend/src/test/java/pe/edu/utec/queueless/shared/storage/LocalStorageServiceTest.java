@@ -32,7 +32,7 @@ class LocalStorageServiceTest {
 
     @Test
     @DisplayName("upload guarda el archivo en disco y devuelve una URL bajo /uploads")
-    void uploadGuardaArchivo() {
+    void shouldGuardarArchivoWhenArchivoValido() {
         // Arrange
         MockMultipartFile file = new MockMultipartFile("file", "foto.png", "image/png", new byte[]{1, 2, 3});
 
@@ -46,7 +46,7 @@ class LocalStorageServiceTest {
 
     @Test
     @DisplayName("delete borra el archivo y volver a borrarlo no falla")
-    void deleteBorraYEsTolerante() {
+    void shouldBorrarYTolerarReborradoWhenDelete() {
         // Arrange
         MockMultipartFile file = new MockMultipartFile("file", "foto.png", "image/png", new byte[]{1, 2, 3});
         String url = storage.upload("productos", file);
@@ -62,7 +62,7 @@ class LocalStorageServiceTest {
 
     @Test
     @DisplayName("upload rechaza una extension no permitida")
-    void uploadRechazaExtensionInvalida() {
+    void shouldFallarWhenExtensionInvalida() {
         MockMultipartFile file = new MockMultipartFile("file", "doc.txt", "text/plain", new byte[]{1});
 
         assertThatThrownBy(() -> storage.upload("productos", file))
