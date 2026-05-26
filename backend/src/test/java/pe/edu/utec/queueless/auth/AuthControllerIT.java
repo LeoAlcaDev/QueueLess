@@ -31,12 +31,12 @@ class AuthControllerIT extends AbstractIntegrationTest {
         {"email":"%s","password":"password123","nombreCompleto":"Usuario Test","roles":["CLIENTE"]}""";
 
     @Test
-    @DisplayName("registrar un usuario valido devuelve 200 y un token")
+    @DisplayName("registrar un usuario valido devuelve 201 y un token")
     void shouldRegisterAndReturnTokenWhenValid() throws Exception {
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(REGISTRO.formatted("nuevo@utec.edu.pe")))
-            .andExpect(status().isOk())
+            .andExpect(status().isCreated())
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.data.token").isNotEmpty())
             .andExpect(jsonPath("$.data.email").value("nuevo@utec.edu.pe"));
@@ -57,7 +57,7 @@ class AuthControllerIT extends AbstractIntegrationTest {
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(REGISTRO.formatted("repetido@utec.edu.pe")))
-            .andExpect(status().isOk());
+            .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -71,7 +71,7 @@ class AuthControllerIT extends AbstractIntegrationTest {
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(REGISTRO.formatted("login.ok@utec.edu.pe")))
-            .andExpect(status().isOk());
+            .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -86,7 +86,7 @@ class AuthControllerIT extends AbstractIntegrationTest {
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(REGISTRO.formatted("login.bad@utec.edu.pe")))
-            .andExpect(status().isOk());
+            .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
