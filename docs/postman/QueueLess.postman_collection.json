@@ -140,7 +140,7 @@
         {
           "name": "Crear punto de venta",
           "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
-            "pm.test('200', function () { pm.response.to.have.status(200); });",
+            "pm.test('creado 201', function () { pm.response.to.have.status(201); });",
             "pm.collectionVariables.set('puntoDeVentaId', pm.response.json().data.id);"
           ] } } ],
           "request": {
@@ -153,7 +153,7 @@
         {
           "name": "Crear producto",
           "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
-            "pm.test('200', function () { pm.response.to.have.status(200); });",
+            "pm.test('creado 201', function () { pm.response.to.have.status(201); });",
             "pm.collectionVariables.set('productoId', pm.response.json().data.id);"
           ] } } ],
           "request": {
