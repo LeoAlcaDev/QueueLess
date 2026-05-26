@@ -36,6 +36,20 @@ jobs:
   power:
     runs-on: ubuntu-latest
     steps:
+      - name: Validate required variables
+        run: |
+          missing=()
+          [ -z "$AWS_REGION" ]     && missing+=("AWS_REGION")
+          [ -z "$ECS_CLUSTER" ]    && missing+=("ECS_CLUSTER")
+          [ -z "$ECS_SERVICE" ]    && missing+=("ECS_SERVICE")
+          [ -z "$RDS_IDENTIFIER" ] && missing+=("RDS_IDENTIFIER")
+          [ -z "$ALB_DNS" ]        && missing+=("ALB_DNS")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Faltan repository variables: ${missing[*]}"
+            echo "Setealas en Settings -> Secrets and variables -> Actions -> Variables."
+            exit 1
+          fi
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
