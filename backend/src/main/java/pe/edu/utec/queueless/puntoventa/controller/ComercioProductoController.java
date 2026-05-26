@@ -3,6 +3,7 @@ package pe.edu.utec.queueless.puntoventa.controller;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -34,7 +35,7 @@ public class ComercioProductoController {
             @Valid @RequestBody CrearProductoRequest request) {
         Usuario gestor = usuarioService.findByEmail(authentication.getName());
         ProductoResponse creado = productoService.crear(gestor, request);
-        return ResponseEntity.ok(ApiResponse.ok(creado, "Producto creado"));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(creado, "Producto creado"));
     }
 
     @GetMapping
@@ -66,12 +67,12 @@ public class ComercioProductoController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> eliminar(
+    public ResponseEntity<Void> eliminar(
             Authentication authentication,
             @PathVariable Long id) {
         Usuario gestor = usuarioService.findByEmail(authentication.getName());
         productoService.eliminar(gestor, id);
-        return ResponseEntity.ok(ApiResponse.<Void>ok(null, "Producto marcado como no disponible"));
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping(value = "/{id}/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

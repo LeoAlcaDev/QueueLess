@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
+import pe.edu.utec.queueless.shared.exception.InvalidFileException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -59,11 +59,11 @@ public class S3StorageService implements StorageService {
     @Override
     public String upload(String folder, MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new BusinessRuleException("El archivo a subir esta vacio");
+            throw new InvalidFileException("El archivo a subir esta vacio");
         }
         String extension = extraerExtension(file.getOriginalFilename());
         if (!EXTENSIONES_PERMITIDAS.contains(extension)) {
-            throw new BusinessRuleException("Extension de archivo no permitida: " + extension);
+            throw new InvalidFileException("Extension de archivo no permitida: " + extension);
         }
 
         String key = folder + "/" + UUID.randomUUID() + "." + extension;

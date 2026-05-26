@@ -46,8 +46,9 @@ públicas las rutas `/v3/api-docs/**`, `/swagger-ui/**` y `/swagger-ui.html` en
 `SecurityConfig` pueden quedarse como están: con springdoc desactivado, no hay
 ningún handler que sirva la documentación en esas rutas, así que las reglas quedan
 inertes y no exponen nada. Un pedido a esas rutas cae en el manejo de rutas no
-encontradas del backend (el código de respuesta exacto de una ruta no mapeada lo
-decide el manejo global de errores, que es un tema aparte de este ADR). Lo que
+encontradas del backend, que ahora responde 404: el manejo global de errores mapea la
+`NoResourceFoundException` de Spring a 404 (antes caía en el manejador por defecto y
+salía como 500). El detalle de esa taxonomía de códigos está en el ADR-0019. Lo que
 importa para el endurecimiento es que el contrato de la API deja de estar accesible.
 
 ### Validación de `JWT_SECRET` al arrancar
@@ -367,6 +368,7 @@ varias tildes podría llegar a los 32 bytes; uno de 31 caracteres sin tildes, no
 - ADR-0013 — Integración con pasarela de pagos (bloqueo de arranque del validador de firma del webhook).
 - ADR-0016 — Notificaciones push (fallo de arranque del adapter de Firebase ante credenciales mal configuradas).
 - ADR-0017 — Almacenamiento de archivos (variables de S3 y credenciales tomadas del entorno).
+- ADR-0019 — Taxonomía de excepciones y códigos HTTP (el 404 de las rutas no mapeadas vive ahí).
 - `backend/src/main/java/pe/edu/utec/queueless/config/JwtSecretValidator.java` — el validador (clase nueva de esta fase).
 - `backend/src/main/java/pe/edu/utec/queueless/auth/service/JwtService.java` — cómo se inyecta y se usa el secret.
 - `backend/src/main/java/pe/edu/utec/queueless/pago/gateway/MercadoPagoSignatureValidator.java` — el bloqueo de arranque ya existente para el secret del webhook.

@@ -9,6 +9,7 @@ import pe.edu.utec.queueless.puntoventa.dto.PuntoDeVentaResponse;
 import pe.edu.utec.queueless.puntoventa.entity.PuntoDeVenta;
 import pe.edu.utec.queueless.puntoventa.repository.PuntoDeVentaRepository;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
+import pe.edu.utec.queueless.shared.exception.ForbiddenOperationException;
 import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
 import pe.edu.utec.queueless.usuario.entity.Rol;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
@@ -130,7 +131,7 @@ public class PuntoDeVentaService {
 
     private void validarEsComercio(Usuario gestor) {
         if (!gestor.tieneRol(Rol.COMERCIO)) {
-            throw new BusinessRuleException("Solo un usuario con rol COMERCIO puede gestionar puntos de venta");
+            throw new ForbiddenOperationException("Solo un usuario con rol COMERCIO puede gestionar puntos de venta");
         }
     }
 

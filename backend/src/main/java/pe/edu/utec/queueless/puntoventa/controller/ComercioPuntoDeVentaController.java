@@ -3,6 +3,7 @@ package pe.edu.utec.queueless.puntoventa.controller;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -32,7 +33,7 @@ public class ComercioPuntoDeVentaController {
             @Valid @RequestBody CrearPuntoDeVentaRequest request) {
         Usuario gestor = usuarioService.findByEmail(authentication.getName());
         PuntoDeVentaResponse creado = puntoDeVentaService.crearComoComercio(gestor, request);
-        return ResponseEntity.ok(ApiResponse.ok(creado, "Punto de venta creado"));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(creado, "Punto de venta creado"));
     }
 
     @GetMapping
@@ -62,11 +63,11 @@ public class ComercioPuntoDeVentaController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> eliminar(
+    public ResponseEntity<Void> eliminar(
             Authentication authentication,
             @PathVariable Long id) {
         Usuario gestor = usuarioService.findByEmail(authentication.getName());
         puntoDeVentaService.eliminar(gestor, id);
-        return ResponseEntity.ok(ApiResponse.<Void>ok(null, "Punto de venta dado de baja"));
+        return ResponseEntity.noContent().build();
     }
 }

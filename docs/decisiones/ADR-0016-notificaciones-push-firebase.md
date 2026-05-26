@@ -177,13 +177,13 @@ constantes), no escritos a mano dentro del listener. Las ventajas:
 ### Errores de envío: el push es best-effort
 
 Si `FirebaseMessaging.send()` lanza una excepción (FCM caído, token vencido, lo que
-sea), el listener la atrapa, la deja en el log en nivel `warn`, y termina sin
-volver a lanzarla. El push es *best-effort* (ver glosario): es deseable que llegue,
-pero el flujo del pedido no se rompe si una notificación falla. Un pedido que se
-marcó como `ENTREGADO` queda entregado aunque la push de "gracias por usar
-QueueLess" no haya salido. Como el listener corre después del commit y en otro hilo
-(patrón del ADR-0009), una excepción suya tampoco revierte el cambio de estado del
-pedido.
+sea), el adapter (`FirebaseMessagingAdapter.send`) la atrapa, la deja en el log en
+nivel `warn`, y termina sin volver a lanzarla. El push es *best-effort* (ver glosario):
+es deseable que llegue, pero el flujo del pedido no se rompe si una notificación falla.
+Un pedido que se marcó como `ENTREGADO` queda entregado aunque la push de "gracias por
+usar QueueLess" no haya salido. Y como el listener corre después del commit y en otro
+hilo (patrón del ADR-0009), aunque una excepción se escapara del adapter tampoco
+revertiría el cambio de estado del pedido.
 
 ### Reentrega del evento: sin idempotencia explícita
 
