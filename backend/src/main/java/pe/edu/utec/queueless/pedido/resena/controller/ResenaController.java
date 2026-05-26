@@ -20,7 +20,7 @@ import pe.edu.utec.queueless.usuario.service.UsuarioService;
 
 @Tag(name = "Reseñas (cliente)", description = "Crear reseñas sobre el punto de venta o el repartidor")
 @RestController
-@RequestMapping("/api/cliente/pedidos/{pedidoId}/resenas")
+@RequestMapping("/api/v1/cliente/pedidos/{pedidoId}/resenas")
 @RequiredArgsConstructor
 public class ResenaController {
 

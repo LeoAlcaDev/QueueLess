@@ -66,7 +66,7 @@ class CatalogoMockMvcIT extends AbstractIntegrationTest {
     @Test
     @DisplayName("el listado de puntos de venta responde 200")
     void shouldListStoresWhenPublic() throws Exception {
-        mockMvc.perform(get("/api/puntos-de-venta"))
+        mockMvc.perform(get("/api/v1/puntos-de-venta"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data").isArray());
     }
@@ -74,7 +74,7 @@ class CatalogoMockMvcIT extends AbstractIntegrationTest {
     @Test
     @DisplayName("el detalle de un local existente responde 200 con su nombre")
     void shouldReturnStoreDetailWhenExists() throws Exception {
-        mockMvc.perform(get("/api/puntos-de-venta/{id}", puntoDeVentaId))
+        mockMvc.perform(get("/api/v1/puntos-de-venta/{id}", puntoDeVentaId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.nombre").value("Local Catalogo"));
     }
@@ -82,14 +82,14 @@ class CatalogoMockMvcIT extends AbstractIntegrationTest {
     @Test
     @DisplayName("un local inexistente responde 404")
     void shouldReturn404WhenStoreMissing() throws Exception {
-        mockMvc.perform(get("/api/puntos-de-venta/{id}", 999999))
+        mockMvc.perform(get("/api/v1/puntos-de-venta/{id}", 999999))
             .andExpect(status().isNotFound());
     }
 
     @Test
     @DisplayName("los productos del local responden 200")
     void shouldListProductsWhenStoreExists() throws Exception {
-        mockMvc.perform(get("/api/puntos-de-venta/{id}/productos", puntoDeVentaId))
+        mockMvc.perform(get("/api/v1/puntos-de-venta/{id}/productos", puntoDeVentaId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data").isArray());
     }
@@ -97,7 +97,7 @@ class CatalogoMockMvcIT extends AbstractIntegrationTest {
     @Test
     @DisplayName("el tiempo estimado responde 200 con los minutos")
     void shouldReturnEstimatedTimeWhenStoreExists() throws Exception {
-        mockMvc.perform(get("/api/puntos-de-venta/{id}/tiempo-estimado", puntoDeVentaId))
+        mockMvc.perform(get("/api/v1/puntos-de-venta/{id}/tiempo-estimado", puntoDeVentaId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.minutos").isNumber());
     }

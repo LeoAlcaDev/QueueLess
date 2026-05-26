@@ -13,7 +13,7 @@ import pe.edu.utec.queueless.waittime.service.WaitTimeService;
  */
 @Tag(name = "Tiempo estimado", description = "Tiempo de espera estimado de un punto de venta")
 @RestController
-@RequestMapping("/api/puntos-de-venta")
+@RequestMapping("/api/v1/puntos-de-venta")
 @RequiredArgsConstructor
 public class WaitTimeController {
 

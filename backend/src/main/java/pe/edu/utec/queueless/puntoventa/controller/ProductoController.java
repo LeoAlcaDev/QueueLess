@@ -12,7 +12,7 @@ import java.util.List;
 
 @Tag(name = "Productos", description = "Menu publico de cada punto de venta")
 @RestController
-@RequestMapping("/api/puntos-de-venta/{puntoDeVentaId}/productos")
+@RequestMapping("/api/v1/puntos-de-venta/{puntoDeVentaId}/productos")
 @RequiredArgsConstructor
 public class ProductoController {
 

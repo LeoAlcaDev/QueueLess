@@ -23,7 +23,7 @@ import pe.edu.utec.queueless.usuario.service.UsuarioService;
 
 @Tag(name = "Pagos (cliente)", description = "Iniciar y consultar pagos propios")
 @RestController
-@RequestMapping("/api/cliente/pagos")
+@RequestMapping("/api/v1/cliente/pagos")
 @RequiredArgsConstructor
 public class PagoController {
 

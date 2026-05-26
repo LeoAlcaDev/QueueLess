@@ -21,7 +21,7 @@ import java.util.List;
 
 @Tag(name = "Pedidos (cliente)", description = "Endpoints para clientes: crear, ver y cancelar sus pedidos")
 @RestController
-@RequestMapping("/api/cliente/pedidos")
+@RequestMapping("/api/v1/cliente/pedidos")
 @RequiredArgsConstructor
 public class PedidoClienteController {
 

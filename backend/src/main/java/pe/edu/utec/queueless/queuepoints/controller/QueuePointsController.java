@@ -26,7 +26,7 @@ import java.util.List;
  */
 @Tag(name = "QueuePoints", description = "Saldo e historial de QueuePoints del usuario autenticado")
 @RestController
-@RequestMapping("/api/me/queuepoints")
+@RequestMapping("/api/v1/me/queuepoints")
 @RequiredArgsConstructor
 public class QueuePointsController {
 

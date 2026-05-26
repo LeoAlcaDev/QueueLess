@@ -12,7 +12,7 @@ import java.util.List;
 
 @Tag(name = "Puntos de venta", description = "Catalogo publico de comercios del campus")
 @RestController
-@RequestMapping("/api/puntos-de-venta")
+@RequestMapping("/api/v1/puntos-de-venta")
 @RequiredArgsConstructor
 public class PuntoDeVentaController {
 

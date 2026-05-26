@@ -24,7 +24,7 @@ import java.util.List;
 @Tag(name = "Delivery (repartidor)",
      description = "Solicitudes disponibles y flujo de aceptación, recogida y entrega")
 @RestController
-@RequestMapping("/api/repartidor")
+@RequestMapping("/api/v1/repartidor")
 @RequiredArgsConstructor
 public class SolicitudDeliveryController {
 

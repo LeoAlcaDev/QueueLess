@@ -14,7 +14,7 @@ import pe.edu.utec.queueless.usuario.service.UsuarioService;
 
 @Tag(name = "Perfiles", description = "Lectura y actualizacion de los perfiles del usuario autenticado")
 @RestController
-@RequestMapping("/api/me/perfiles")
+@RequestMapping("/api/v1/me/perfiles")
 @RequiredArgsConstructor
 public class PerfilController {
 

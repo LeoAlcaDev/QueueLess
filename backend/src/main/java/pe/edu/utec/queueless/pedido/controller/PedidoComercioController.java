@@ -17,7 +17,7 @@ import java.util.List;
 
 @Tag(name = "Pedidos (comercio)", description = "Endpoints para comercios: ver la cola y mover el pedido por sus estados")
 @RestController
-@RequestMapping("/api/comercio/pedidos")
+@RequestMapping("/api/v1/comercio/pedidos")
 @RequiredArgsConstructor
 public class PedidoComercioController {
 

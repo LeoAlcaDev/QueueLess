@@ -20,7 +20,7 @@ import java.util.List;
 
 @Tag(name = "Puntos de venta (comercio)", description = "Gestion de los locales del comercio autenticado")
 @RestController
-@RequestMapping("/api/comercio/puntos-de-venta")
+@RequestMapping("/api/v1/comercio/puntos-de-venta")
 @RequiredArgsConstructor
 public class ComercioPuntoDeVentaController {
 

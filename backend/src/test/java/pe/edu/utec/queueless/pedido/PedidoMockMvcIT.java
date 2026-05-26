@@ -81,7 +81,7 @@ class PedidoMockMvcIT extends AbstractIntegrationTest {
             {"puntoDeVentaId":%d,"tipoEntrega":"PICKUP","items":[{"productoId":%d,"cantidad":1}]}"""
             .formatted(puntoDeVentaId, productoId);
 
-        mockMvc.perform(post("/api/cliente/pedidos")
+        mockMvc.perform(post("/api/v1/cliente/pedidos")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isCreated())
@@ -93,7 +93,7 @@ class PedidoMockMvcIT extends AbstractIntegrationTest {
     @WithMockUser(username = CLIENTE, roles = {"CLIENTE"})
     @DisplayName("un cliente recibe 403 al entrar a la cola del comercio")
     void shouldReturn403WhenClientHitsComercioRoute() throws Exception {
-        mockMvc.perform(get("/api/comercio/pedidos/cola"))
+        mockMvc.perform(get("/api/v1/comercio/pedidos/cola"))
             .andExpect(status().isForbidden());
     }
 
@@ -101,7 +101,7 @@ class PedidoMockMvcIT extends AbstractIntegrationTest {
     @WithMockUser(username = COMERCIO, roles = {"COMERCIO"})
     @DisplayName("el comercio ve su cola con 200")
     void shouldListQueueWhenComercio() throws Exception {
-        mockMvc.perform(get("/api/comercio/pedidos/cola"))
+        mockMvc.perform(get("/api/v1/comercio/pedidos/cola"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data").isArray());
     }

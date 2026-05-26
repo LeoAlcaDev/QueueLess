@@ -22,7 +22,7 @@ import java.util.List;
 
 @Tag(name = "Productos (comercio)", description = "Gestion de los productos del comercio autenticado")
 @RestController
-@RequestMapping("/api/comercio/productos")
+@RequestMapping("/api/v1/comercio/productos")
 @RequiredArgsConstructor
 public class ComercioProductoController {
 

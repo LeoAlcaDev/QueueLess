@@ -14,7 +14,7 @@ import pe.edu.utec.queueless.usuario.service.UsuarioService;
 
 @Tag(name = "Usuarios", description = "Datos del usuario autenticado y activacion de roles")
 @RestController
-@RequestMapping("/api/usuarios")
+@RequestMapping("/api/v1/usuarios")
 @RequiredArgsConstructor
 public class UsuarioController {
 
