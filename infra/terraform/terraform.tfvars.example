@@ -1,0 +1,23 @@
+# Copiá este archivo a terraform.tfvars y ajustá los valores.
+
+project     = "queueless"
+environment = "prod"
+aws_region  = "us-east-1"
+
+# Repo GitHub que podrá asumir el rol OIDC para deployar.
+# Si lo dejás vacío, no se crea el rol y deberás deployar manualmente.
+github_repo   = "CS2031-DBP/proyecto-1-queueless"
+github_branch = "main"
+
+# Tamaño de la task Fargate.
+# 256 / 1024 es el mínimo viable para Spring Boot con UseSerialGC.
+container_cpu    = 256
+container_memory = 1024
+
+# 1 task corriendo por default. Los scripts/workflows start/stop manipulan
+# este valor en runtime; Terraform lo ignora luego del primer apply.
+desired_count = 1
+
+# RDS: free tier 12 meses cubre db.t4g.micro + 20 GB gp3.
+db_instance_class    = "db.t4g.micro"
+db_allocated_storage = 20

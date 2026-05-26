@@ -1,0 +1,21 @@
+# Default: que Git normalice line endings en el repositorio (LF), y en
+# checkout deje el endings nativo del SO (CRLF en Windows, LF en Linux/Mac).
+* text=auto
+
+# Archivos que SIEMPRE deben tener LF, incluso en Windows. Si tienen CRLF,
+# se rompen al ejecutarlos en Linux (containers Docker, CI, etc.).
+*.sh        text eol=lf
+mvnw        text eol=lf
+gradlew     text eol=lf
+Dockerfile  text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+
+# Archivos binarios: que Git no toque su contenido.
+*.jar       binary
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.pdf       binary

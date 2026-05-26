@@ -24,11 +24,14 @@ logging:
 
 queueless:
   pago:
-    gateway: ${PAGO_GATEWAY:mercadopago}
+    # Por defecto 'mock' en prod: este proyecto es académico y no procesa
+    # pagos reales. Override con la env PAGO_GATEWAY=mercadopago si se quisiera
+    # apuntar al sandbox real.
+    gateway: ${PAGO_GATEWAY:mock}
   storage:
-    impl: s3
+    impl: ${STORAGE_IMPL:s3}
   firebase:
-    enabled: true
+    enabled: ${FIREBASE_ENABLED:false}
 
 springdoc:
   api-docs:

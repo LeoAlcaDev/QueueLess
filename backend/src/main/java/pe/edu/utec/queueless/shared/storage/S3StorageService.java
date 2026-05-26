@@ -1,6 +1,7 @@
 package pe.edu.utec.queueless.shared.storage;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -43,6 +44,10 @@ public class S3StorageService implements StorageService {
     private final String bucket;
     private final String region;
 
+    // Constructor que Spring usa en runtime. La anotacion explicita es necesaria
+    // porque hay un segundo constructor (visible en tests) y Spring 6+ no
+    // auto-selecciona cuando hay mas de uno.
+    @Autowired
     public S3StorageService(
             @Value("${queueless.storage.s3.bucket}") String bucket,
             @Value("${queueless.storage.s3.region}") String region) {

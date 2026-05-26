@@ -1,0 +1,140 @@
+name: Power (start/stop demo)
+
+# Trigger manual desde la pestana Actions del repo.
+#   start  -> arranca RDS si esta stopped, escala ECS a 1, imprime URL del ALB
+#   stop   -> escala ECS a 0, espera, detiene RDS
+#   status -> muestra estado actual (no toca nada)
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Que hacer'
+        type: choice
+        required: true
+        default: start
+        options:
+          - start
+          - stop
+          - status
+
+concurrency:
+  group: power
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION:      ${{ vars.AWS_REGION }}
+  ECS_CLUSTER:     ${{ vars.ECS_CLUSTER }}
+  ECS_SERVICE:     ${{ vars.ECS_SERVICE }}
+  RDS_IDENTIFIER:  ${{ vars.RDS_IDENTIFIER }}
+  ALB_DNS:         ${{ vars.ALB_DNS }}
+
+jobs:
+  power:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ---------- START ----------
+      - name: Start RDS if stopped
+        if: inputs.action == 'start'
+        run: |
+          set -e
+          status=$(aws rds describe-db-instances \
+            --db-instance-identifier "$RDS_IDENTIFIER" \
+            --query "DBInstances[0].DBInstanceStatus" --output text)
+          echo "RDS status: $status"
+          if [ "$status" = "stopped" ]; then
+            echo "Iniciando RDS (tarda ~3 min)..."
+            aws rds start-db-instance --db-instance-identifier "$RDS_IDENTIFIER" >/dev/null
+            aws rds wait db-instance-available --db-instance-identifier "$RDS_IDENTIFIER"
+            echo "RDS lista."
+          fi
+
+      - name: Scale ECS to 1
+        if: inputs.action == 'start'
+        run: |
+          set -e
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --desired-count 1 >/dev/null
+          echo "Esperando estabilidad del servicio..."
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
+
+      - name: Publish public URL
+        if: inputs.action == 'start'
+        run: |
+          {
+            echo "## Demo encendida"
+            echo ""
+            echo "- **API base**: http://${ALB_DNS}/"
+            echo "- **Health**:   http://${ALB_DNS}/actuator/health"
+            echo ""
+            echo "_La URL del ALB es estable: no cambia entre redeploys ni interrupciones de Spot._"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "URL: http://${ALB_DNS}/"
+
+      # ---------- STOP ----------
+      - name: Scale ECS to 0
+        if: inputs.action == 'stop'
+        run: |
+          set -e
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --desired-count 0 >/dev/null
+          echo "Esperando que terminen las tasks..."
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
+
+      - name: Stop RDS
+        if: inputs.action == 'stop'
+        run: |
+          set -e
+          status=$(aws rds describe-db-instances \
+            --db-instance-identifier "$RDS_IDENTIFIER" \
+            --query "DBInstances[0].DBInstanceStatus" --output text)
+          echo "RDS status: $status"
+          if [ "$status" = "available" ]; then
+            aws rds stop-db-instance --db-instance-identifier "$RDS_IDENTIFIER" >/dev/null
+            echo "RDS stop solicitado." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          {
+            echo "## Demo apagada"
+            echo ""
+            echo "- ECS service: \`$ECS_SERVICE\` -> desired_count = 0"
+            echo "- RDS: \`$RDS_IDENTIFIER\` -> stopping (queda en estado \`stopped\` en ~2 min)"
+            echo ""
+            echo "_NAT GW y ALB siguen activos (~\$50/mes mientras existan). Para parar costos por completo: \`terraform destroy\`._"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ---------- STATUS (corre siempre, no toca nada) ----------
+      - name: Print status
+        if: always()
+        run: |
+          set -e
+          rds_status=$(aws rds describe-db-instances \
+            --db-instance-identifier "$RDS_IDENTIFIER" \
+            --query "DBInstances[0].DBInstanceStatus" --output text 2>/dev/null || echo "unknown")
+          svc_json=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+            --query "services[0].[desiredCount,runningCount]" --output text)
+          desired=$(echo "$svc_json" | awk '{print $1}')
+          running=$(echo "$svc_json" | awk '{print $2}')
+          {
+            echo "## Estado actual"
+            echo ""
+            echo "| Recurso | Valor |"
+            echo "| --- | --- |"
+            echo "| RDS | \`$rds_status\` |"
+            echo "| ECS desired | $desired |"
+            echo "| ECS running | $running |"
+            echo "| API URL | http://${ALB_DNS}/ |"
+          } >> "$GITHUB_STEP_SUMMARY"
