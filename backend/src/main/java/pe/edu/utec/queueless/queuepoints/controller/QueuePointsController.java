@@ -3,6 +3,7 @@ package pe.edu.utec.queueless.queuepoints.controller;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,7 +27,8 @@ import java.util.List;
  */
 @Tag(name = "QueuePoints", description = "Saldo e historial de QueuePoints del usuario autenticado")
 @RestController
-@RequestMapping("/api/me/queuepoints")
+@RequestMapping("/api/v1/me/queuepoints")
+@PreAuthorize("isAuthenticated()")
 @RequiredArgsConstructor
 public class QueuePointsController {
 

@@ -3,6 +3,7 @@ package pe.edu.utec.queueless.pedido.controller;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -17,7 +18,8 @@ import java.util.List;
 
 @Tag(name = "Pedidos (comercio)", description = "Endpoints para comercios: ver la cola y mover el pedido por sus estados")
 @RestController
-@RequestMapping("/api/comercio/pedidos")
+@RequestMapping("/api/v1/comercio/pedidos")
+@PreAuthorize("hasRole('COMERCIO')")
 @RequiredArgsConstructor
 public class PedidoComercioController {
 

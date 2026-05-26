@@ -3,6 +3,7 @@ package pe.edu.utec.queueless.pago.controller;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,7 +24,8 @@ import pe.edu.utec.queueless.usuario.service.UsuarioService;
 
 @Tag(name = "Pagos (cliente)", description = "Iniciar y consultar pagos propios")
 @RestController
-@RequestMapping("/api/cliente/pagos")
+@RequestMapping("/api/v1/cliente/pagos")
+@PreAuthorize("hasRole('CLIENTE')")
 @RequiredArgsConstructor
 public class PagoController {
 

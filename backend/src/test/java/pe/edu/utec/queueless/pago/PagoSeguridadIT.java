@@ -1,10 +1,13 @@
 package pe.edu.utec.queueless.pago;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utec.queueless.integration.AbstractIntegrationTest;
@@ -24,6 +27,7 @@ import pe.edu.utec.queueless.usuario.repository.UsuarioRepository;
 
 import java.math.BigDecimal;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -43,6 +47,11 @@ class PagoSeguridadIT extends AbstractIntegrationTest {
     @Autowired private PedidoRepository pedidoRepository;
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private PuntoDeVentaRepository puntoDeVentaRepository;
+
+    @AfterEach
+    void limpiarContexto() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     @DisplayName("un cliente no puede iniciar el pago del pedido de otro (404)")
@@ -65,7 +74,10 @@ class PagoSeguridadIT extends AbstractIntegrationTest {
         Pedido pedidoDeA = crearPedidoPendiente(clienteA, local);
         IniciarPagoResponse pagoDeA = pagoService.iniciar(pedidoDeA.getId(), clienteA.getId());
 
-        Authentication authB = new UsernamePasswordAuthenticationToken(clienteB.getEmail(), null);
+        // clienteB es un CLIENTE valido (pasa el @PreAuthorize) pero no es dueno del pago
+        Authentication authB = new UsernamePasswordAuthenticationToken(
+            clienteB.getEmail(), null, List.of(new SimpleGrantedAuthority("ROLE_CLIENTE")));
+        SecurityContextHolder.getContext().setAuthentication(authB);
 
         assertThatThrownBy(() -> pagoController.consultar(authB, pagoDeA.getPagoId()))
             .isInstanceOf(ResourceNotFoundException.class);

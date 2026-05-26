@@ -15,7 +15,7 @@ import java.util.List;
 
 /**
  * Endpoints públicos de lectura de reseñas. Quedan bajo
- * {@code /api/puntos-de-venta/**} y {@code /api/repartidores/**} para que
+ * {@code /api/v1/puntos-de-venta/**} y {@code /api/v1/repartidores/**} para que
  * cualquier visitante pueda ver la reputación antes de pedir.
  */
 @Tag(name = "Reseñas (público)", description = "Listado público de reseñas por punto de venta y repartidor")
@@ -25,12 +25,12 @@ public class ResenaPublicaController {
 
     private final ResenaService resenaService;
 
-    @GetMapping("/api/puntos-de-venta/{id}/resenas")
+    @GetMapping("/api/v1/puntos-de-venta/{id}/resenas")
     public ResponseEntity<ApiResponse<List<ResenaResponse>>> deLocal(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok(resenaService.listarDePuntoDeVenta(id)));
     }
 
-    @GetMapping("/api/repartidores/{id}/resenas")
+    @GetMapping("/api/v1/repartidores/{id}/resenas")
     public ResponseEntity<ApiResponse<List<ResenaResponse>>> deRepartidor(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok(resenaService.listarDeRepartidor(id)));
     }

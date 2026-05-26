@@ -170,7 +170,7 @@ class CatalogoFlowIT extends AbstractIntegrationTest {
     void usuarioSinRolComercioRecibe403() throws Exception {
         String body = objectMapper.writeValueAsString(localRequest("No deberia crearse"));
 
-        mockMvc.perform(post("/api/comercio/puntos-de-venta")
+        mockMvc.perform(post("/api/v1/comercio/puntos-de-venta")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isForbidden());

@@ -3,6 +3,7 @@ package pe.edu.utec.queueless.usuario.controller;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -14,7 +15,8 @@ import pe.edu.utec.queueless.usuario.service.UsuarioService;
 
 @Tag(name = "Perfiles", description = "Lectura y actualizacion de los perfiles del usuario autenticado")
 @RestController
-@RequestMapping("/api/me/perfiles")
+@RequestMapping("/api/v1/me/perfiles")
+@PreAuthorize("isAuthenticated()")
 @RequiredArgsConstructor
 public class PerfilController {
 

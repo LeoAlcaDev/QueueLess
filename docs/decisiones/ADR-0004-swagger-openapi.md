@@ -47,11 +47,11 @@ Eso registra el esquema de autenticación Bearer JWT, así Swagger UI tiene un b
 
 ## Qué obtenemos
 
-Una vez levantado el backend, en `http://localhost:8090/swagger-ui.html` se ve una lista navegable de todos los endpoints, agrupados por `@Tag`:
+Una vez levantado el backend, en `http://localhost:8090/swagger-ui.html` se ve una lista navegable de todos los endpoints, agrupados por `@Tag`. Desde el Issue #11 el contrato productivo está versionado bajo `/api/v1/`; las dos excepciones sin versión son `/api/auth/*` y `/api/pago/webhook/*`. La decisión de versionado y la autorización con `@PreAuthorize` están en el ADR-0022.
 
 - **Auth** (`/api/auth/*`)
-- **Pedidos (cliente)** (`/api/cliente/pedidos/*`)
-- **Pedidos (comercio)** (`/api/comercio/pedidos/*`)
+- **Pedidos (cliente)** (`/api/v1/cliente/pedidos/*`)
+- **Pedidos (comercio)** (`/api/v1/comercio/pedidos/*`)
 - **Puntos de venta**
 - **Pagos**
 - **Reseñas**
@@ -82,7 +82,7 @@ El flujo típico de prueba en Swagger UI es:
 1. Llamar `POST /api/auth/login` con email y password de un usuario seed.
 2. Copiar el `token` de la respuesta.
 3. Hacer clic en "Authorize" y pegar el token.
-4. Llamar cualquier endpoint protegido (`/api/cliente/pedidos`, etc.) que ahora envía el JWT automáticamente.
+4. Llamar cualquier endpoint protegido (`/api/v1/cliente/pedidos`, etc.) que ahora envía el JWT automáticamente.
 
 ## Configuración por ambiente
 
@@ -180,5 +180,6 @@ Adoptamos code-first con springdoc.
 - `backend/src/main/resources/application.yml` — sección `springdoc:` con paths y opciones de UI.
 - `backend/src/main/resources/application-prod.yml` — desactivación de springdoc en producción.
 - ADR-0018 — Hardening del perfil de producción (desactivación de Swagger UI en producción).
+- ADR-0022 — Versionado de la API y autorización por método (el contrato productivo bajo /api/v1).
 - Documentación oficial de springdoc: https://springdoc.org/
 - Especificación OpenAPI 3.0: https://spec.openapis.org/oas/v3.0.0

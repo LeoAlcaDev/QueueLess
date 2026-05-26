@@ -3,6 +3,7 @@ package pe.edu.utec.queueless.pedido.resena.controller;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -20,7 +21,8 @@ import pe.edu.utec.queueless.usuario.service.UsuarioService;
 
 @Tag(name = "Reseñas (cliente)", description = "Crear reseñas sobre el punto de venta o el repartidor")
 @RestController
-@RequestMapping("/api/cliente/pedidos/{pedidoId}/resenas")
+@RequestMapping("/api/v1/cliente/pedidos/{pedidoId}/resenas")
+@PreAuthorize("hasRole('CLIENTE')")
 @RequiredArgsConstructor
 public class ResenaController {
 
