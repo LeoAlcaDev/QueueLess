@@ -96,13 +96,17 @@ jobs:
 
       - name: Scale ECS to 1
         if: inputs.action == 'start'
+        env:
+          # Sube el timeout del waiter a ~20 min (80 polls x 15s).
+          # Spring Boot + cold start de RDS recien prendida pueden pasarse de 10 min.
+          AWS_MAX_ATTEMPTS: "80"
         run: |
           set -e
           aws ecs update-service \
             --cluster "$ECS_CLUSTER" \
             --service "$ECS_SERVICE" \
             --desired-count 1 >/dev/null
-          echo "Esperando estabilidad del servicio..."
+          echo "Esperando estabilidad del servicio (hasta ~20 min)..."
           aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
 
       - name: Publish public URL
@@ -149,6 +153,53 @@ jobs:
             echo "- RDS: \`$RDS_IDENTIFIER\` -> stopping (queda en estado \`stopped\` en ~2 min)"
             echo ""
             echo "_NAT GW y ALB siguen activos (~\$50/mes mientras existan). Para parar costos por completo: \`terraform destroy\`._"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ---------- DIAGNOSTICO EN CASO DE FALLA ----------
+      # Si algun step previo fallo (tipicamente "wait services-stable" por max attempts),
+      # dumpea los ultimos eventos del servicio y el motivo de la ultima task detenida.
+      # Ahi salen los errores reales: imagen que no se pudo bajar, health check del ALB
+      # que no pasa, container que muere al arrancar, etc.
+      - name: Diagnose ECS failure
+        if: failure() && (inputs.action == 'start' || inputs.action == 'stop')
+        run: |
+          set +e
+          echo "## Diagnostico ECS" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "### Eventos recientes del servicio"
+          echo "### Eventos recientes del servicio" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+            --query "services[0].events[0:15].[createdAt,message]" \
+            --output table | tee -a "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          echo "### Ultima task detenida (si hay)"
+          echo "### Ultima task detenida (si hay)" >> "$GITHUB_STEP_SUMMARY"
+          stopped_arn=$(aws ecs list-tasks \
+            --cluster "$ECS_CLUSTER" --service-name "$ECS_SERVICE" \
+            --desired-status STOPPED --max-items 1 \
+            --query "taskArns[0]" --output text 2>/dev/null)
+          if [ -n "$stopped_arn" ] && [ "$stopped_arn" != "None" ]; then
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$stopped_arn" \
+              --query "tasks[0].[stoppedReason,stopCode,containers[].[name,exitCode,reason]]" \
+              --output table | tee -a "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "_No hay tasks detenidas; el problema puede ser de pull de imagen o health check del ALB._" >> "$GITHUB_STEP_SUMMARY"
+            echo "(No hay tasks STOPPED)"
+          fi
+
+          echo "### Que revisar"
+          {
+            echo "### Como seguir"
+            echo ""
+            echo "1. Mira los **eventos** arriba (en orden cronologico inverso). Busca: \`unable to pull\`, \`unhealthy\`, \`fail to register\`, \`OutOfMemory\`."
+            echo "2. Si hay task detenida, el \`stoppedReason\` te dice si fue el container o ECS quien la mato."
+            echo "3. Logs de la app: CloudWatch Logs -> log group del servicio (ver task definition)."
+            echo "4. ALB target group: si dice \`unhealthy\`, revisa el path del health check (\`/actuator/health\`) y el puerto."
           } >> "$GITHUB_STEP_SUMMARY"
 
       # ---------- STATUS (corre siempre, no toca nada) ----------
