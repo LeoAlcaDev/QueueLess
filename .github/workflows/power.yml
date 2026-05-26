@@ -36,19 +36,41 @@ jobs:
   power:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate required variables
+      - name: Validate and sanitize required variables
         run: |
+          # Limpia espacios y caracteres de control (CR, LF, tab...) que a veces
+          # se cuelan al pegar valores en la UI de GitHub. La CLI de AWS rechaza
+          # inputs con control chars con "Input can't contain control characters".
+          clean() { printf '%s' "$1" | tr -d '[:space:][:cntrl:]'; }
+
+          AWS_REGION_CLEAN=$(clean "$AWS_REGION")
+          ECS_CLUSTER_CLEAN=$(clean "$ECS_CLUSTER")
+          ECS_SERVICE_CLEAN=$(clean "$ECS_SERVICE")
+          RDS_IDENTIFIER_CLEAN=$(clean "$RDS_IDENTIFIER")
+          ALB_DNS_CLEAN=$(clean "$ALB_DNS")
+
           missing=()
-          [ -z "$AWS_REGION" ]     && missing+=("AWS_REGION")
-          [ -z "$ECS_CLUSTER" ]    && missing+=("ECS_CLUSTER")
-          [ -z "$ECS_SERVICE" ]    && missing+=("ECS_SERVICE")
-          [ -z "$RDS_IDENTIFIER" ] && missing+=("RDS_IDENTIFIER")
-          [ -z "$ALB_DNS" ]        && missing+=("ALB_DNS")
+          [ -z "$AWS_REGION_CLEAN" ]     && missing+=("AWS_REGION")
+          [ -z "$ECS_CLUSTER_CLEAN" ]    && missing+=("ECS_CLUSTER")
+          [ -z "$ECS_SERVICE_CLEAN" ]    && missing+=("ECS_SERVICE")
+          [ -z "$RDS_IDENTIFIER_CLEAN" ] && missing+=("RDS_IDENTIFIER")
+          [ -z "$ALB_DNS_CLEAN" ]        && missing+=("ALB_DNS")
           if [ ${#missing[@]} -gt 0 ]; then
             echo "::error::Faltan repository variables: ${missing[*]}"
             echo "Setealas en Settings -> Secrets and variables -> Actions -> Variables."
             exit 1
           fi
+
+          # Re-exporta los valores limpios para los pasos siguientes.
+          {
+            echo "AWS_REGION=$AWS_REGION_CLEAN"
+            echo "ECS_CLUSTER=$ECS_CLUSTER_CLEAN"
+            echo "ECS_SERVICE=$ECS_SERVICE_CLEAN"
+            echo "RDS_IDENTIFIER=$RDS_IDENTIFIER_CLEAN"
+            echo "ALB_DNS=$ALB_DNS_CLEAN"
+          } >> "$GITHUB_ENV"
+
+          echo "Variables OK (sanitizadas)."
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
