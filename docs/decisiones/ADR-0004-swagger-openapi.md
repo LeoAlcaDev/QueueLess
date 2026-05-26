@@ -80,7 +80,7 @@ El esquema de seguridad declarado en `OpenApiConfig` (`bearer-jwt`) le dice a Sw
 El flujo típico de prueba en Swagger UI es:
 
 1. Llamar `POST /api/auth/login` con email y password de un usuario seed.
-2. Copiar el `token` de la respuesta.
+2. Copiar el `accessToken` de la respuesta.
 3. Hacer clic en "Authorize" y pegar el token.
 4. Llamar cualquier endpoint protegido (`/api/v1/cliente/pedidos`, etc.) que ahora envía el JWT automáticamente.
 
