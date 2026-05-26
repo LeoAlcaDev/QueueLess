@@ -2,6 +2,7 @@ package pe.edu.utec.queueless.delivery.controller;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,6 +26,7 @@ import java.util.List;
      description = "Solicitudes disponibles y flujo de aceptación, recogida y entrega")
 @RestController
 @RequestMapping("/api/v1/repartidor")
+@PreAuthorize("hasRole('REPARTIDOR')")
 @RequiredArgsConstructor
 public class SolicitudDeliveryController {
 

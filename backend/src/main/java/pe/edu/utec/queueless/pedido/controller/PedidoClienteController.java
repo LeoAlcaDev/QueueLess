@@ -3,6 +3,7 @@ package pe.edu.utec.queueless.pedido.controller;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -22,6 +23,7 @@ import java.util.List;
 @Tag(name = "Pedidos (cliente)", description = "Endpoints para clientes: crear, ver y cancelar sus pedidos")
 @RestController
 @RequestMapping("/api/v1/cliente/pedidos")
+@PreAuthorize("hasRole('CLIENTE')")
 @RequiredArgsConstructor
 public class PedidoClienteController {
 

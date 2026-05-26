@@ -21,9 +21,10 @@ import pe.edu.utec.queueless.auth.jwt.JwtAuthenticationFilter;
 /**
  * Configuración central de Spring Security.
  *
- * <p>Estrategia de autorización: prefijos por rol en las URLs. Las reglas se
- * resuelven a nivel de cadena de filtros (más simple y performante que
- * @PreAuthorize por método).
+ * <p>Estrategia de autorización en dos capas complementarias: las reglas por
+ * prefijo de URL se resuelven en la cadena de filtros (rápidas y centralizadas),
+ * y @PreAuthorize a nivel de clase en los controllers principales deja la
+ * autorización visible junto al código que protege.
  */
 @Configuration
 @EnableWebSecurity

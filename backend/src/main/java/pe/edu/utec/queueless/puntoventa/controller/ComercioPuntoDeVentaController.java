@@ -3,6 +3,7 @@ package pe.edu.utec.queueless.puntoventa.controller;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -21,6 +22,7 @@ import java.util.List;
 @Tag(name = "Puntos de venta (comercio)", description = "Gestion de los locales del comercio autenticado")
 @RestController
 @RequestMapping("/api/v1/comercio/puntos-de-venta")
+@PreAuthorize("hasRole('COMERCIO')")
 @RequiredArgsConstructor
 public class ComercioPuntoDeVentaController {
 
