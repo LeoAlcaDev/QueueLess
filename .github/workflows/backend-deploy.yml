@@ -5,25 +5,29 @@ on:
     branches: [ "main" ]
     paths:
       - "backend/**"
+      - ".aws/task-definition.json"
       - ".github/workflows/backend-deploy.yml"
   workflow_dispatch: {}
 
-# Secrets requeridos en el repo (Settings > Secrets and variables > Actions):
+# Secret requerido (Settings > Secrets and variables > Actions > Secrets):
 #   AWS_DEPLOY_ROLE_ARN  -> output github_actions_role_arn de Terraform
+#
 # Variables requeridas (Settings > Secrets and variables > Actions > Variables):
 #   AWS_REGION           -> ej. us-east-1
-#   ECR_REPOSITORY       -> ej. queueless-backend
-#   ECS_CLUSTER          -> ej. queueless-prod-cluster
-#   ECS_SERVICE          -> ej. queueless-prod-backend
-#   ECS_TASK_FAMILY      -> ej. queueless-prod-backend
+#   AWS_ACCOUNT_ID       -> ej. 123456789012  (aws sts get-caller-identity)
+#   ECR_REPOSITORY       -> queueless-backend
+#   ECS_CLUSTER          -> queueless-prod-cluster
+#   ECS_SERVICE          -> queueless-prod-backend
 #   ECS_CONTAINER_NAME   -> backend
+#   S3_BUCKET            -> output s3_bucket de Terraform
+#   RDS_ENDPOINT         -> output rds_endpoint de Terraform
 
 concurrency:
   group: backend-deploy-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
-  id-token: write       # necesario para OIDC con AWS
+  id-token: write       # OIDC con AWS
   contents: read
 
 jobs:
@@ -57,17 +61,30 @@ jobs:
           docker push "$REGISTRY/$REPOSITORY:latest"
           echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
 
-      - name: Download current task definition
+      # Reemplaza los placeholders del task-definition.json con valores
+      # reales tomados de GitHub Variables. Generamos un archivo nuevo
+      # para no ensuciar el checkout.
+      - name: Render placeholders into task-definition.json
+        env:
+          ACCOUNT_ID:   ${{ vars.AWS_ACCOUNT_ID }}
+          AWS_REGION:   ${{ vars.AWS_REGION }}
+          S3_BUCKET:    ${{ vars.S3_BUCKET }}
+          RDS_ENDPOINT: ${{ vars.RDS_ENDPOINT }}
         run: |
-          aws ecs describe-task-definition \
-            --task-definition "${{ vars.ECS_TASK_FAMILY }}" \
-            --query taskDefinition > task-definition.json
+          sed \
+            -e "s|<ACCOUNT_ID>|$ACCOUNT_ID|g" \
+            -e "s|<AWS_REGION>|$AWS_REGION|g" \
+            -e "s|<S3_BUCKET>|$S3_BUCKET|g" \
+            -e "s|<RDS_ENDPOINT>|$RDS_ENDPOINT|g" \
+            .aws/task-definition.json > task-definition.rendered.json
+          echo "--- rendered task definition ---"
+          cat task-definition.rendered.json
 
       - name: Render new task definition with updated image
         id: render
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: task-definition.json
+          task-definition: task-definition.rendered.json
           container-name: ${{ vars.ECS_CONTAINER_NAME }}
           image: ${{ steps.build.outputs.image }}
 

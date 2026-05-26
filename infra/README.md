@@ -161,11 +161,19 @@ sólo por ese repo desde la rama `main`. Configurá en GitHub
 | Nombre | Valor |
 |---|---|
 | `AWS_REGION` | `us-east-1` |
+| `AWS_ACCOUNT_ID` | `aws sts get-caller-identity --query Account --output text` |
 | `ECR_REPOSITORY` | `queueless-backend` |
 | `ECS_CLUSTER` | output `ecs_cluster_name` |
 | `ECS_SERVICE` | output `ecs_service_name` |
-| `ECS_TASK_FAMILY` | output `ecs_task_family` |
 | `ECS_CONTAINER_NAME` | `backend` |
+| `S3_BUCKET` | output `s3_bucket` |
+| `RDS_ENDPOINT` | output `rds_endpoint` |
+
+El workflow renderiza `.aws/task-definition.json` reemplazando los
+placeholders (`<ACCOUNT_ID>`, `<AWS_REGION>`, `<S3_BUCKET>`,
+`<RDS_ENDPOINT>`) con estas variables antes de registrar la nueva task
+definition. Si cambiás env vars, secrets o la imagen base, editás el JSON
+y commiteás — no hace falta `terraform apply`.
 
 Con `desired_count = 0`, el workflow registra la nueva task definition pero
 no levanta tasks hasta que vos corrás `start.ps1`.
