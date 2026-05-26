@@ -79,19 +79,60 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       # ---------- START ----------
-      - name: Start RDS if stopped
+      # Garantiza que RDS quede en `available` ANTES de escalar ECS. Antes solo
+      # arrancaba si el estado era exactamente `stopped`; si caia en un estado
+      # transitorio (`stopping`, `starting`, `backing-up`, `modifying`) el script
+      # no hacia nada y el siguiente paso escalaba ECS contra una base no lista,
+      # con la app crasheando en bucle por SocketTimeout a Postgres.
+      - name: Ensure RDS available
         if: inputs.action == 'start'
+        env:
+          AWS_MAX_ATTEMPTS: "60"   # ~30 min de margen para el waiter
         run: |
           set -e
           status=$(aws rds describe-db-instances \
             --db-instance-identifier "$RDS_IDENTIFIER" \
             --query "DBInstances[0].DBInstanceStatus" --output text)
-          echo "RDS status: $status"
-          if [ "$status" = "stopped" ]; then
-            echo "Iniciando RDS (tarda ~3 min)..."
-            aws rds start-db-instance --db-instance-identifier "$RDS_IDENTIFIER" >/dev/null
-            aws rds wait db-instance-available --db-instance-identifier "$RDS_IDENTIFIER"
-            echo "RDS lista."
+          echo "RDS status inicial: $status"
+
+          case "$status" in
+            available)
+              echo "RDS ya esta available."
+              ;;
+            stopped)
+              echo "Iniciando RDS (tarda ~3 min)..."
+              aws rds start-db-instance --db-instance-identifier "$RDS_IDENTIFIER" >/dev/null
+              aws rds wait db-instance-available --db-instance-identifier "$RDS_IDENTIFIER"
+              echo "RDS lista."
+              ;;
+            stopping)
+              echo "RDS estaba parandose. Esperando a que termine y arrancando de nuevo..."
+              # No hay waiter para `stopped`; polleamos a mano.
+              for i in $(seq 1 60); do
+                s=$(aws rds describe-db-instances --db-instance-identifier "$RDS_IDENTIFIER" --query "DBInstances[0].DBInstanceStatus" --output text)
+                [ "$s" = "stopped" ] && break
+                echo "  ($i/60) RDS status: $s, esperando 15s..."
+                sleep 15
+              done
+              aws rds start-db-instance --db-instance-identifier "$RDS_IDENTIFIER" >/dev/null
+              aws rds wait db-instance-available --db-instance-identifier "$RDS_IDENTIFIER"
+              echo "RDS lista."
+              ;;
+            starting|backing-up|modifying|configuring-enhanced-monitoring|configuring-iam-database-auth|configuring-log-exports|maintenance|rebooting|renaming|resetting-master-credentials|storage-optimization|upgrading)
+              echo "RDS en estado transitorio ($status). Esperando a que pase a available..."
+              aws rds wait db-instance-available --db-instance-identifier "$RDS_IDENTIFIER"
+              echo "RDS lista."
+              ;;
+            *)
+              echo "::error::RDS en estado inesperado: $status. Abortar para no escalar ECS contra una base no lista."
+              exit 1
+              ;;
+          esac
+
+          final=$(aws rds describe-db-instances --db-instance-identifier "$RDS_IDENTIFIER" --query "DBInstances[0].DBInstanceStatus" --output text)
+          if [ "$final" != "available" ]; then
+            echo "::error::RDS quedo en estado $final tras el step. Abortando."
+            exit 1
           fi
 
       - name: Scale ECS to 1
