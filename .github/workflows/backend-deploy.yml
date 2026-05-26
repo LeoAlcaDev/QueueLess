@@ -64,18 +64,35 @@ jobs:
       # Reemplaza los placeholders del task-definition.json con valores
       # reales tomados de GitHub Variables. Generamos un archivo nuevo
       # para no ensuciar el checkout.
+      #
+      # IMPORTANTE: JWT_SECRET_ARN y DB_PASSWORD_ARN deben ser los ARN
+      # COMPLETOS con sufijo aleatorio (ej. `...jwt-secret-wjRUBe`). Salen de
+      # los outputs de Terraform `jwt_secret_arn` y `db_password_arn`. Pasar
+      # el ARN sin sufijo provoca un AccessDenied engañoso desde Fargate.
       - name: Render placeholders into task-definition.json
         env:
-          ACCOUNT_ID:   ${{ vars.AWS_ACCOUNT_ID }}
-          AWS_REGION:   ${{ vars.AWS_REGION }}
-          S3_BUCKET:    ${{ vars.S3_BUCKET }}
-          RDS_ENDPOINT: ${{ vars.RDS_ENDPOINT }}
+          ACCOUNT_ID:       ${{ vars.AWS_ACCOUNT_ID }}
+          AWS_REGION:       ${{ vars.AWS_REGION }}
+          S3_BUCKET:        ${{ vars.S3_BUCKET }}
+          RDS_ENDPOINT:     ${{ vars.RDS_ENDPOINT }}
+          JWT_SECRET_ARN:   ${{ vars.JWT_SECRET_ARN }}
+          DB_PASSWORD_ARN:  ${{ vars.DB_PASSWORD_ARN }}
         run: |
+          missing=()
+          [ -z "$JWT_SECRET_ARN" ]  && missing+=("JWT_SECRET_ARN")
+          [ -z "$DB_PASSWORD_ARN" ] && missing+=("DB_PASSWORD_ARN")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Faltan repository variables: ${missing[*]}"
+            echo "Obtenerlas con: terraform output -raw jwt_secret_arn  /  terraform output -raw db_password_arn"
+            exit 1
+          fi
           sed \
             -e "s|<ACCOUNT_ID>|$ACCOUNT_ID|g" \
             -e "s|<AWS_REGION>|$AWS_REGION|g" \
             -e "s|<S3_BUCKET>|$S3_BUCKET|g" \
             -e "s|<RDS_ENDPOINT>|$RDS_ENDPOINT|g" \
+            -e "s|<JWT_SECRET_ARN>|$JWT_SECRET_ARN|g" \
+            -e "s|<DB_PASSWORD_ARN>|$DB_PASSWORD_ARN|g" \
             .aws/task-definition.json > task-definition.rendered.json
           echo "--- rendered task definition ---"
           cat task-definition.rendered.json

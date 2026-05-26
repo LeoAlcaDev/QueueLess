@@ -38,6 +38,20 @@ output "rds_identifier" {
   value       = aws_db_instance.main.identifier
 }
 
+# ARN COMPLETO (con sufijo aleatorio `-xxxxxx`) de los secrets. Se debe pasar
+# este valor como GitHub Variable y referenciarlo desde la task definition,
+# porque Secrets Manager rechaza el ARN sin sufijo en `valueFrom` con un
+# AccessDenied/NotFound engañoso.
+output "jwt_secret_arn" {
+  description = "ARN completo del secret JWT (copiar a GitHub Variable JWT_SECRET_ARN)"
+  value       = aws_secretsmanager_secret.jwt_secret.arn
+}
+
+output "db_password_arn" {
+  description = "ARN completo del secret de DB password (copiar a GitHub Variable DB_PASSWORD_ARN)"
+  value       = aws_secretsmanager_secret.db_password.arn
+}
+
 output "s3_bucket" {
   description = "Nombre del bucket S3 de storage"
   value       = aws_s3_bucket.storage.bucket
