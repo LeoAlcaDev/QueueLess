@@ -1,6 +1,11 @@
 output "alb_dns_name" {
-  description = "Hostname publico del ALB (null si create_alb = false)"
-  value       = var.create_alb ? aws_lb.main[0].dns_name : null
+  description = "Hostname publico del ALB. Es la URL base de la API."
+  value       = aws_lb.main.dns_name
+}
+
+output "api_base_url" {
+  description = "URL base de la API (apunta al ALB)."
+  value       = "http://${aws_lb.main.dns_name}"
 }
 
 output "ecr_repository_url" {
@@ -19,12 +24,12 @@ output "ecs_service_name" {
 }
 
 output "ecs_task_family" {
-  description = "Family de la task definition"
+  description = "Family de la task definition (informativo)"
   value       = aws_ecs_task_definition.backend.family
 }
 
 output "rds_endpoint" {
-  description = "Endpoint privado de RDS"
+  description = "Endpoint privado de RDS (no enrutable desde Internet)"
   value       = aws_db_instance.main.address
 }
 
@@ -46,11 +51,4 @@ output "github_actions_role_arn" {
 output "aws_region" {
   description = "Region AWS"
   value       = var.aws_region
-}
-
-output "endpoint_hint" {
-  description = "Como acceder a la API segun el modo de ingress"
-  value = var.create_alb ? "http://${try(aws_lb.main[0].dns_name, "")}/" : (
-    "Sin ALB: corre 'pwsh infra/scripts/get-public-ip.ps1' para obtener la IP publica actual del task."
-  )
 }

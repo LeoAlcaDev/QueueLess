@@ -92,14 +92,6 @@ data "aws_iam_policy_document" "github_actions" {
   }
 
   statement {
-    sid    = "Ec2DescribeEni"
-    actions = [
-      "ec2:DescribeNetworkInterfaces",
-    ]
-    resources = ["*"]
-  }
-
-  statement {
     sid    = "PassExecAndTaskRoles"
     actions = ["iam:PassRole"]
     resources = [

@@ -1,5 +1,4 @@
 resource "aws_security_group" "alb" {
-  count       = var.create_alb ? 1 : 0
   name        = "${local.name}-alb-sg"
   description = "Permite HTTP publico al ALB"
   vpc_id      = aws_vpc.main.id
@@ -13,7 +12,7 @@ resource "aws_security_group" "alb" {
   }
 
   egress {
-    description = "Todo el trafico saliente"
+    description = "Todo el trafico saliente (forward al target group)"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -25,37 +24,23 @@ resource "aws_security_group" "alb" {
   }
 }
 
+# Tasks ECS: SOLO aceptan trafico del SG del ALB.
+# No tienen IP publica (viven en subnets privadas), salen a Internet via NAT GW.
 resource "aws_security_group" "ecs_tasks" {
   name        = "${local.name}-ecs-sg"
-  description = "Tasks ECS"
+  description = "Tasks ECS: solo aceptan trafico del ALB"
   vpc_id      = aws_vpc.main.id
 
-  # Con ALB: solo trafico del ALB.
-  # Sin ALB: HTTP abierto a Internet (es el endpoint de la API).
-  dynamic "ingress" {
-    for_each = var.create_alb ? [1] : []
-    content {
-      description     = "App port desde el ALB"
-      from_port       = 8080
-      to_port         = 8080
-      protocol        = "tcp"
-      security_groups = [aws_security_group.alb[0].id]
-    }
-  }
-
-  dynamic "ingress" {
-    for_each = var.create_alb ? [] : [1]
-    content {
-      description = "App port publico (sin ALB)"
-      from_port   = 8080
-      to_port     = 8080
-      protocol    = "tcp"
-      cidr_blocks = ["0.0.0.0/0"]
-    }
+  ingress {
+    description     = "App port desde el ALB"
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
   }
 
   egress {
-    description = "Salida a Internet (pulls de imagen, S3, Secrets, RDS, etc.)"
+    description = "Salida a Internet via NAT (pulls de imagen ECR, Secrets, S3, etc.)"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"

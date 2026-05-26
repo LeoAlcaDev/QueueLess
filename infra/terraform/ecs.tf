@@ -7,8 +7,8 @@ resource "aws_ecs_cluster" "main" {
   }
 }
 
-# Solo Fargate Spot por default: -70% del costo de Fargate. Para academico es
-# suficiente, las interrupciones de Spot ocurren poco y ECS las maneja.
+# Default a Fargate Spot: -70% del costo. Para academico aceptamos el riesgo
+# de interrupciones (~2 min downtime cuando AWS recupera la capacidad).
 resource "aws_ecs_cluster_capacity_providers" "main" {
   cluster_name       = aws_ecs_cluster.main.name
   capacity_providers = ["FARGATE", "FARGATE_SPOT"]
@@ -56,8 +56,6 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "FIREBASE_ENABLED",       value = "false" },
         { name = "DB_URL",                 value = "jdbc:postgresql://${aws_db_instance.main.address}:${aws_db_instance.main.port}/${aws_db_instance.main.db_name}" },
         { name = "DB_USERNAME",            value = aws_db_instance.main.username },
-        # Tuning JVM agresivo para task de 1 GiB: hard cap 700 MiB para dejar
-        # margen al container/agent.
         { name = "JAVA_OPTS",              value = "-XX:MaxRAMPercentage=70 -XX:+UseSerialGC -Xss512k" },
       ]
 
@@ -85,8 +83,7 @@ resource "aws_ecs_task_definition" "backend" {
     }
   ])
 
-  # Permitimos que el workflow de deploy reescriba la imagen sin que
-  # Terraform haga drift.
+  # El workflow de CD reescribe la imagen sin pasar por Terraform.
   lifecycle {
     ignore_changes = [container_definitions]
   }
@@ -98,7 +95,6 @@ resource "aws_ecs_service" "backend" {
   task_definition = aws_ecs_task_definition.backend.arn
   desired_count   = var.desired_count
 
-  # Spot por capacity provider (no se puede combinar con launch_type).
   capacity_provider_strategy {
     capacity_provider = "FARGATE_SPOT"
     weight            = 1
@@ -106,28 +102,25 @@ resource "aws_ecs_service" "backend" {
   }
 
   network_configuration {
-    subnets         = aws_subnet.public[*].id
-    security_groups = [aws_security_group.ecs_tasks.id]
-    # IP publica obligatoria sin NAT GW: la task necesita ruta al IGW para
-    # pull de ECR, Secrets Manager y S3.
-    assign_public_ip = true
+    # Subnets PRIVADAS (sin IP publica). Salida a Internet por NAT GW
+    # para pulls de ECR, Secrets Manager y S3.
+    subnets          = aws_subnet.private[*].id
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    assign_public_ip = false
   }
 
-  dynamic "load_balancer" {
-    for_each = var.create_alb ? [1] : []
-    content {
-      target_group_arn = aws_lb_target_group.backend[0].arn
-      container_name   = local.container_name
-      container_port   = local.container_port
-    }
+  load_balancer {
+    target_group_arn = aws_lb_target_group.backend.arn
+    container_name   = local.container_name
+    container_port   = local.container_port
   }
 
   deployment_minimum_healthy_percent = 0
   deployment_maximum_percent         = 200
-  health_check_grace_period_seconds  = var.create_alb ? 180 : 0
+  health_check_grace_period_seconds  = 180
 
-  # El workflow de CD y los scripts start/stop manipulan task_definition y
-  # desired_count: que Terraform los ignore para no pelearse con ellos.
+  # task_definition y desired_count los manipulan el workflow de CD y los
+  # scripts start/stop respectivamente: que Terraform los ignore.
   lifecycle {
     ignore_changes = [task_definition, desired_count]
   }

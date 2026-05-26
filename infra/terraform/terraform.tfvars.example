@@ -4,25 +4,19 @@ project     = "queueless"
 environment = "prod"
 aws_region  = "us-east-1"
 
-# Repo GitHub que podrá asumir el rol OIDC para deployar
+# Repo GitHub que podrá asumir el rol OIDC para deployar.
 # Si lo dejás vacío, no se crea el rol y deberás deployar manualmente.
 github_repo   = "CS2031-DBP/proyecto-1-queueless"
 github_branch = "main"
 
-# ---------- Optimización de costos (academic mode) ----------
-# Sin ALB: se ahorra ~$16/mes. La app queda accesible por la IP pública del
-# task de ECS. Esa IP cambia cada vez que ECS redeploye; el script
-# scripts/get-public-ip.ps1 la muestra. Subilo a true si querés un DNS estable.
-create_alb = false
-
-# desired_count = 0 arranca el servicio APAGADO. No cobra Fargate hasta que
-# corras scripts/start.ps1 (que lo escala a 1). Si querés que arranque ya
-# encendido, ponelo en 1.
-desired_count = 0
-
-# Task chica (mínimo Fargate). Spring Boot anda apretado pero corre.
+# Tamaño de la task Fargate.
+# 256 / 1024 es el mínimo viable para Spring Boot con UseSerialGC.
 container_cpu    = 256
 container_memory = 1024
+
+# 1 task corriendo por default. Los scripts/workflows start/stop manipulan
+# este valor en runtime; Terraform lo ignora luego del primer apply.
+desired_count = 1
 
 # RDS: free tier 12 meses cubre db.t4g.micro + 20 GB gp3.
 db_instance_class    = "db.t4g.micro"

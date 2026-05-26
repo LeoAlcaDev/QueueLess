@@ -1,11 +1,9 @@
 name: Power (start/stop demo)
 
-# Trigger manual desde la pestana Actions del repo. Sin auto-trigger.
-# Acciones disponibles:
-#   start  -> arranca RDS si esta stopped, escala ECS a 1, espera estabilidad,
-#             imprime la URL publica en el job summary
+# Trigger manual desde la pestana Actions del repo.
+#   start  -> arranca RDS si esta stopped, escala ECS a 1, imprime URL del ALB
 #   stop   -> escala ECS a 0, espera, detiene RDS
-#   status -> solo muestra el estado actual de RDS + ECS + URL (no toca nada)
+#   status -> muestra estado actual (no toca nada)
 on:
   workflow_dispatch:
     inputs:
@@ -19,7 +17,6 @@ on:
           - stop
           - status
 
-# Una sola operacion de power a la vez.
 concurrency:
   group: power
   cancel-in-progress: false
@@ -33,6 +30,7 @@ env:
   ECS_CLUSTER:     ${{ vars.ECS_CLUSTER }}
   ECS_SERVICE:     ${{ vars.ECS_SERVICE }}
   RDS_IDENTIFIER:  ${{ vars.RDS_IDENTIFIER }}
+  ALB_DNS:         ${{ vars.ALB_DNS }}
 
 jobs:
   power:
@@ -74,31 +72,15 @@ jobs:
       - name: Publish public URL
         if: inputs.action == 'start'
         run: |
-          set -e
-          task_arn=$(aws ecs list-tasks \
-            --cluster "$ECS_CLUSTER" --service-name "$ECS_SERVICE" \
-            --desired-status RUNNING --query "taskArns[0]" --output text)
-          if [ -z "$task_arn" ] || [ "$task_arn" = "None" ]; then
-            echo "No hay tasks corriendo." | tee -a "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
-          eni_id=$(aws ecs describe-tasks \
-            --cluster "$ECS_CLUSTER" --tasks "$task_arn" \
-            --query "tasks[0].attachments[0].details[?name=='networkInterfaceId'].value" \
-            --output text)
-          public_ip=$(aws ec2 describe-network-interfaces \
-            --network-interface-ids "$eni_id" \
-            --query "NetworkInterfaces[0].Association.PublicIp" --output text)
           {
             echo "## Demo encendida"
             echo ""
-            echo "- **API base**: http://${public_ip}:8080/"
-            echo "- **Health**:   http://${public_ip}:8080/actuator/health"
-            echo "- **Swagger**:  http://${public_ip}:8080/swagger-ui.html (solo en perfil dev)"
+            echo "- **API base**: http://${ALB_DNS}/"
+            echo "- **Health**:   http://${ALB_DNS}/actuator/health"
             echo ""
-            echo "_La IP cambia en cada redeploy o interrupcion de Spot. Volve a correr este workflow con \`status\` para reconsultarla._"
+            echo "_La URL del ALB es estable: no cambia entre redeploys ni interrupciones de Spot._"
           } >> "$GITHUB_STEP_SUMMARY"
-          echo "URL: http://${public_ip}:8080/"
+          echo "URL: http://${ALB_DNS}/"
 
       # ---------- STOP ----------
       - name: Scale ECS to 0
@@ -130,7 +112,7 @@ jobs:
             echo "- ECS service: \`$ECS_SERVICE\` -> desired_count = 0"
             echo "- RDS: \`$RDS_IDENTIFIER\` -> stopping (queda en estado \`stopped\` en ~2 min)"
             echo ""
-            echo "_Costo recurrente ahora ~\$0/mes (solo storage). AWS reinicia RDS automaticamente despues de 7 dias detenida._"
+            echo "_NAT GW y ALB siguen activos (~\$50/mes mientras existan). Para parar costos por completo: \`terraform destroy\`._"
           } >> "$GITHUB_STEP_SUMMARY"
 
       # ---------- STATUS (corre siempre, no toca nada) ----------
@@ -154,4 +136,5 @@ jobs:
             echo "| RDS | \`$rds_status\` |"
             echo "| ECS desired | $desired |"
             echo "| ECS running | $running |"
+            echo "| API URL | http://${ALB_DNS}/ |"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -16,13 +16,7 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
-# ---------- Subnets publicas ----------
-# Optimizacion de costo: no hay subnets privadas ni NAT Gateway. ECS y RDS
-# viven en subnets con ruta al IGW. ECS recibe IP publica (assign_public_ip).
-# La seguridad la dan los SG: el container solo acepta trafico del ALB (o de
-# la SG self-reference), y RDS solo acepta trafico de la SG de ECS.
-# RDS sigue con publicly_accessible = false, asi que su IP no es enrutable
-# desde Internet.
+# ---------- Subnets publicas (ALB + NAT GW) ----------
 resource "aws_subnet" "public" {
   count                   = length(local.azs)
   vpc_id                  = aws_vpc.main.id
@@ -53,4 +47,59 @@ resource "aws_route_table_association" "public" {
   count          = length(aws_subnet.public)
   subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
+}
+
+# ---------- Subnets privadas (ECS tasks + RDS) ----------
+resource "aws_subnet" "private" {
+  count             = length(local.azs)
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(var.vpc_cidr, 4, count.index + length(local.azs))
+  availability_zone = local.azs[count.index]
+
+  tags = {
+    Name = "${local.name}-private-${local.azs[count.index]}"
+    Tier = "private"
+  }
+}
+
+# Un solo NAT GW en la AZ-A (~$33/mes). Single point of failure si cae esa AZ,
+# pero para academico esta OK. Para HA real serian 2 NAT GW, uno por AZ.
+resource "aws_eip" "nat" {
+  domain = "vpc"
+
+  tags = {
+    Name = "${local.name}-nat-eip"
+  }
+
+  depends_on = [aws_internet_gateway.main]
+}
+
+resource "aws_nat_gateway" "main" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id
+
+  tags = {
+    Name = "${local.name}-nat"
+  }
+
+  depends_on = [aws_internet_gateway.main]
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.main.id
+  }
+
+  tags = {
+    Name = "${local.name}-private-rt"
+  }
+}
+
+resource "aws_route_table_association" "private" {
+  count          = length(aws_subnet.private)
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
 }

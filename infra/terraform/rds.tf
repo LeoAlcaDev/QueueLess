@@ -6,15 +6,15 @@ resource "random_password" "db" {
 
 resource "aws_db_subnet_group" "main" {
   name       = "${local.name}-db-subnets"
-  subnet_ids = aws_subnet.public[*].id
+  subnet_ids = aws_subnet.private[*].id
 
   tags = {
     Name = "${local.name}-db-subnets"
   }
 }
 
-# RDS en subnets publicas pero con publicly_accessible = false: la SG y la
-# ausencia de IP publica garantizan que solo ECS pueda hablarle.
+# RDS en subnets PRIVADAS (sin ruta al IGW), publicly_accessible = false.
+# Solo accesible desde dentro de la VPC y solo por el SG de ECS.
 resource "aws_db_instance" "main" {
   identifier             = "${local.name}-db"
   engine                 = "postgres"

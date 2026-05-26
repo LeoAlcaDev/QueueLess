@@ -2,6 +2,10 @@ resource "aws_ecr_repository" "backend" {
   name                 = "${var.project}-backend"
   image_tag_mutability = "MUTABLE"
 
+  # force_delete = true permite que terraform destroy borre el repo aunque
+  # tenga imagenes. Util para academico donde recreamos infra a menudo.
+  force_delete = true
+
   image_scanning_configuration {
     scan_on_push = true
   }
