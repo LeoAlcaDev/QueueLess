@@ -3,6 +3,7 @@ package pe.edu.utec.queueless.auth.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -43,8 +44,10 @@ public class AuthService {
 
         perfilService.crearPerfilesParaRoles(usuario, usuario.getRoles());
 
-        String token = jwtService.generateToken(userDetailsService.loadUserByUsername(usuario.getEmail()));
-        return buildResponse(token, usuario);
+        UserDetails userDetails = userDetailsService.loadUserByUsername(usuario.getEmail());
+        String accessToken = jwtService.generateAccessToken(userDetails, usuario.getId(), usuario.getRoles());
+        String refreshToken = jwtService.generateRefreshToken(userDetails);
+        return buildResponse(accessToken, refreshToken, usuario);
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -52,13 +55,16 @@ public class AuthService {
             new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail()).orElseThrow();
-        String token = jwtService.generateToken(userDetailsService.loadUserByUsername(usuario.getEmail()));
-        return buildResponse(token, usuario);
+        UserDetails userDetails = userDetailsService.loadUserByUsername(usuario.getEmail());
+        String accessToken = jwtService.generateAccessToken(userDetails, usuario.getId(), usuario.getRoles());
+        String refreshToken = jwtService.generateRefreshToken(userDetails);
+        return buildResponse(accessToken, refreshToken, usuario);
     }
 
-    private AuthResponse buildResponse(String token, Usuario usuario) {
+    private AuthResponse buildResponse(String accessToken, String refreshToken, Usuario usuario) {
         return AuthResponse.builder()
-            .token(token)
+            .accessToken(accessToken)
+            .refreshToken(refreshToken)
             .usuarioId(usuario.getId())
             .email(usuario.getEmail())
             .nombreCompleto(usuario.getNombreCompleto())

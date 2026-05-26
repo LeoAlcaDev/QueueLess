@@ -36,9 +36,6 @@ public class JwtService {
     @Value("${queueless.jwt.secret}")
     private String secret;
 
-    @Value("${queueless.jwt.expiration-ms}")
-    private long expirationMs;
-
     @Value("${queueless.jwt.access-expiration-ms}")
     private long accessExpirationMs;
 
@@ -74,15 +71,6 @@ public class JwtService {
         Map<String, Object> claims = new HashMap<>();
         claims.put(CLAIM_TYPE, TYPE_REFRESH);
         return construirToken(claims, userDetails.getUsername(), refreshExpirationMs);
-    }
-
-    /**
-     * @deprecated Reemplazado por {@link #generateAccessToken} y
-     * {@link #generateRefreshToken}. Se elimina al migrar el login y el registro.
-     */
-    @Deprecated
-    public String generateToken(UserDetails userDetails) {
-        return construirToken(new HashMap<>(), userDetails.getUsername(), expirationMs);
     }
 
     private String construirToken(Map<String, Object> claims, String subject, long expiracionMs) {

@@ -71,7 +71,7 @@ class PerfilFlowIT extends AbstractIntegrationTest {
 
         // Assert
         Long usuarioId = response.getUsuarioId();
-        assertThat(response.getToken()).isNotBlank();
+        assertThat(response.getAccessToken()).isNotBlank();
         assertThat(perfilClienteRepository.existsById(usuarioId)).isTrue();
         assertThat(perfilRepartidorRepository.existsById(usuarioId)).isTrue();
         assertThat(perfilComercioRepository.existsById(usuarioId)).isFalse();
