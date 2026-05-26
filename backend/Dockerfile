@@ -3,7 +3,10 @@ FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
-RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
+# Normaliza CRLF -> LF en mvnw. Cuando se chequea el repo en Windows, git
+# convierte los line endings y dentro del container Alpine el shebang queda
+# roto ("#!/bin/sh\r"), provocando "./mvnw: not found".
+RUN sed -i 's/\r$//' mvnw && chmod +x mvnw && ./mvnw dependency:go-offline -B
 COPY src src
 RUN ./mvnw -B clean package -DskipTests
 

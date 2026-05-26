@@ -168,6 +168,7 @@ sólo por ese repo desde la rama `main`. Configurá en GitHub
 | `ECS_CONTAINER_NAME` | `backend` |
 | `S3_BUCKET` | output `s3_bucket` |
 | `RDS_ENDPOINT` | output `rds_endpoint` |
+| `RDS_IDENTIFIER` | output `rds_identifier` (lo usa el workflow Power) |
 
 El workflow renderiza `.aws/task-definition.json` reemplazando los
 placeholders (`<ACCOUNT_ID>`, `<AWS_REGION>`, `<S3_BUCKET>`,
@@ -176,7 +177,24 @@ definition. Si cambiás env vars, secrets o la imagen base, editás el JSON
 y commiteás — no hace falta `terraform apply`.
 
 Con `desired_count = 0`, el workflow registra la nueva task definition pero
-no levanta tasks hasta que vos corrás `start.ps1`.
+no levanta tasks hasta que vos corrás `start.ps1` o el workflow Power (ver
+abajo).
+
+### Encender/apagar desde GitHub (sin abrir nada local)
+
+Hay un segundo workflow, **Power (start/stop demo)**, que se dispara manualmente
+desde la pestaña **Actions** del repo:
+
+1. GitHub → tu repo → **Actions** → en el sidebar elegí **Power (start/stop demo)**.
+2. Botón **Run workflow** (arriba a la derecha).
+3. Dropdown **Que hacer**:
+   - `start` — arranca RDS si está stopped, escala ECS a 1, imprime la URL pública en el job summary.
+   - `stop` — escala ECS a 0, detiene RDS. Vuelve a costo ~$0.
+   - `status` — solo muestra el estado actual de RDS y ECS, no toca nada.
+4. Click **Run workflow**.
+5. Click en el run que aparece en la lista → al final, en la sección **Summary**, vas a ver la URL del task (o el estado).
+
+Es equivalente a los scripts `start.ps1` / `stop.ps1` pero sin abrir terminal.
 
 ## Cómo "prender" el ALB on-demand
 

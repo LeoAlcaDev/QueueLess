@@ -80,6 +80,25 @@ data "aws_iam_policy_document" "github_actions" {
     resources = ["*"]
   }
 
+  # Permisos para el workflow "Power" (start/stop manual desde GitHub).
+  statement {
+    sid    = "RdsPower"
+    actions = [
+      "rds:DescribeDBInstances",
+      "rds:StartDBInstance",
+      "rds:StopDBInstance",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "Ec2DescribeEni"
+    actions = [
+      "ec2:DescribeNetworkInterfaces",
+    ]
+    resources = ["*"]
+  }
+
   statement {
     sid    = "PassExecAndTaskRoles"
     actions = ["iam:PassRole"]
