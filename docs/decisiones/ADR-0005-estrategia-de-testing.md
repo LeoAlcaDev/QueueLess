@@ -107,7 +107,7 @@ Por convención, Surefire toma `*Test.java` y Failsafe toma `*IT.java`. Eso nos 
 
 **NO se testea (decisión consciente):**
 
-- Controllers REST que solo delegan al service. Si el service ya tiene test, testear el controller es redundante. La excepción es cuando hay lógica de extracción del SecurityContext o transformación de DTOs no trivial.
+- Controllers REST que solo delegan al service, **a nivel de lógica de negocio**: si el service ya tiene test, repetir esa lógica en el controller es redundante. Lo que sí cubrimos (desde el Issue #9) es el **contrato HTTP** del controller —código de estado y autorización por rol— con MockMvc, que es justo la excepción que ya mencionaba este punto (extracción del `SecurityContext`). Ver «Actualización — Issue #9».
 - Getters y setters generados por Lombok.
 - Configuraciones de Spring (`@Configuration` beans), porque el smoke test ya valida que cargan.
 - Llamadas a librerías externas (Firebase, MercadoPago) que están detrás de adapters. Lo que sí testeamos es nuestro código contra una implementación mock del adapter.
@@ -124,7 +124,30 @@ H2 es una base de datos Java en memoria, mucho más rápida que levantar un Post
 
 ### Alternativa 3 — Test slices de Spring (`@DataJpaTest`, `@WebMvcTest`)
 
-Spring Boot ofrece anotaciones que arrancan solo un "slice" del contexto: `@DataJpaTest` arranca solo JPA, `@WebMvcTest` arranca solo MVC. Son útiles para tests aislados de capas específicas. Decidimos NO usarlos por default, sino preferir tests unitarios puros (sin Spring) cuando se puede, y tests de integración completos cuando hace falta DB real. Los slices están a mitad de camino y agregan complejidad sin un beneficio claro para nuestro caso. Los podemos adoptar puntualmente si en algún test específico vemos que ayudan.
+Spring Boot ofrece anotaciones que arrancan solo un "slice" del contexto: `@DataJpaTest` arranca solo JPA, `@WebMvcTest` arranca solo MVC. Son útiles para tests aislados de capas específicas. Decidimos NO usarlos por default, sino preferir tests unitarios puros (sin Spring) cuando se puede, y tests de integración completos cuando hace falta DB real. Los slices están a mitad de camino y agregan complejidad sin un beneficio claro para nuestro caso. Los podemos adoptar puntualmente si en algún test específico vemos que ayudan. **Ver «Actualización — Issue #9».**
+
+## Actualización — Issue #9 (adopción de slices de repositorio y tests de controlador)
+
+La Alternativa 3 dejó la puerta abierta a adoptar slices "puntualmente si en algún test
+específico vemos que ayudan". En el Issue #9 la cruzamos, con dos adopciones concretas:
+
+- **Tests de repositorio con `@DataJpaTest`.** Para los repositorios con queries
+  personalizadas (finders derivados y `@Query`), un slice de JPA contra el Postgres real de
+  TestContainers es la herramienta justa: arranca solo la capa de persistencia, deja que
+  Flyway construya el schema (`replace = NONE`) y verifica las consultas sin levantar el
+  contexto completo. Viven en `*RepositoryIT.java`, heredan de `AbstractRepositoryTest` y
+  siguen siendo `*IT` (corren en `verify`, no en `test`) porque dependen de Docker.
+
+- **Tests de contrato de controlador con MockMvc.** Para validar el contrato HTTP —códigos
+  de estado, cuerpos y autorización por rol— usamos MockMvc sobre `@SpringBootTest`
+  (`@AutoConfigureMockMvc`), no `@WebMvcTest`. Elegimos el contexto completo a propósito:
+  así la cadena de seguridad real interviene y un `@WithMockUser` con el rol equivocado da
+  un 403 de verdad, cosa que un slice de MVC con la seguridad mockeada no probaría con
+  fidelidad. Viven en `*MockMvcIT.java`.
+
+Lo que seguimos sin adoptar: `@WebMvcTest` (preferimos el contexto completo por la seguridad)
+y H2 (sigue vigente la Alternativa 2: TestContainers da el mismo Postgres que producción).
+La pirámide no cambia de forma; ganamos dos capas intermedias bien delimitadas.
 
 ## Consecuencias
 
