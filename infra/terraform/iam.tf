@@ -24,10 +24,14 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_managed" {
 #
 # Importante: Secrets Manager le agrega al ARN un sufijo aleatorio de 6
 # caracteres (p.ej. `...jwt-secret-wjRUBe`). La task-definition referencia
-# los secretos por el ARN "corto" (sin sufijo) para no tener que conocer
-# el sufijo en tiempo de render; ECS pasa ese ARN literal a IAM, y IAM lo
-# evalua como string. Por eso autorizamos con wildcard al final del nombre:
-# cubre tanto el ARN corto como el largo.
+# los secretos por el ARN COMPLETO con sufijo (no por el corto sin sufijo:
+# eso provoca un "AccessDenied" engañoso desde Fargate porque Secrets Manager
+# evalua el ARN literal y no existe ningun recurso con esa forma).
+#
+# Aca usamos `-*` despues del nombre del secret en lugar del `.arn` directo
+# por dos razones: (1) sobrevive a una recreacion del secret (el sufijo
+# cambiaria), y (2) evita un ciclo en el plan cuando Terraform crea el
+# secret y la policy en el mismo apply.
 data "aws_iam_policy_document" "ecs_execution_secrets" {
   statement {
     actions = [
@@ -35,8 +39,8 @@ data "aws_iam_policy_document" "ecs_execution_secrets" {
       "secretsmanager:DescribeSecret",
     ]
     resources = [
-      "arn:aws:secretsmanager:${var.aws_region}:${local.account_id}:secret:${aws_secretsmanager_secret.jwt_secret.name}*",
-      "arn:aws:secretsmanager:${var.aws_region}:${local.account_id}:secret:${aws_secretsmanager_secret.db_password.name}*",
+      "arn:aws:secretsmanager:${var.aws_region}:${local.account_id}:secret:${aws_secretsmanager_secret.jwt_secret.name}-*",
+      "arn:aws:secretsmanager:${var.aws_region}:${local.account_id}:secret:${aws_secretsmanager_secret.db_password.name}-*",
     ]
   }
 }
