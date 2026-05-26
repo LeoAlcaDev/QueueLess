@@ -68,6 +68,21 @@ temp/
 # ---------- Uploads locales (fotos de productos en dev) ----------
 uploads/
 
+# ---------- Terraform ----------
+**/.terraform/
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/terraform.tfvars
+**/*.tfvars
+!**/terraform.tfvars.example
+**/.terraform.lock.hcl
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
 # -------Contexto Propio ----------
 QueueLess_Estado_del_Proyecto.md
 
