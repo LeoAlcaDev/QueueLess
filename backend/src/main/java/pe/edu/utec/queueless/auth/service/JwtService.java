@@ -106,15 +106,6 @@ public class JwtService {
         return tipo == null ? null : tipo.toString();
     }
 
-    public boolean isTokenValid(String token, UserDetails userDetails) {
-        String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isExpired(token);
-    }
-
-    private boolean isExpired(String token) {
-        return extractClaim(token, Claims::getExpiration).before(new Date());
-    }
-
     private <T> T extractClaim(String token, Function<Claims, T> resolver) {
         return resolver.apply(parseClaims(token));
     }
