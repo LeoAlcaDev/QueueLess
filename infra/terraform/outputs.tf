@@ -52,6 +52,11 @@ output "db_password_arn" {
   value       = aws_secretsmanager_secret.db_password.arn
 }
 
+output "mail_password_arn" {
+  description = "ARN completo del secret de SMTP password (copiar a GitHub Variable MAIL_PASSWORD_ARN)"
+  value       = aws_secretsmanager_secret.mail_password.arn
+}
+
 output "s3_bucket" {
   description = "Nombre del bucket S3 de storage"
   value       = aws_s3_bucket.storage.bucket

@@ -71,19 +71,21 @@ jobs:
       # el ARN sin sufijo provoca un AccessDenied engañoso desde Fargate.
       - name: Render placeholders into task-definition.json
         env:
-          ACCOUNT_ID:       ${{ vars.AWS_ACCOUNT_ID }}
-          AWS_REGION:       ${{ vars.AWS_REGION }}
-          S3_BUCKET:        ${{ vars.S3_BUCKET }}
-          RDS_ENDPOINT:     ${{ vars.RDS_ENDPOINT }}
-          JWT_SECRET_ARN:   ${{ vars.JWT_SECRET_ARN }}
-          DB_PASSWORD_ARN:  ${{ vars.DB_PASSWORD_ARN }}
+          ACCOUNT_ID:        ${{ vars.AWS_ACCOUNT_ID }}
+          AWS_REGION:        ${{ vars.AWS_REGION }}
+          S3_BUCKET:         ${{ vars.S3_BUCKET }}
+          RDS_ENDPOINT:      ${{ vars.RDS_ENDPOINT }}
+          JWT_SECRET_ARN:    ${{ vars.JWT_SECRET_ARN }}
+          DB_PASSWORD_ARN:   ${{ vars.DB_PASSWORD_ARN }}
+          MAIL_PASSWORD_ARN: ${{ vars.MAIL_PASSWORD_ARN }}
         run: |
           missing=()
-          [ -z "$JWT_SECRET_ARN" ]  && missing+=("JWT_SECRET_ARN")
-          [ -z "$DB_PASSWORD_ARN" ] && missing+=("DB_PASSWORD_ARN")
+          [ -z "$JWT_SECRET_ARN" ]    && missing+=("JWT_SECRET_ARN")
+          [ -z "$DB_PASSWORD_ARN" ]   && missing+=("DB_PASSWORD_ARN")
+          [ -z "$MAIL_PASSWORD_ARN" ] && missing+=("MAIL_PASSWORD_ARN")
           if [ ${#missing[@]} -gt 0 ]; then
             echo "::error::Faltan repository variables: ${missing[*]}"
-            echo "Obtenerlas con: terraform output -raw jwt_secret_arn  /  terraform output -raw db_password_arn"
+            echo "Obtenerlas con: terraform output -raw jwt_secret_arn  /  terraform output -raw db_password_arn  /  terraform output -raw mail_password_arn"
             exit 1
           fi
           sed \
@@ -93,6 +95,7 @@ jobs:
             -e "s|<RDS_ENDPOINT>|$RDS_ENDPOINT|g" \
             -e "s|<JWT_SECRET_ARN>|$JWT_SECRET_ARN|g" \
             -e "s|<DB_PASSWORD_ARN>|$DB_PASSWORD_ARN|g" \
+            -e "s|<MAIL_PASSWORD_ARN>|$MAIL_PASSWORD_ARN|g" \
             .aws/task-definition.json > task-definition.rendered.json
           echo "--- rendered task definition ---"
           cat task-definition.rendered.json

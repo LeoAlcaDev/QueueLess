@@ -41,6 +41,7 @@ data "aws_iam_policy_document" "ecs_execution_secrets" {
     resources = [
       "arn:aws:secretsmanager:${var.aws_region}:${local.account_id}:secret:${aws_secretsmanager_secret.jwt_secret.name}-*",
       "arn:aws:secretsmanager:${var.aws_region}:${local.account_id}:secret:${aws_secretsmanager_secret.db_password.name}-*",
+      "arn:aws:secretsmanager:${var.aws_region}:${local.account_id}:secret:${aws_secretsmanager_secret.mail_password.name}-*",
     ]
   }
 }
