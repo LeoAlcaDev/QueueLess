@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.edu.utec.queueless.auth.dto.AuthResponse;
 import pe.edu.utec.queueless.auth.dto.LoginRequest;
+import pe.edu.utec.queueless.auth.dto.RefreshTokenRequest;
 import pe.edu.utec.queueless.auth.dto.RegisterRequest;
 import pe.edu.utec.queueless.auth.service.AuthService;
 import pe.edu.utec.queueless.shared.dto.ApiResponse;
@@ -28,5 +29,10 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(authService.login(request)));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<AuthResponse>> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(authService.refresh(request)));
     }
 }
