@@ -17,7 +17,9 @@ Equipo de 2, autorizado por excepción de la directiva del curso.
 
 - [Estructura del repositorio](#estructura-del-repositorio)
 - [¿Qué es esto y cómo está organizado?](#qué-es-esto-y-cómo-está-organizado)
+- [Descripción de la Solución](#descripción-de-la-solución)
 - [Decisiones de diseño (ADRs)](#decisiones-de-diseño-adrs)
+- [Eventos y Asincronía](#eventos-y-asincronía)
 - [Cómo arrancar en local](#cómo-arrancar-en-local)
 - [Cronograma de entrega](#cronograma-de-entrega)
 - [Convenciones del proyecto](#convenciones-del-proyecto)
@@ -49,6 +51,24 @@ QueueLess es un sistema con tres clientes (web del comercio, app móvil del clie
 **El frontend web** (`web/`) está pensado para el panel del comercio: cola de pedidos, marcar como listo, gestionar productos. **La app móvil** (`mobile/`) sirve a clientes (hacer pedidos) y repartidores (aceptar entregas). Ambas apps se construyen sobre el contrato OpenAPI que el backend genera automáticamente (ver [ADR-0004](docs/decisiones/ADR-0004-swagger-openapi.md)).
 
 **La carpeta `docs/`** contiene la documentación viva del proyecto. La subcarpeta más importante es `docs/decisiones/`, que tiene los ADRs.
+
+## Descripción de la Solución
+
+QueueLess es una plataforma para pre-ordenar comida en los puntos de venta del campus de UTEC. Tres tipos de usuario conviven en el mismo backend (`cliente`, `comercio`, `repartidor`), cada uno con su perfil y sus permisos. El flujo principal es: el cliente arma su pedido en la app, paga por la pasarela, el local lo prepara, y se entrega — sea por recojo en tienda o por delivery interno entre compañeros que ganan **QueuePoints** por ayudar.
+
+Sobre ese flujo, el sistema cubre los siguientes aspectos transversales:
+
+- **Pedidos con máquina de estados.** Cada `Pedido` recorre estados explícitos (`PENDIENTE_PAGO → PAGADO_… → ACEPTADO → EN_PREPARACION → LISTO → ENTREGADO`) con transiciones validadas. Cualquier cambio dispara un evento de dominio que los demás módulos escuchan (ver [ADR-0009](docs/decisiones/ADR-0009-eventos-de-dominio.md)).
+- **Pagos.** Integración con MercadoPago en sandbox, con webhook idempotente y posibilidad de reembolso ante cancelación. La pasarela está abstraída detrás de un puerto para poder cambiarla sin tocar el dominio.
+- **Delivery.** Si el pedido es DELIVERY, se levanta una `SolicitudDeliveryEvento` que los repartidores disponibles ven por push; cuando alguien la toma, el pedido pasa a `ACEPTADO_POR_REPARTIDOR`. Si nadie la toma en 4 minutos, el cliente puede cambiar a recojo en tienda.
+- **QueuePoints como ledger.** Los puntos no se guardan como saldo sino como movimientos (`GANADO`, `CANJEADO`), idempotentes por referencia al evento que los generó.
+- **Notificaciones por dos canales complementarios.**
+  - **Push (FCM)** es la vía principal. Llega al instante a la app móvil del cliente y del repartidor, y cubre todas las transiciones del pedido (ver [ADR-0016](docs/decisiones/ADR-0016-notificaciones-push-firebase.md)).
+  - **Email transaccional** lo suma para dos comunicaciones formales que el usuario espera tener en su buzón: la **confirmación de registro** y el **recibo del pedido entregado** (items, total, fecha). El correo es complementario, no reemplaza al push: se manda asíncrono, es best-effort, y si SMTP no está configurado o falla, el flujo del negocio (registro o entrega) sigue normal (ver [ADR-0021](docs/decisiones/ADR-0021-email-complementario-al-push.md)).
+- **Tiempos de espera (diferenciador técnico).** Predicción de espera en dos fases: fórmula manual hasta acumular datos, y modelo entrenable después.
+- **Despliegue en AWS.** Backend en ECS Fargate, base en RDS PostgreSQL, secretos en Secrets Manager. Detalle completo en [`infra/README.md`](infra/README.md).
+
+El backend está pensado para que cada uno de estos aspectos pueda evolucionar de forma independiente: los pedidos no conocen FCM ni SMTP, las notificaciones no conocen MercadoPago, los puntos no conocen el flujo de pedidos. Todo se coordina por eventos (próxima sección).
 
 ## Decisiones de diseño (ADRs)
 
@@ -100,6 +120,50 @@ Todos los ADRs están escritos en **tono semiformal hablado**, en primera person
 | [0008](docs/decisiones/ADR-0008-ledger-pattern-queuepoints.md) | Ledger pattern para QueuePoints | Por qué no guardamos saldo, guardamos movimientos |
 | [0009](docs/decisiones/ADR-0009-eventos-de-dominio.md) | Eventos de dominio con `ApplicationEventPublisher` | Cómo se comunican los módulos sin acoplarse |
 | [0010](docs/decisiones/ADR-0010-postgres-puerto-y-env.md) | Postgres en puerto 5467 y configuración con `.env` | Por qué no usamos el puerto 5432 |
+| [0016](docs/decisiones/ADR-0016-notificaciones-push-firebase.md) | Notificaciones push con Firebase Cloud Messaging | Canal principal de avisos al cliente y al repartidor |
+| [0021](docs/decisiones/ADR-0021-email-complementario-al-push.md) | Email transaccional complementario al push | Por qué bienvenida y recibo van por correo y no reemplazan al push |
+| [0022](docs/decisiones/ADR-0022-versionado-api-v1-y-autorizacion-por-metodo.md) | Versionado API v1 y autorización por método | Cómo congelamos el contrato público y dónde van los `@PreAuthorize` |
+
+## Eventos y Asincronía
+
+QueueLess usa **eventos de dominio sincrónicos transaccionales** (`ApplicationEventPublisher` + `@TransactionalEventListener` en fase `AFTER_COMMIT` + `@Async("queuelessTaskExecutor")`) para conectar el módulo que tira el evento con todos los que reaccionan, sin acoplarlos directamente. La racional completa vive en [ADR-0009](docs/decisiones/ADR-0009-eventos-de-dominio.md); acá un resumen práctico de qué se dispara y quién escucha.
+
+### Bus de eventos
+
+Hay dos eventos principales hoy:
+
+| Evento | Quién lo publica | Cuándo |
+|---|---|---|
+| `PedidoEstadoCambiadoEvent` | `PedidoService.cambiarEstado` (y la creación inicial) | Cualquier transición del pedido. Trae `pedidoId`, `estadoAnterior`, `estadoNuevo` |
+| `UsuarioRegistradoEvent` | `AuthService.register` | Al final de un alta exitosa. Trae el `usuarioId` |
+
+### Listeners registrados
+
+Todos los listeners corren en el `queuelessTaskExecutor` (4 threads core, 16 máx, cola 100, ver [`AsyncConfig`](backend/src/main/java/pe/edu/utec/queueless/config/AsyncConfig.java)). Eso garantiza que el thread HTTP responde rápido y los efectos derivados pasan en background.
+
+| Listener | Evento que escucha | Acción | Canal |
+|---|---|---|---|
+| `PedidoNotificationListener` | `PedidoEstadoCambiadoEvent` | Push al cliente según el estado nuevo (catálogo de mensajes en `MensajesPedidoCatalogo`) | **Push (FCM)** |
+| `EntregaCompletadaListener` | `PedidoEstadoCambiadoEvent` (filtra `ENTREGADO` + delivery) | Registra movimiento `GANADO` de QueuePoints al repartidor | Interno |
+| `PagoListener` | `PedidoEstadoCambiadoEvent` (filtra cancelaciones desde estado pagado) | Inicia reembolso vía la pasarela | Externo |
+| `CrearSolicitudDeliveryListener` | `PedidoEstadoCambiadoEvent` (filtra `PAGADO_BUSCANDO_REPARTIDOR` + delivery) | Crea la solicitud y avisa al pool de repartidores | Interno + Push |
+| `PedidoEntregadoEmailListener` | `PedidoEstadoCambiadoEvent` (filtra `ENTREGADO`) | Manda el recibo al buzón del cliente (items, total, fecha) | **Email** |
+| `UsuarioRegistradoEmailListener` | `UsuarioRegistradoEvent` | Manda el correo de bienvenida | **Email** |
+
+### Canales de comunicación con el usuario
+
+Sobre el bus, el sistema se comunica con el usuario por dos canales **complementarios**:
+
+- **Push (Firebase Cloud Messaging)** — canal principal, en tiempo real, cubre todas las transiciones del pedido. Es la mejor UX para mobile y el medio que el cliente y el repartidor consumen en el momento. Si FCM no está configurado en producción, el backend corta el arranque (`fail-fast`, ver [ADR-0016](docs/decisiones/ADR-0016-notificaciones-push-firebase.md)).
+- **Email transaccional (SMTP)** — canal complementario, asincrónico, best-effort. Solo se usa para las dos comunicaciones formales que el usuario espera tener archivadas en su buzón: **confirmación de registro** y **recibo del pedido entregado** (items, total, fecha). Si SMTP no está configurado (caso default en dev y test), el `EmailService` se autodeshabilita y deja un `INFO` con prefijo `[EMAIL DEV]` en el log. Si SMTP falla por una razón transitoria, queda un `WARN` y el flujo del negocio (registro o entrega del pedido) sigue normal. La racional completa, incluyendo por qué no reemplazamos push por email y por qué no usamos Thymeleaf para los templates, vive en [ADR-0021](docs/decisiones/ADR-0021-email-complementario-al-push.md).
+
+Las dos fachadas (`NotificationService` para push, `EmailService` para correo) resuelven sus adapters con `ObjectProvider`, lo que les permite estar deshabilitadas en dev/test sin que el resto del sistema se entere. El código que dispara el evento es idéntico con o sin notificaciones reales activadas; solo cambia si el aviso sale por el cable o queda en el log.
+
+### Garantías
+
+- **AFTER_COMMIT.** Los listeners corren *después* de que la transacción que tiró el evento se commiteó. Si la transacción falla, los listeners no se ejecutan: nunca mandamos un recibo de un pedido que se rolloeó.
+- **Best-effort por canal.** Una falla del canal externo (FCM caído, SMTP rebotando) no rompe el flujo del negocio. Los errores quedan en el log para revisarlos.
+- **Sin orden garantizado entre listeners.** Cada listener es independiente; no hay dependencias entre lo que hace `PedidoNotificationListener` y lo que hace `PedidoEntregadoEmailListener`.
 
 ## Cómo arrancar en local
 
