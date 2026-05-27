@@ -54,7 +54,7 @@ class EmailServiceTest {
 
     @Test
     @DisplayName("envía la bienvenida con HTML y escapa el nombre del usuario")
-    void enviaBienvenidaConEscapadoXss() throws Exception {
+    void shouldEscapeNombreWhenSendingBienvenida() throws Exception {
         when(mailSenderProvider.getIfAvailable()).thenReturn(mailSender);
         when(mailSender.createMimeMessage()).thenReturn(nuevoMimeMessage());
 
@@ -70,7 +70,7 @@ class EmailServiceTest {
 
     @Test
     @DisplayName("envía el recibo con items, total y código del pedido")
-    void enviaReciboConDetalleDelPedido() throws Exception {
+    void shouldSendReciboWithDetalleWhenEnabled() throws Exception {
         when(mailSenderProvider.getIfAvailable()).thenReturn(mailSender);
         when(mailSender.createMimeMessage()).thenReturn(nuevoMimeMessage());
 
@@ -88,7 +88,7 @@ class EmailServiceTest {
 
     @Test
     @DisplayName("queda deshabilitado y no toca al sender si no hay bean configurado")
-    void deshabilitadoCuandoNoHaySender() {
+    void shouldNotSendWhenSenderUnavailable() {
         when(mailSenderProvider.getIfAvailable()).thenReturn(null);
 
         emailService.sendBienvenida(usuario("Ana"));
@@ -99,7 +99,7 @@ class EmailServiceTest {
 
     @Test
     @DisplayName("una falla transitoria del SMTP no rompe el flujo de quien dispara el evento")
-    void noPropagaErrorDeSmtp() {
+    void shouldNotPropagateErrorWhenSmtpFails() {
         when(mailSenderProvider.getIfAvailable()).thenReturn(mailSender);
         when(mailSender.createMimeMessage()).thenReturn(nuevoMimeMessage());
         doThrow(new MailSendException("smtp caido"))
