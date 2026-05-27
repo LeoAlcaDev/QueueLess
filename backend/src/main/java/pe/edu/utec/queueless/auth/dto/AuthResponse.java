@@ -11,7 +11,8 @@ import java.util.Set;
 @Builder
 @AllArgsConstructor
 public class AuthResponse {
-    private final String token;
+    private final String accessToken;
+    private final String refreshToken;
     private final Long usuarioId;
     private final String email;
     private final String nombreCompleto;

@@ -31,14 +31,15 @@ class AuthControllerIT extends AbstractIntegrationTest {
         {"email":"%s","password":"password123","nombreCompleto":"Usuario Test","roles":["CLIENTE"]}""";
 
     @Test
-    @DisplayName("registrar un usuario valido devuelve 201 y un token")
-    void shouldRegisterAndReturnTokenWhenValid() throws Exception {
+    @DisplayName("registrar un usuario valido devuelve 201 y los tokens")
+    void shouldRegisterAndReturnTokensWhenValid() throws Exception {
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(REGISTRO.formatted("nuevo@utec.edu.pe")))
             .andExpect(status().isCreated())
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.data.token").isNotEmpty())
+            .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
+            .andExpect(jsonPath("$.data.refreshToken").isNotEmpty())
             .andExpect(jsonPath("$.data.email").value("nuevo@utec.edu.pe"));
     }
 
@@ -66,8 +67,8 @@ class AuthControllerIT extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("login con credenciales correctas devuelve 200 y un token")
-    void shouldLoginAndReturnTokenWhenCredentialsValid() throws Exception {
+    @DisplayName("login con credenciales correctas devuelve 200 y los tokens")
+    void shouldLoginAndReturnTokensWhenCredentialsValid() throws Exception {
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(REGISTRO.formatted("login.ok@utec.edu.pe")))
@@ -77,7 +78,8 @@ class AuthControllerIT extends AbstractIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"login.ok@utec.edu.pe\",\"password\":\"password123\"}"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.token").isNotEmpty());
+            .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
+            .andExpect(jsonPath("$.data.refreshToken").isNotEmpty());
     }
 
     @Test
