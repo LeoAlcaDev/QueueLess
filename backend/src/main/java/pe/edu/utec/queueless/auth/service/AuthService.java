@@ -3,6 +3,7 @@ package pe.edu.utec.queueless.auth.service;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,6 +18,7 @@ import pe.edu.utec.queueless.auth.dto.RefreshTokenRequest;
 import pe.edu.utec.queueless.auth.dto.RegisterRequest;
 import pe.edu.utec.queueless.shared.exception.DuplicateResourceException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
+import pe.edu.utec.queueless.usuario.event.UsuarioRegistradoEvent;
 import pe.edu.utec.queueless.usuario.repository.UsuarioRepository;
 import pe.edu.utec.queueless.usuario.service.PerfilService;
 
@@ -30,6 +32,7 @@ public class AuthService {
     private final UserDetailsService userDetailsService;
     private final AuthenticationManager authenticationManager;
     private final PerfilService perfilService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -48,10 +51,8 @@ public class AuthService {
 
         perfilService.crearPerfilesParaRoles(usuario, usuario.getRoles());
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(usuario.getEmail());
-        String accessToken = jwtService.generateAccessToken(userDetails, usuario.getId(), usuario.getRoles());
-        String refreshToken = jwtService.generateRefreshToken(userDetails);
-        return buildResponse(accessToken, refreshToken, usuario);
+        eventPublisher.publishEvent(new UsuarioRegistradoEvent(usuario.getId()));
+        return buildResponse(usuario);
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -59,37 +60,37 @@ public class AuthService {
             new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail()).orElseThrow();
-        UserDetails userDetails = userDetailsService.loadUserByUsername(usuario.getEmail());
-        String accessToken = jwtService.generateAccessToken(userDetails, usuario.getId(), usuario.getRoles());
-        String refreshToken = jwtService.generateRefreshToken(userDetails);
-        return buildResponse(accessToken, refreshToken, usuario);
+        return buildResponse(usuario);
     }
 
     /**
-     * Renueva el par de tokens a partir de un refresh válido. Recarga los roles
-     * desde la base, así un cambio de rol se refleja en el access nuevo. Un token
-     * inválido, expirado o que no sea de tipo refresh responde 401 (lo mapea el
-     * handler global desde BadCredentialsException).
+     * Emite un par nuevo de tokens a partir de un refresh válido. Cualquier
+     * desvío (firma inválida, token expirado, tipo {@code access} usado como
+     * refresh, usuario inexistente o desactivado) se traduce a
+     * {@link BadCredentialsException} para que el handler global devuelva 401.
      */
     public AuthResponse refresh(RefreshTokenRequest request) {
         Claims claims;
         try {
             claims = jwtService.parseClaims(request.getRefreshToken());
-        } catch (JwtException ex) {
-            throw new BadCredentialsException("Refresh token invalido o expirado");
+        } catch (JwtException | IllegalArgumentException ex) {
+            throw new BadCredentialsException("Refresh token inválido");
         }
         if (!JwtService.TYPE_REFRESH.equals(claims.get(JwtService.CLAIM_TYPE))) {
-            throw new BadCredentialsException("El token enviado no es un refresh token");
+            throw new BadCredentialsException("Refresh token inválido");
         }
         Usuario usuario = usuarioRepository.findByEmail(claims.getSubject())
-            .orElseThrow(() -> new BadCredentialsException("Refresh token invalido o expirado"));
+            .orElseThrow(() -> new BadCredentialsException("Refresh token inválido"));
+        if (!Boolean.TRUE.equals(usuario.getActivo())) {
+            throw new BadCredentialsException("Refresh token inválido");
+        }
+        return buildResponse(usuario);
+    }
+
+    private AuthResponse buildResponse(Usuario usuario) {
         UserDetails userDetails = userDetailsService.loadUserByUsername(usuario.getEmail());
         String accessToken = jwtService.generateAccessToken(userDetails, usuario.getId(), usuario.getRoles());
         String refreshToken = jwtService.generateRefreshToken(userDetails);
-        return buildResponse(accessToken, refreshToken, usuario);
-    }
-
-    private AuthResponse buildResponse(String accessToken, String refreshToken, Usuario usuario) {
         return AuthResponse.builder()
             .accessToken(accessToken)
             .refreshToken(refreshToken)

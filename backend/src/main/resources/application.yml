@@ -20,6 +20,24 @@ spring:
     multipart:
       max-file-size: 2MB
       max-request-size: 2MB
+  # SMTP (correos transaccionales: bienvenida + recibo de entrega).
+  # Si MAIL_HOST queda vacío, Spring no crea JavaMailSender y EmailService
+  # se autodeshabilita (loguea INFO y no rompe). Ver ADR-0021.
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 server:
   port: 8080
@@ -59,6 +77,9 @@ queueless:
   firebase:
     enabled: ${FIREBASE_ENABLED:false}
     credentials-base64: ${FIREBASE_CREDENTIALS_JSON:}
+  email:
+    from: ${MAIL_FROM:no-reply@queueless.local}
+    from-name: ${MAIL_FROM_NAME:QueueLess}
 
 springdoc:
   api-docs:

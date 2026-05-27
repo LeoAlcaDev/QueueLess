@@ -34,6 +34,12 @@ Swagger UI en `http://localhost:8090/swagger-ui.html`.
 | `AWS_REGION` | Región del bucket S3                          |
 | `AWS_S3_BUCKET` | Nombre del bucket para imágenes               |
 | `MERCADOPAGO_ACCESS_TOKEN` | Token de la pasarela (sandbox o prod)         |
+| `MAIL_HOST` | Host SMTP (ej. `email-smtp.us-east-1.amazonaws.com`). Vacío deshabilita el envío (ver [ADR-0021](../docs/decisiones/ADR-0021-email-complementario-al-push.md)) |
+| `MAIL_PORT` | Puerto SMTP (default 587)                     |
+| `MAIL_USERNAME` | Usuario SMTP                                  |
+| `MAIL_PASSWORD` | Password / App Password / token SMTP          |
+| `MAIL_FROM` | Dirección remitente (`no-reply@dominio`)      |
+| `MAIL_FROM_NAME` | Nombre visible del remitente (`QueueLess`)    |
 
 ## Tests
 
@@ -122,6 +128,6 @@ src/main/java/pe/edu/utec/queueless/
 ├── delivery/           SolicitudDelivery, matcher de repartidores
 ├── queuepoints/        MovimientoQueuePoints
 ├── waittime/           Diferenciador técnico — predicción 2 fases
-├── notification/       FCM
+├── notification/       FCM (push) + email transaccional (bienvenida y recibo)
 └── scheduling/         Jobs @Scheduled (expiración, retraining)
 ```
