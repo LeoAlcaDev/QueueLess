@@ -47,3 +47,9 @@ management:
   endpoint:
     health:
       show-details: never
+  health:
+    # Sin SMTP configurado en prod (MAIL_HOST="") el MailHealthIndicator
+    # reporta DOWN y /actuator/health devuelve 503, lo que hace que el ALB
+    # marque el task unhealthy y ECS lo mate en loop durante el deploy.
+    mail:
+      enabled: false
