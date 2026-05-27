@@ -48,7 +48,10 @@ da abasto, atiende desordenado y pierde ventas de clientes que se van. **Para el
 hay forma de repartir la demanda en el tiempo. QueueLess convierte la espera en un pre-pedido
 con tiempo estimado, ordena la cola del comercio en una lista de estados, y abre un canal de
 delivery interno gratuito entre estudiantes. El pago se resuelve antes de llegar al local,
-sacando esa fricción del momento de mayor congestión.
+sacando esa fricción del momento de mayor congestión. Y como la entrega entre compañeros es
+gratuita, los **QueuePoints** son el incentivo que la vuelve sostenible: el repartidor
+ocasional gana puntos por cada entrega completada y luego los canjea como descuento en sus
+propios pedidos, sin que el sistema tenga que cobrar comisión.
 
 ## Descripción de la solución
 
@@ -62,7 +65,10 @@ delivery interno (DELIVERY). Funcionalidades principales (el detalle vive en los
   [ADR-0020](docs/decisiones/ADR-0020-refresh-tokens-y-claims-jwt.md),
   [ADR-0022](docs/decisiones/ADR-0022-versionado-api-v1-y-autorizacion-por-metodo.md).
 - **Catálogo público** de locales y productos, con disponibilidad por horarios y ventanas.
-- **Flujo PICKUP** completo (cliente → comercio → cliente) sobre una máquina de estados.
+- **Flujo PICKUP** completo (cliente → comercio → cliente) sobre una máquina de estados
+  explícita: el `Pedido` recorre 11 estados (`PENDIENTE_PAGO → PAGADO_… → ACEPTADO →
+  EN_PREPARACION → LISTO_PARA_RECOGER → ENTREGADO`) con un mapa de transiciones válidas; una
+  transición ilegal lanza `BusinessRuleException` (422), no un estado corrupto.
 - **Flujo DELIVERY** con matching automático de repartidor y QueuePoints. Ref:
   [ADR-0014](docs/decisiones/ADR-0014-flujo-delivery-matching-y-opciones-del-cliente.md),
   [ADR-0008](docs/decisiones/ADR-0008-ledger-pattern-queuepoints.md).
