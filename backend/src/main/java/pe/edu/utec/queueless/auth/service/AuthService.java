@@ -1,6 +1,7 @@
 package pe.edu.utec.queueless.auth.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -12,6 +13,7 @@ import pe.edu.utec.queueless.auth.dto.LoginRequest;
 import pe.edu.utec.queueless.auth.dto.RegisterRequest;
 import pe.edu.utec.queueless.shared.exception.DuplicateResourceException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
+import pe.edu.utec.queueless.usuario.event.UsuarioRegistradoEvent;
 import pe.edu.utec.queueless.usuario.repository.UsuarioRepository;
 import pe.edu.utec.queueless.usuario.service.PerfilService;
 
@@ -25,6 +27,7 @@ public class AuthService {
     private final UserDetailsService userDetailsService;
     private final AuthenticationManager authenticationManager;
     private final PerfilService perfilService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -44,6 +47,7 @@ public class AuthService {
         perfilService.crearPerfilesParaRoles(usuario, usuario.getRoles());
 
         String token = jwtService.generateToken(userDetailsService.loadUserByUsername(usuario.getEmail()));
+        eventPublisher.publishEvent(new UsuarioRegistradoEvent(usuario.getId()));
         return buildResponse(token, usuario);
     }
 
