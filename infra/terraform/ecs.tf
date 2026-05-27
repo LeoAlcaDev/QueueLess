@@ -57,11 +57,17 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "DB_URL",                 value = "jdbc:postgresql://${aws_db_instance.main.address}:${aws_db_instance.main.port}/${aws_db_instance.main.db_name}" },
         { name = "DB_USERNAME",            value = aws_db_instance.main.username },
         { name = "JAVA_OPTS",              value = "-XX:MaxRAMPercentage=70 -XX:+UseSerialGC -Xss512k" },
+        { name = "MAIL_HOST",              value = "smtp.gmail.com" },
+        { name = "MAIL_PORT",              value = "587" },
+        { name = "MAIL_USERNAME",          value = "queueless385@gmail.com" },
+        { name = "MAIL_FROM",              value = "queueless385@gmail.com" },
+        { name = "MAIL_FROM_NAME",         value = "QueueLess" },
       ]
 
       secrets = [
-        { name = "JWT_SECRET",  valueFrom = aws_secretsmanager_secret.jwt_secret.arn },
-        { name = "DB_PASSWORD", valueFrom = aws_secretsmanager_secret.db_password.arn },
+        { name = "JWT_SECRET",    valueFrom = aws_secretsmanager_secret.jwt_secret.arn },
+        { name = "DB_PASSWORD",   valueFrom = aws_secretsmanager_secret.db_password.arn },
+        { name = "MAIL_PASSWORD", valueFrom = aws_secretsmanager_secret.mail_password.arn },
       ]
 
       logConfiguration = {
