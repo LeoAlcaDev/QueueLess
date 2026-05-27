@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -46,9 +47,8 @@ public class AuthService {
 
         perfilService.crearPerfilesParaRoles(usuario, usuario.getRoles());
 
-        String token = jwtService.generateToken(userDetailsService.loadUserByUsername(usuario.getEmail()));
         eventPublisher.publishEvent(new UsuarioRegistradoEvent(usuario.getId()));
-        return buildResponse(token, usuario);
+        return buildResponse(usuario);
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -56,13 +56,16 @@ public class AuthService {
             new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail()).orElseThrow();
-        String token = jwtService.generateToken(userDetailsService.loadUserByUsername(usuario.getEmail()));
-        return buildResponse(token, usuario);
+        return buildResponse(usuario);
     }
 
-    private AuthResponse buildResponse(String token, Usuario usuario) {
+    private AuthResponse buildResponse(Usuario usuario) {
+        UserDetails userDetails = userDetailsService.loadUserByUsername(usuario.getEmail());
+        String accessToken = jwtService.generateAccessToken(userDetails, usuario.getId(), usuario.getRoles());
+        String refreshToken = jwtService.generateRefreshToken(userDetails);
         return AuthResponse.builder()
-            .token(token)
+            .accessToken(accessToken)
+            .refreshToken(refreshToken)
             .usuarioId(usuario.getId())
             .email(usuario.getEmail())
             .nombreCompleto(usuario.getNombreCompleto())
