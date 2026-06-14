@@ -5,6 +5,9 @@ import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utec.queueless.pedido.dto.CrearPedidoRequest;
@@ -65,10 +68,13 @@ public class PedidoService {
             .orElseThrow(() -> new ResourceNotFoundException("Pedido", id));
     }
 
-    /** Pedidos del cliente, del más reciente al más antiguo. */
-    public List<PedidoResponse> listarMisPedidos(Usuario cliente) {
-        List<Pedido> pedidos = pedidoRepository.findByClienteIdOrderByCreadoAtDesc(cliente.getId());
-        return toResponseList(pedidos);
+    /** Pedidos del cliente, del más reciente al más antiguo, paginados (ADR-0023). */
+    public Page<PedidoResponse> listarMisPedidos(Usuario cliente, Pageable pageable) {
+        // el orden lo fija el repositorio; ignoramos cualquier sort que mande el cliente para
+        // no romper la paginación estable (mismo total partido en páginas sin repetir ni saltar)
+        Pageable saneado = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        return pedidoRepository.findByClienteIdOrderByCreadoAtDescIdDesc(cliente.getId(), saneado)
+            .map(this::toResponse);
     }
 
     /** Detalle de un pedido propio del cliente. Si es ajeno, se ve como inexistente (404). */

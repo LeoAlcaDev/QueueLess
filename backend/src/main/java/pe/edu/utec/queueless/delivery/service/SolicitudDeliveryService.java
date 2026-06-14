@@ -4,6 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utec.queueless.delivery.dto.SolicitudDeliveryResponse;
@@ -60,12 +63,14 @@ public class SolicitudDeliveryService {
         return mapList(solicitudes);
     }
 
-    /** Historial de entregas del repartidor autenticado, de la más nueva a la más vieja. */
-    public List<SolicitudDeliveryResponse> listarMisEntregas(Usuario repartidor) {
+    /** Historial de entregas del repartidor autenticado, de la más nueva a la más vieja, paginado (ADR-0023). */
+    public Page<SolicitudDeliveryResponse> listarMisEntregas(Usuario repartidor, Pageable pageable) {
         validarEsRepartidor(repartidor);
-        List<SolicitudDelivery> solicitudes =
-            repository.findByRepartidorIdOrderByAsignadoAtDesc(repartidor.getId());
-        return mapList(solicitudes);
+        // el orden lo fija el repositorio; ignoramos cualquier sort que mande el cliente para
+        // no romper la paginación estable (mismo total partido en páginas sin repetir ni saltar)
+        Pageable saneado = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        return repository.findByRepartidorIdOrderByAsignadoAtDescIdDesc(repartidor.getId(), saneado)
+            .map(this::toResponse);
     }
 
     public SolicitudDeliveryResponse verDetalleParaRepartidor(Usuario repartidor, Long solicitudId) {

@@ -2,6 +2,9 @@ package pe.edu.utec.queueless.queuepoints.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utec.queueless.queuepoints.dto.MovimientoResponse;
@@ -13,8 +16,6 @@ import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.shared.exception.InsufficientPointsException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -46,14 +47,12 @@ public class QueuePointsService {
             .build();
     }
 
-    public List<MovimientoResponse> historialDe(Usuario usuario) {
-        List<MovimientoQueuePoints> movimientos =
-            repository.findByUsuarioIdOrderByCreatedAtDescIdDesc(usuario.getId());
-        List<MovimientoResponse> respuesta = new ArrayList<>();
-        for (MovimientoQueuePoints mov : movimientos) {
-            respuesta.add(MovimientoResponse.from(mov));
-        }
-        return respuesta;
+    public Page<MovimientoResponse> historialDe(Usuario usuario, Pageable pageable) {
+        // el orden lo fija el repositorio; ignoramos cualquier sort que mande el cliente para
+        // no romper la paginación estable (mismo total partido en páginas sin repetir ni saltar)
+        Pageable saneado = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        return repository.findByUsuarioIdOrderByCreatedAtDescIdDesc(usuario.getId(), saneado)
+            .map(MovimientoResponse::from);
     }
 
     // ---------------------------------------------------------------------------

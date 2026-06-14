@@ -3,6 +3,8 @@ package pe.edu.utec.queueless.delivery.controller;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import pe.edu.utec.queueless.delivery.dto.SolicitudDeliveryResponse;
 import pe.edu.utec.queueless.delivery.service.SolicitudDeliveryService;
 import pe.edu.utec.queueless.shared.dto.ApiResponse;
+import pe.edu.utec.queueless.shared.dto.PageResponse;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 import pe.edu.utec.queueless.usuario.service.UsuarioService;
 
@@ -39,10 +42,11 @@ public class SolicitudDeliveryController {
     }
 
     @GetMapping("/mis-entregas")
-    public ResponseEntity<ApiResponse<List<SolicitudDeliveryResponse>>> misEntregas(
-            Authentication authentication) {
+    public ResponseEntity<ApiResponse<PageResponse<SolicitudDeliveryResponse>>> misEntregas(
+            Authentication authentication, Pageable pageable) {
         Usuario repartidor = usuarioService.findByEmail(authentication.getName());
-        return ResponseEntity.ok(ApiResponse.ok(service.listarMisEntregas(repartidor)));
+        Page<SolicitudDeliveryResponse> pagina = service.listarMisEntregas(repartidor, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PageResponse.of(pagina)));
     }
 
     @GetMapping("/solicitudes/{id}")

@@ -1,6 +1,8 @@
 package pe.edu.utec.queueless.delivery.repository;
 
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +22,9 @@ public interface SolicitudDeliveryRepository extends JpaRepository<SolicitudDeli
         EstadoSolicitudDelivery estado, Instant cutoff);
 
     List<SolicitudDelivery> findByRepartidorIdOrderByAsignadoAtDesc(Long repartidorId);
+
+    /** Historial de entregas del repartidor, paginado; el id desempata para un orden estable (ADR-0023). */
+    Page<SolicitudDelivery> findByRepartidorIdOrderByAsignadoAtDescIdDesc(Long repartidorId, Pageable pageable);
 
     Optional<SolicitudDelivery> findByPedidoId(Long pedidoId);
 

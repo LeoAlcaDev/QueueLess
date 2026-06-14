@@ -1,5 +1,7 @@
 package pe.edu.utec.queueless.pedido.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import pe.edu.utec.queueless.pedido.entity.EstadoPedido;
 import pe.edu.utec.queueless.pedido.entity.Pedido;
@@ -13,7 +15,8 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     Optional<Pedido> findByCodigo(String codigo);
 
-    List<Pedido> findByClienteIdOrderByCreadoAtDesc(Long clienteId);
+    /** Historial del cliente, del más reciente al más antiguo; el id desempata para una paginación estable. */
+    Page<Pedido> findByClienteIdOrderByCreadoAtDescIdDesc(Long clienteId, Pageable pageable);
 
     List<Pedido> findByPuntoDeVentaIdAndEstadoIn(Long puntoDeVentaId, List<EstadoPedido> estados);
 
