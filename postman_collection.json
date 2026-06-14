@@ -1625,7 +1625,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });"
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"el historial viene paginado: lista en data.content y metadata de pagina\", function () {",
+                  "    var data = pm.response.json().data;",
+                  "    pm.expect(data.content).to.be.an('array');",
+                  "    pm.expect(data).to.have.property('size');",
+                  "    pm.expect(data).to.have.property('totalElements');",
+                  "});"
                 ]
               }
             }

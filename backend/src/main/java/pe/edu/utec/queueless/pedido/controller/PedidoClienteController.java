@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -15,10 +17,9 @@ import pe.edu.utec.queueless.pedido.dto.CrearPedidoRequest;
 import pe.edu.utec.queueless.pedido.dto.PedidoResponse;
 import pe.edu.utec.queueless.pedido.service.PedidoService;
 import pe.edu.utec.queueless.shared.dto.ApiResponse;
+import pe.edu.utec.queueless.shared.dto.PageResponse;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 import pe.edu.utec.queueless.usuario.service.UsuarioService;
-
-import java.util.List;
 
 @Tag(name = "Pedidos (cliente)", description = "Endpoints para clientes: crear, ver y cancelar sus pedidos")
 @RestController
@@ -41,9 +42,11 @@ public class PedidoClienteController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<PedidoResponse>>> misPedidos(Authentication authentication) {
+    public ResponseEntity<ApiResponse<PageResponse<PedidoResponse>>> misPedidos(
+            Authentication authentication, Pageable pageable) {
         Usuario cliente = usuarioService.findByEmail(authentication.getName());
-        return ResponseEntity.ok(ApiResponse.ok(pedidoService.listarMisPedidos(cliente)));
+        Page<PedidoResponse> pagina = pedidoService.listarMisPedidos(cliente, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PageResponse.of(pagina)));
     }
 
     @GetMapping("/{id}")

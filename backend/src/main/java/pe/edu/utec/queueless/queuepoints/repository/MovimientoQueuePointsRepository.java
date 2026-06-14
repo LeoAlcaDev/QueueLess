@@ -1,5 +1,7 @@
 package pe.edu.utec.queueless.queuepoints.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,6 +22,9 @@ public interface MovimientoQueuePointsRepository extends JpaRepository<Movimient
      * una secuencia monótona, el último insertado queda primero.
      */
     List<MovimientoQueuePoints> findByUsuarioIdOrderByCreatedAtDescIdDesc(Long usuarioId);
+
+    /** Igual que el anterior pero paginado, para el historial que crece sin tope (ADR-0023). */
+    Page<MovimientoQueuePoints> findByUsuarioIdOrderByCreatedAtDescIdDesc(Long usuarioId, Pageable pageable);
 
     /**
      * Idempotencia del ledger (ADR-0008): si ya existe un movimiento del mismo

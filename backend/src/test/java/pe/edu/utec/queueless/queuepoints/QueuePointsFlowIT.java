@@ -3,6 +3,8 @@ package pe.edu.utec.queueless.queuepoints;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utec.queueless.integration.AbstractIntegrationTest;
@@ -18,7 +20,6 @@ import pe.edu.utec.queueless.usuario.entity.Usuario;
 import pe.edu.utec.queueless.usuario.repository.UsuarioRepository;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -57,12 +58,12 @@ class QueuePointsFlowIT extends AbstractIntegrationTest {
         SaldoResponse saldo = service.saldoDe(usuario);
         assertThat(saldo.getSaldo()).isEqualTo(120);
 
-        List<MovimientoResponse> historial = service.historialDe(usuario);
-        assertThat(historial).hasSize(4);
+        Page<MovimientoResponse> historial = service.historialDe(usuario, PageRequest.of(0, 20));
+        assertThat(historial.getTotalElements()).isEqualTo(4);
         // Orden esperado: del más reciente al más antiguo. Verificamos el orden
         // completo para que un cambio futuro al order by se note de inmediato.
-        assertThat(historial.get(0).getTipo()).isEqualTo(TipoMovimiento.CANJEADO);
-        assertThat(historial)
+        assertThat(historial.getContent().get(0).getTipo()).isEqualTo(TipoMovimiento.CANJEADO);
+        assertThat(historial.getContent())
             .extracting(MovimientoResponse::getTipo)
             .containsExactly(
                 TipoMovimiento.CANJEADO,  // último insertado, id más alto

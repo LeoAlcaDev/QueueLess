@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,10 +19,9 @@ import pe.edu.utec.queueless.queuepoints.dto.SaldoResponse;
 import pe.edu.utec.queueless.queuepoints.entity.MovimientoQueuePoints;
 import pe.edu.utec.queueless.queuepoints.service.QueuePointsService;
 import pe.edu.utec.queueless.shared.dto.ApiResponse;
+import pe.edu.utec.queueless.shared.dto.PageResponse;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 import pe.edu.utec.queueless.usuario.service.UsuarioService;
-
-import java.util.List;
 
 /**
  * Saldo, historial y canje de QueuePoints del usuario autenticado.
@@ -42,10 +43,11 @@ public class QueuePointsController {
     }
 
     @GetMapping("/movimientos")
-    public ResponseEntity<ApiResponse<List<MovimientoResponse>>> movimientos(
-            Authentication authentication) {
+    public ResponseEntity<ApiResponse<PageResponse<MovimientoResponse>>> movimientos(
+            Authentication authentication, Pageable pageable) {
         Usuario usuario = usuarioService.findByEmail(authentication.getName());
-        return ResponseEntity.ok(ApiResponse.ok(service.historialDe(usuario)));
+        Page<MovimientoResponse> pagina = service.historialDe(usuario, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(PageResponse.of(pagina)));
     }
 
     @PostMapping("/canjear")

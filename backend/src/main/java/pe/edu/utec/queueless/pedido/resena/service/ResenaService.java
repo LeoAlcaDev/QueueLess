@@ -2,6 +2,9 @@ package pe.edu.utec.queueless.pedido.resena.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utec.queueless.delivery.entity.EstadoSolicitudDelivery;
@@ -18,9 +21,6 @@ import pe.edu.utec.queueless.pedido.service.PedidoService;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Reseñas que el cliente deja sobre el punto de venta o el repartidor del
@@ -69,16 +69,21 @@ public class ResenaService {
     // Lectura pública
     // ---------------------------------------------------------------------------
 
-    public List<ResenaResponse> listarDePuntoDeVenta(Long puntoDeVentaId) {
-        return mapList(resenaRepository
-            .findByObjetivoTipoAndObjetivoIdOrderByCreatedAtDesc(
-                ObjetivoResena.PUNTO_DE_VENTA, puntoDeVentaId));
+    public Page<ResenaResponse> listarDePuntoDeVenta(Long puntoDeVentaId, Pageable pageable) {
+        return paginar(ObjetivoResena.PUNTO_DE_VENTA, puntoDeVentaId, pageable);
     }
 
-    public List<ResenaResponse> listarDeRepartidor(Long repartidorId) {
-        return mapList(resenaRepository
-            .findByObjetivoTipoAndObjetivoIdOrderByCreatedAtDesc(
-                ObjetivoResena.REPARTIDOR, repartidorId));
+    public Page<ResenaResponse> listarDeRepartidor(Long repartidorId, Pageable pageable) {
+        return paginar(ObjetivoResena.REPARTIDOR, repartidorId, pageable);
+    }
+
+    private Page<ResenaResponse> paginar(ObjetivoResena tipo, Long objetivoId, Pageable pageable) {
+        // el orden lo fija el repositorio; ignoramos cualquier sort que mande el cliente para
+        // no romper la paginación estable (mismo total partido en páginas sin repetir ni saltar)
+        Pageable saneado = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        return resenaRepository
+            .findByObjetivoTipoAndObjetivoIdOrderByCreatedAtDescIdDesc(tipo, objetivoId, saneado)
+            .map(ResenaResponse::from);
     }
 
     // ---------------------------------------------------------------------------
@@ -126,13 +131,5 @@ public class ResenaService {
         }
         String trim = comentario.trim();
         return trim.isEmpty() ? null : trim;
-    }
-
-    private List<ResenaResponse> mapList(List<Resena> resenas) {
-        List<ResenaResponse> respuesta = new ArrayList<>();
-        for (Resena resena : resenas) {
-            respuesta.add(ResenaResponse.from(resena));
-        }
-        return respuesta;
     }
 }
