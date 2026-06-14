@@ -4,9 +4,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import pe.edu.utec.queueless.queuepoints.dto.MovimientoResponse;
 import pe.edu.utec.queueless.queuepoints.entity.MovimientoQueuePoints;
 import pe.edu.utec.queueless.queuepoints.entity.TipoMovimiento;
 import pe.edu.utec.queueless.queuepoints.repository.MovimientoQueuePointsRepository;
@@ -14,11 +21,13 @@ import pe.edu.utec.queueless.queuepoints.service.QueuePointsService;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -105,5 +114,25 @@ class QueuePointsServiceTest {
         assertThat(mov.getTipo()).isEqualTo(TipoMovimiento.CANJEADO);
         assertThat(mov.getMonto()).isEqualTo(30);
         assertThat(mov.getReferenciaId()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("historialDe propaga la página y el tamaño pedidos pero ignora el sort del cliente")
+    void shouldPropagarPaginaEIgnorarSortDelClienteWhenHistorial() {
+        when(repository.findByUsuarioIdOrderByCreatedAtDescIdDesc(eq(1L), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of()));
+        Pageable conSortDelCliente = PageRequest.of(2, 15, Sort.by("monto").descending());
+
+        Page<MovimientoResponse> resultado = service.historialDe(usuario, conSortDelCliente);
+
+        // El orden lo fija el repositorio, así que el sort del cliente se descarta:
+        // al repositorio solo deben llegar la página y el tamaño pedidos.
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(repository).findByUsuarioIdOrderByCreatedAtDescIdDesc(eq(1L), captor.capture());
+        Pageable usado = captor.getValue();
+        assertThat(usado.getPageNumber()).isEqualTo(2);
+        assertThat(usado.getPageSize()).isEqualTo(15);
+        assertThat(usado.getSort().isSorted()).isFalse();
+        assertThat(resultado).isEmpty();
     }
 }
