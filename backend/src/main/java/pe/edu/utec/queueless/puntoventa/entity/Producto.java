@@ -6,6 +6,7 @@ import pe.edu.utec.queueless.shared.domain.Alergeno;
 import pe.edu.utec.queueless.shared.domain.BaseEntity;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -78,4 +79,19 @@ public class Producto extends BaseEntity {
 
     @Column(name = "ventana_recojo_fin")
     private LocalTime ventanaRecojoFin;
+
+    // Vigencia por fecha de calendario: el producto se vende solo entre estas
+    // fechas. Ambas null = siempre vigente. Es ortogonal al horario del día y a las
+    // ventanas de lote (ADR-0026).
+    @Column(name = "vigencia_inicio")
+    private LocalDate vigenciaInicio;
+
+    @Column(name = "vigencia_fin")
+    private LocalDate vigenciaFin;
+
+    // Si el comercio se compromete a preparar este producto con anticipación para
+    // un pedido programado. Es una pregunta distinta de la disponibilidad.
+    @Column(name = "acepta_programado", nullable = false)
+    @Builder.Default
+    private Boolean aceptaProgramado = true;
 }

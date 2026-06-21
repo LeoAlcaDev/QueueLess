@@ -3,6 +3,7 @@ package pe.edu.utec.queueless.puntoventa.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.edu.utec.queueless.pedido.service.TasaCumplimientoService;
 import pe.edu.utec.queueless.puntoventa.dto.ActualizarPuntoDeVentaRequest;
 import pe.edu.utec.queueless.puntoventa.dto.CrearPuntoDeVentaRequest;
 import pe.edu.utec.queueless.puntoventa.dto.PuntoDeVentaResponse;
@@ -14,6 +15,7 @@ import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
 import pe.edu.utec.queueless.usuario.entity.Rol;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
+import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +28,7 @@ public class PuntoDeVentaService {
     private static final int TIEMPO_PROMEDIO_POR_DEFECTO = 10;
 
     private final PuntoDeVentaRepository repository;
+    private final TasaCumplimientoService tasaCumplimientoService;
 
     // ---------------------------------------------------------------------------
     // Catalogo publico
@@ -33,14 +36,18 @@ public class PuntoDeVentaService {
 
     public List<PuntoDeVentaResponse> listarAbiertos() {
         List<PuntoDeVenta> locales = repository.findByAbiertoTrueAndActivoTrue();
-        return toResponseList(locales);
+        List<PuntoDeVentaResponse> respuesta = new ArrayList<>();
+        for (PuntoDeVenta local : locales) {
+            respuesta.add(toResponsePublico(local));
+        }
+        return respuesta;
     }
 
     /** Detalle publico. Un local dado de baja se ve como inexistente (404). */
     public PuntoDeVentaResponse obtenerDetallePublico(Long id) {
         PuntoDeVenta puntoDeVenta = repository.findByIdAndActivoTrue(id)
             .orElseThrow(() -> new ResourceNotFoundException("PuntoDeVenta", id));
-        return toResponse(puntoDeVenta);
+        return toResponsePublico(puntoDeVenta);
     }
 
     // ---------------------------------------------------------------------------
@@ -155,6 +162,16 @@ public class PuntoDeVentaService {
     // El DTO expone tiempoEsperaEstimado, pero por ahora refleja el tiempo declarado
     // por el comercio; el calculo predictivo real entra en una fase posterior.
     private PuntoDeVentaResponse toResponse(PuntoDeVenta puntoDeVenta) {
+        return construir(puntoDeVenta, null);
+    }
+
+    /** Igual que toResponse pero con la tasa de cumplimiento del comercio, para las vistas públicas. */
+    private PuntoDeVentaResponse toResponsePublico(PuntoDeVenta puntoDeVenta) {
+        BigDecimal tasa = tasaCumplimientoService.calcular(puntoDeVenta.getGestor().getId());
+        return construir(puntoDeVenta, tasa);
+    }
+
+    private PuntoDeVentaResponse construir(PuntoDeVenta puntoDeVenta, BigDecimal tasaCumplimiento) {
         return PuntoDeVentaResponse.builder()
             .id(puntoDeVenta.getId())
             .nombre(puntoDeVenta.getNombre())
@@ -163,6 +180,7 @@ public class PuntoDeVentaService {
             .horarioCierre(puntoDeVenta.getHorarioCierre())
             .tiempoEsperaEstimado(puntoDeVenta.getTiempoPromedioDeclarado())
             .abierto(puntoDeVenta.getAbierto())
+            .tasaCumplimiento(tasaCumplimiento)
             .build();
     }
 

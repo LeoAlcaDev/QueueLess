@@ -28,6 +28,7 @@ public class PedidoResponse {
     private final String codigo;
     private final EstadoPedido estado;
     private final TipoEntrega tipoEntrega;
+    private final Instant recojoProgramadoAt;
     private final Long puntoDeVentaId;
     private final BigDecimal subtotal;
     private final BigDecimal descuentoQpts;

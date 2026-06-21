@@ -8,6 +8,7 @@ import pe.edu.utec.queueless.puntoventa.entity.TipoPreparacion;
 import pe.edu.utec.queueless.shared.domain.Alergeno;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Set;
 
@@ -38,6 +39,10 @@ public class ProductoResponse {
     private LocalTime ventanaPedidoFin;
     private LocalTime ventanaRecojoInicio;
     private LocalTime ventanaRecojoFin;
+
+    private LocalDate vigenciaInicio;
+    private LocalDate vigenciaFin;
+    private Boolean aceptaProgramado;
 
     // Derivados, calculados en el service con la hora actual de Lima.
     private Boolean disponibleAhora;

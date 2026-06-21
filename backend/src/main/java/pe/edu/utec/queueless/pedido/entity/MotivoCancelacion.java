@@ -14,5 +14,11 @@ public enum MotivoCancelacion {
     LOCAL_SATURADO,
     LOCAL_POR_CERRAR,
     PROBLEMA_OPERATIVO,
-    OTRO
+    OTRO,
+
+    // Los dos siguientes los pone la red de seguridad de pedidos programados, no el
+    // comercio: el primero cuando dejó vencer un programado sin aceptarlo, el segundo
+    // cuando lo aceptó pero lo dejó vencer sin prepararlo (ADR-0026).
+    COMERCIO_NO_ATENDIO,
+    COMERCIO_NO_PREPARO
 }

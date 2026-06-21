@@ -38,4 +38,10 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     /** Para el job que cancela los pedidos abandonados sin pagar. */
     List<Pedido> findByEstadoAndCreadoAtBefore(EstadoPedido estado, Instant cutoff);
+
+    /** Programados en un estado cuya hora de recojo ya pasó; lo usa la red de seguridad. */
+    List<Pedido> findByEstadoAndRecojoProgramadoAtBefore(EstadoPedido estado, Instant cutoff);
+
+    /** Todos los pedidos programados de los locales de un gestor; alimentan la tasa de cumplimiento. */
+    List<Pedido> findByPuntoDeVentaGestorIdAndRecojoProgramadoAtIsNotNull(Long gestorId);
 }

@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.math.BigDecimal;
 import java.time.LocalTime;
 
 @Getter
@@ -17,4 +18,7 @@ public class PuntoDeVentaResponse {
     private final LocalTime horarioCierre;
     private final Integer tiempoEsperaEstimado;
     private final Boolean abierto;
+    // Tasa de cumplimiento del comercio dueño del local; null cuando aún no hay
+    // datos suficientes ("sin datos aún", ADR-0026).
+    private final BigDecimal tasaCumplimiento;
 }
