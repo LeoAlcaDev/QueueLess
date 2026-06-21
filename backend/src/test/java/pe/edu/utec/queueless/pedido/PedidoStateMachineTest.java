@@ -51,11 +51,12 @@ class PedidoStateMachineTest {
     }
 
     @Test
-    @DisplayName("CANCELADO_POR_CLIENTE solo es alcanzable desde estados cancelables por cliente")
+    @DisplayName("CANCELADO_POR_CLIENTE es alcanzable desde los cancelables por cliente y, por la regla de programados, también desde ACEPTADO")
     void cancelacionPorClienteRespetaReglas() {
         for (EstadoPedido origen : EstadoPedido.values()) {
             Pedido pedido = Pedido.builder().estado(origen).build();
-            boolean esperado = EstadoPedido.CANCELABLES_POR_CLIENTE.contains(origen);
+            boolean esperado = EstadoPedido.CANCELABLES_POR_CLIENTE.contains(origen)
+                || origen == EstadoPedido.ACEPTADO;
 
             try {
                 pedido.transicionarA(EstadoPedido.CANCELADO_POR_CLIENTE);
@@ -75,5 +76,13 @@ class PedidoStateMachineTest {
 
         assertThat(pedido.getEntregadoAt()).isNotNull();
         assertThat(pedido.getCanceladoAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("ACEPTADO ahora permite cancelar por cliente (programado en ventana), sin perder sus otras salidas")
+    void aceptadoPermiteCancelacionPorCliente() {
+        assertThat(EstadoPedido.ACEPTADO.puedeTransicionarA(EstadoPedido.CANCELADO_POR_CLIENTE)).isTrue();
+        assertThat(EstadoPedido.ACEPTADO.puedeTransicionarA(EstadoPedido.EN_PREPARACION)).isTrue();
+        assertThat(EstadoPedido.ACEPTADO.puedeTransicionarA(EstadoPedido.CANCELADO_POR_COMERCIO)).isTrue();
     }
 }
