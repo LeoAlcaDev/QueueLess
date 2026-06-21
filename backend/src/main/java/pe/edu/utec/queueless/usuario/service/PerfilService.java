@@ -11,6 +11,7 @@ import pe.edu.utec.queueless.usuario.repository.PerfilClienteRepository;
 import pe.edu.utec.queueless.usuario.repository.PerfilComercioRepository;
 import pe.edu.utec.queueless.usuario.repository.PerfilRepartidorRepository;
 
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -96,6 +97,10 @@ public class PerfilService {
         PerfilCliente perfil = buscarPerfilCliente(usuario);
         perfil.setDireccionPreferida(request.getDireccionPreferida());
         perfil.setAlergias(request.getAlergias());
+        perfil.setAlergenosEvitar(orEmpty(request.getAlergenosEvitar()));
+        perfil.setRestriccionesDieteticas(orEmpty(request.getRestriccionesDieteticas()));
+        perfil.setToleranciaPicante(request.getToleranciaPicante());
+        perfil.setPresupuestoReferencia(request.getPresupuestoReferencia());
         PerfilCliente actualizado = perfilClienteRepository.save(perfil);
         return modelMapper.map(actualizado, PerfilClienteResponse.class);
     }
@@ -136,5 +141,10 @@ public class PerfilService {
     private PerfilRepartidor buscarPerfilRepartidor(Usuario usuario) {
         return perfilRepartidorRepository.findById(usuario.getId())
             .orElseThrow(() -> new ResourceNotFoundException("El usuario no tiene perfil de repartidor"));
+    }
+
+    /** Un conjunto nulo (campo no enviado en el PUT) se guarda como vacío, no como null. */
+    private static <T> Set<T> orEmpty(Set<T> valores) {
+        return valores != null ? valores : new HashSet<>();
     }
 }

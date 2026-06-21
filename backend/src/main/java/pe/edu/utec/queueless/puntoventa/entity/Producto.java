@@ -2,10 +2,13 @@ package pe.edu.utec.queueless.puntoventa.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import pe.edu.utec.queueless.shared.domain.Alergeno;
 import pe.edu.utec.queueless.shared.domain.BaseEntity;
 
 import java.math.BigDecimal;
 import java.time.LocalTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "producto")
@@ -38,6 +41,17 @@ public class Producto extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private Boolean disponible = true;
+
+    // Alérgenos que el producto declara contener, de la lista cerrada compartida
+    // con el perfil del cliente (ADR-0025). Declararlos es opcional; que la lista
+    // esté vacía no significa que el producto no tenga alérgenos.
+    @ElementCollection
+    @CollectionTable(name = "producto_alergeno",
+        joinColumns = @JoinColumn(name = "producto_id"))
+    @Column(name = "alergeno", length = 20)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private Set<Alergeno> alergenos = new HashSet<>();
 
     // Horario de servicio: si ambos tienen valor, el producto se vende solo entre
     // esas horas. Ambos null = se vende todo el día que el local esté abierto.
