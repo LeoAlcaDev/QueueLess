@@ -175,7 +175,7 @@ Para no mostrar un número engañoso con pocos datos, aplicamos un umbral: por
 debajo de un mínimo de programados resueltos (`minimo-pedidos-tasa`, 5 por
 defecto) no mostramos un porcentaje, mostramos "sin datos aún". Es el mismo
 espíritu con el que el modelo de tiempos de espera no se fía de su predicción
-hasta tener suficiente historia (ADR-0011 y el umbral de la estrategia
+hasta tener suficiente historia (ADR-0015 y el umbral de la estrategia
 predictiva): con dos pedidos, un 50% o un 100% no dice nada y puede ser injusto.
 
 Las dos gracias de 15 minutos —la de la tasa, tras aceptar, y la del recojo
@@ -398,12 +398,15 @@ el cliente tenga que hacer nada.
 
 - ADR-0003 — Modelo de entidades (el `Pedido` y el `Producto` que extendemos).
 - ADR-0011 — Zona horaria fija `America/Lima` (las comparaciones de tiempo futuro
-  van en esa zona) y la regla de no fiarse de una métrica con pocos datos.
+  van en esa zona).
 - ADR-0012 — Ventanas de pedido y recojo por lote (la vigencia es ortogonal a esas
   ventanas y al horario del día; los validadores de horario que reusamos).
 - ADR-0013 — Integración con la pasarela de pagos (el camino a
   `PAGADO_ESPERANDO_COMERCIO` que reusa el programado y el reembolso automático al
   cancelar desde un estado pagado).
+- ADR-0015 — Modelo de tiempos de espera (el umbral de datos mínimos por debajo del
+  cual no se muestra una métrica, que la tasa de cumplimiento reusa con el mismo
+  espíritu).
 - `backend/src/main/java/pe/edu/utec/queueless/pedido/entity/Pedido.java` — el campo `recojoProgramadoAt`.
 - `backend/src/main/java/pe/edu/utec/queueless/pedido/entity/EstadoPedido.java` — la transición nueva de cancelación dentro de la ventana.
 - `backend/src/main/java/pe/edu/utec/queueless/pedido/entity/MotivoCancelacion.java` — los motivos `COMERCIO_NO_ATENDIO` y `COMERCIO_NO_PREPARO`.
