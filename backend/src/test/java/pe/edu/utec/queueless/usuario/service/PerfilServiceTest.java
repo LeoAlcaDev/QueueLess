@@ -8,15 +8,21 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
+import pe.edu.utec.queueless.shared.domain.Alergeno;
+import pe.edu.utec.queueless.usuario.dto.ActualizarPerfilClienteRequest;
 import pe.edu.utec.queueless.usuario.entity.PerfilCliente;
 import pe.edu.utec.queueless.usuario.entity.PerfilRepartidor;
+import pe.edu.utec.queueless.usuario.entity.RestriccionDietetica;
 import pe.edu.utec.queueless.usuario.entity.Rol;
+import pe.edu.utec.queueless.usuario.entity.ToleranciaPicante;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 import pe.edu.utec.queueless.usuario.repository.PerfilClienteRepository;
 import pe.edu.utec.queueless.usuario.repository.PerfilComercioRepository;
 import pe.edu.utec.queueless.usuario.repository.PerfilRepartidorRepository;
 
+import java.math.BigDecimal;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -103,5 +109,57 @@ class PerfilServiceTest {
         verify(perfilClienteRepository).save(any(PerfilCliente.class));
         verify(perfilRepartidorRepository).save(any(PerfilRepartidor.class));
         verify(perfilComercioRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("actualizarPerfilCliente persiste alérgenos, restricciones, picante y presupuesto")
+    void shouldPersistirHabitosWhenActualizaPerfilCliente() {
+        // Arrange
+        Usuario usuario = usuario();
+        PerfilCliente perfil = PerfilCliente.builder().usuario(usuario).build();
+        when(perfilClienteRepository.findById(7L)).thenReturn(Optional.of(perfil));
+        when(perfilClienteRepository.save(any(PerfilCliente.class)))
+            .thenAnswer(invocacion -> invocacion.getArgument(0));
+
+        ActualizarPerfilClienteRequest request = new ActualizarPerfilClienteRequest();
+        request.setAlergenosEvitar(new HashSet<>(Set.of(Alergeno.MANI, Alergeno.GLUTEN)));
+        request.setRestriccionesDieteticas(new HashSet<>(Set.of(RestriccionDietetica.VEGANO)));
+        request.setToleranciaPicante(ToleranciaPicante.MEDIA);
+        request.setPresupuestoReferencia(new BigDecimal("20.00"));
+
+        // Act
+        perfilService.actualizarPerfilCliente(usuario, request);
+
+        // Assert
+        ArgumentCaptor<PerfilCliente> captor = ArgumentCaptor.forClass(PerfilCliente.class);
+        verify(perfilClienteRepository).save(captor.capture());
+        PerfilCliente guardado = captor.getValue();
+        assertThat(guardado.getAlergenosEvitar()).containsExactlyInAnyOrder(Alergeno.MANI, Alergeno.GLUTEN);
+        assertThat(guardado.getRestriccionesDieteticas()).containsExactly(RestriccionDietetica.VEGANO);
+        assertThat(guardado.getToleranciaPicante()).isEqualTo(ToleranciaPicante.MEDIA);
+        assertThat(guardado.getPresupuestoReferencia()).isEqualByComparingTo("20.00");
+    }
+
+    @Test
+    @DisplayName("actualizarPerfilCliente guarda conjuntos vacíos cuando el request no trae alérgenos")
+    void shouldGuardarConjuntosVaciosWhenRequestSinAlergenos() {
+        // Arrange
+        Usuario usuario = usuario();
+        PerfilCliente perfil = PerfilCliente.builder().usuario(usuario).build();
+        when(perfilClienteRepository.findById(7L)).thenReturn(Optional.of(perfil));
+        when(perfilClienteRepository.save(any(PerfilCliente.class)))
+            .thenAnswer(invocacion -> invocacion.getArgument(0));
+
+        ActualizarPerfilClienteRequest request = new ActualizarPerfilClienteRequest();
+
+        // Act
+        perfilService.actualizarPerfilCliente(usuario, request);
+
+        // Assert
+        ArgumentCaptor<PerfilCliente> captor = ArgumentCaptor.forClass(PerfilCliente.class);
+        verify(perfilClienteRepository).save(captor.capture());
+        PerfilCliente guardado = captor.getValue();
+        assertThat(guardado.getAlergenosEvitar()).isEmpty();
+        assertThat(guardado.getRestriccionesDieteticas()).isEmpty();
     }
 }

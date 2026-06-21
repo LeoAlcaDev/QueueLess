@@ -12,6 +12,7 @@ import pe.edu.utec.queueless.puntoventa.entity.PuntoDeVenta;
 import pe.edu.utec.queueless.puntoventa.entity.TipoPreparacion;
 import pe.edu.utec.queueless.puntoventa.repository.ProductoRepository;
 import pe.edu.utec.queueless.puntoventa.repository.PuntoDeVentaRepository;
+import pe.edu.utec.queueless.shared.domain.Alergeno;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
 import pe.edu.utec.queueless.shared.storage.StorageService;
@@ -20,6 +21,7 @@ import pe.edu.utec.queueless.usuario.entity.Usuario;
 
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -74,6 +76,7 @@ public class ProductoService {
             .categoria(request.getCategoria())
             .tipoPreparacion(request.getTipoPreparacion())
             .disponible(true)
+            .alergenos(orEmpty(request.getAlergenos()))
             .horarioServicioInicio(request.getHorarioServicioInicio())
             .horarioServicioFin(request.getHorarioServicioFin())
             .tieneVentanaDePedido(Boolean.TRUE.equals(request.getTieneVentanaDePedido()))
@@ -98,6 +101,7 @@ public class ProductoService {
         producto.setPrecio(request.getPrecio());
         producto.setCategoria(request.getCategoria());
         producto.setTipoPreparacion(request.getTipoPreparacion());
+        producto.setAlergenos(orEmpty(request.getAlergenos()));
         producto.setHorarioServicioInicio(request.getHorarioServicioInicio());
         producto.setHorarioServicioFin(request.getHorarioServicioFin());
         producto.setTieneVentanaDePedido(Boolean.TRUE.equals(request.getTieneVentanaDePedido()));
@@ -257,6 +261,9 @@ public class ProductoService {
         response.setCategoria(producto.getCategoria());
         response.setTipoPreparacion(producto.getTipoPreparacion());
         response.setDisponible(producto.getDisponible());
+        // copiamos a un Set nuevo para forzar la inicialización lazy dentro de la
+        // transacción; si no, al serializar fuera de ella saltaría LazyInitializationException
+        response.setAlergenos(new HashSet<>(producto.getAlergenos()));
 
         response.setHorarioServicioInicio(producto.getHorarioServicioInicio());
         response.setHorarioServicioFin(producto.getHorarioServicioFin());
@@ -314,5 +321,10 @@ public class ProductoService {
         LocalTime inicio = producto.getVentanaPedidoInicio();
         LocalTime fin = producto.getVentanaPedidoFin();
         return ahora.isBefore(inicio) || ahora.isAfter(fin);
+    }
+
+    /** Un conjunto nulo (campo no enviado) se guarda como vacío, no como null. */
+    private static Set<Alergeno> orEmpty(Set<Alergeno> alergenos) {
+        return alergenos != null ? alergenos : new HashSet<>();
     }
 }

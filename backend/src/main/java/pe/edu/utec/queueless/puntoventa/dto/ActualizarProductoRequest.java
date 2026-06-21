@@ -9,9 +9,11 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import pe.edu.utec.queueless.puntoventa.entity.TipoPreparacion;
+import pe.edu.utec.queueless.shared.domain.Alergeno;
 
 import java.math.BigDecimal;
 import java.time.LocalTime;
+import java.util.Set;
 
 // No incluye puntoDeVentaId: un producto pertenece siempre al mismo local, no se mueve.
 @Getter @Setter
@@ -34,6 +36,9 @@ public class ActualizarProductoRequest {
 
     @NotNull(message = "El tipo de preparacion es obligatorio")
     private TipoPreparacion tipoPreparacion;
+
+    // Alérgenos que el producto declara contener (opcional, de la lista cerrada).
+    private Set<@NotNull Alergeno> alergenos;
 
     // Horario de servicio (opcional). Las ventanas por lote aplican solo cuando
     // tieneVentanaDePedido es true. Las combinaciones válidas se validan en el service.

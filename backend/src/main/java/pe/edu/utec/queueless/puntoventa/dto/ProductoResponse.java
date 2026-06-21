@@ -5,9 +5,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import pe.edu.utec.queueless.puntoventa.entity.TipoPreparacion;
+import pe.edu.utec.queueless.shared.domain.Alergeno;
 
 import java.math.BigDecimal;
 import java.time.LocalTime;
+import java.util.Set;
 
 /**
  * Datos de un producto que se devuelven al cliente y al comercio. Trae los
@@ -27,6 +29,7 @@ public class ProductoResponse {
     private String categoria;
     private TipoPreparacion tipoPreparacion;
     private Boolean disponible;
+    private Set<Alergeno> alergenos;
 
     private LocalTime horarioServicioInicio;
     private LocalTime horarioServicioFin;
