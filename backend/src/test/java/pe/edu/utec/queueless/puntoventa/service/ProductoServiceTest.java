@@ -16,13 +16,16 @@ import pe.edu.utec.queueless.puntoventa.entity.PuntoDeVenta;
 import pe.edu.utec.queueless.puntoventa.entity.TipoPreparacion;
 import pe.edu.utec.queueless.puntoventa.repository.ProductoRepository;
 import pe.edu.utec.queueless.puntoventa.repository.PuntoDeVentaRepository;
+import pe.edu.utec.queueless.shared.domain.Alergeno;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.shared.storage.StorageService;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
 import java.math.BigDecimal;
 import java.time.LocalTime;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -315,6 +318,46 @@ class ProductoServiceTest {
         String razon = service.calcularRazonNoDisponible(producto, LocalTime.of(9, 0));
 
         assertThat(razon).isEqualTo("Se puede pedir de 11:00 a 13:00");
+    }
+
+    @Test
+    @DisplayName("crear guarda los alérgenos declarados y los devuelve en la respuesta")
+    void shouldGuardarAlergenosWhenCrea() {
+        // Arrange
+        Usuario comercio = usuario(2L);
+        when(puntoDeVentaRepository.findByIdAndActivoTrue(80L)).thenReturn(Optional.of(localDe(comercio)));
+        when(repository.save(any(Producto.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
+        CrearProductoRequest request = preparadoRequest();
+        request.setAlergenos(new HashSet<>(Set.of(Alergeno.MANI, Alergeno.MARISCOS)));
+
+        // Act
+        ProductoResponse response = service.crear(comercio, request);
+
+        // Assert
+        assertThat(response.getAlergenos()).containsExactlyInAnyOrder(Alergeno.MANI, Alergeno.MARISCOS);
+    }
+
+    @Test
+    @DisplayName("actualizar reemplaza los alérgenos del producto")
+    void shouldReemplazarAlergenosWhenActualiza() {
+        // Arrange
+        Usuario comercio = usuario(2L);
+        Producto producto = producto(10L, localDe(comercio), true);
+        producto.setAlergenos(new HashSet<>(Set.of(Alergeno.MANI)));
+        when(repository.findById(10L)).thenReturn(Optional.of(producto));
+        when(repository.save(any(Producto.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
+        ActualizarProductoRequest request = new ActualizarProductoRequest();
+        request.setNombre("Sandwich veggie");
+        request.setPrecio(new BigDecimal("10.00"));
+        request.setTipoPreparacion(TipoPreparacion.PREPARADO);
+        request.setAlergenos(new HashSet<>(Set.of(Alergeno.GLUTEN, Alergeno.SOYA)));
+
+        // Act
+        ProductoResponse response = service.actualizar(comercio, 10L, request);
+
+        // Assert
+        assertThat(producto.getAlergenos()).containsExactlyInAnyOrder(Alergeno.GLUTEN, Alergeno.SOYA);
+        assertThat(response.getAlergenos()).containsExactlyInAnyOrder(Alergeno.GLUTEN, Alergeno.SOYA);
     }
 
     private CrearProductoRequest preparadoRequest() {
