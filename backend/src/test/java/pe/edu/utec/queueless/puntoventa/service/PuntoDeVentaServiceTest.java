@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import pe.edu.utec.queueless.pedido.service.TasaCumplimientoService;
 import pe.edu.utec.queueless.puntoventa.dto.ActualizarPuntoDeVentaRequest;
 import pe.edu.utec.queueless.puntoventa.dto.CrearPuntoDeVentaRequest;
 import pe.edu.utec.queueless.puntoventa.dto.PuntoDeVentaResponse;
@@ -36,6 +37,9 @@ class PuntoDeVentaServiceTest {
 
     @Mock
     private PuntoDeVentaRepository repository;
+
+    @Mock
+    private TasaCumplimientoService tasaCumplimientoService;
 
     @InjectMocks
     private PuntoDeVentaService service;

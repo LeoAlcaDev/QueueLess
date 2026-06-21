@@ -33,6 +33,17 @@ public enum EstadoPedido {
         PAGADO_ESPERANDO_COMERCIO
     );
 
+    /**
+     * Estados pagados de un pedido programado en los que el cliente todavía puede
+     * cancelar dentro de su ventana de arrepentimiento (ADR-0026). El service exige
+     * además que el pedido sea programado y esté dentro de la ventana; acá solo se
+     * listan los estados desde los que esa cancelación es posible.
+     */
+    public static final Set<EstadoPedido> PROGRAMADO_ARREPENTIMIENTO = EnumSet.of(
+        PAGADO_ESPERANDO_COMERCIO,
+        ACEPTADO
+    );
+
     /** Estados desde los cuales el comercio puede cancelar. */
     public static final Set<EstadoPedido> CANCELABLES_POR_COMERCIO = EnumSet.of(
         PAGADO_ESPERANDO_COMERCIO,
@@ -76,7 +87,7 @@ public enum EstadoPedido {
             CANCELADO_POR_CLIENTE)),
         entry(PAGADO_BUSCANDO_REPARTIDOR, EnumSet.of(PAGADO_ESPERANDO_COMERCIO, CANCELADO_POR_CLIENTE)),
         entry(PAGADO_ESPERANDO_COMERCIO,  EnumSet.of(ACEPTADO, CANCELADO_POR_COMERCIO, CANCELADO_POR_CLIENTE)),
-        entry(ACEPTADO,                   EnumSet.of(EN_PREPARACION, CANCELADO_POR_COMERCIO)),
+        entry(ACEPTADO,                   EnumSet.of(EN_PREPARACION, CANCELADO_POR_COMERCIO, CANCELADO_POR_CLIENTE)),
         entry(EN_PREPARACION,             EnumSet.of(LISTO_PARA_RECOGER, LISTO_PARA_DELIVERY, CANCELADO_POR_COMERCIO)),
         entry(LISTO_PARA_RECOGER,         EnumSet.of(ENTREGADO, EXPIRADO)),
         entry(LISTO_PARA_DELIVERY,        EnumSet.of(ENTREGADO)),

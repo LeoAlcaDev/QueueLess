@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,6 +18,7 @@ import pe.edu.utec.queueless.pedido.dto.MotivoCancelacionRequest;
 import pe.edu.utec.queueless.pedido.dto.PedidoResponse;
 import pe.edu.utec.queueless.pedido.entity.EstadoPedido;
 import pe.edu.utec.queueless.pedido.entity.ItemPedido;
+import pe.edu.utec.queueless.pedido.entity.MotivoCancelacion;
 import pe.edu.utec.queueless.pedido.entity.Pedido;
 import pe.edu.utec.queueless.pedido.entity.TipoEntrega;
 import pe.edu.utec.queueless.pedido.event.PedidoEstadoCambiadoEvent;
@@ -33,9 +35,13 @@ import pe.edu.utec.queueless.usuario.entity.Usuario;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,6 +64,19 @@ public class PedidoService {
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    // Parámetros de los pedidos programados (ADR-0026).
+    @Value("${queueless.programado.horizonte-minimo-horas}")
+    private long horizonteMinimoHoras;
+
+    @Value("${queueless.programado.horizonte-maximo-dias}")
+    private long horizonteMaximoDias;
+
+    @Value("${queueless.programado.slot-minutos}")
+    private int slotMinutos;
+
+    @Value("${queueless.programado.ventana-arrepentimiento-minutos}")
+    private long ventanaArrepentimientoMinutos;
 
     // ---------------------------------------------------------------------------
     // Lectura
@@ -116,6 +135,13 @@ public class PedidoService {
     @Transactional
     public PedidoResponse crear(Usuario cliente, CrearPedidoRequest request) {
         validarEsCliente(cliente);
+        if (request.getRecojoProgramadoAt() != null) {
+            return crearProgramado(cliente, request);
+        }
+        return crearInmediato(cliente, request);
+    }
+
+    private PedidoResponse crearInmediato(Usuario cliente, CrearPedidoRequest request) {
         PuntoDeVenta local = buscarLocalAtendiendo(request.getPuntoDeVentaId());
         LocalTime ahora = TiempoLima.ahora();
         validarHorarioDeAtencion(local, ahora);
@@ -130,9 +156,47 @@ public class PedidoService {
             .build();
 
         agregarItems(pedido, local, request.getItems(), ahora);
+        return finalizarCreacion(pedido);
+    }
+
+    /**
+     * Crea un pedido programado: pagar ahora para recoger a una hora futura. Valida
+     * que sea recojo en tienda, que la hora caiga en el horizonte y el slot, y que a
+     * la hora de recojo el local atienda y cada producto esté disponible y acepte
+     * programados. Las comprobaciones de disponibilidad van contra la hora de recojo,
+     * no contra ahora (ADR-0026).
+     */
+    private PedidoResponse crearProgramado(Usuario cliente, CrearPedidoRequest request) {
+        if (request.getTipoEntrega() != TipoEntrega.PICKUP) {
+            throw new BusinessRuleException("Solo un pedido de recojo en tienda se puede programar");
+        }
+        Instant recojo = request.getRecojoProgramadoAt();
+        validarHorizonte(recojo, Instant.now());
+        validarSlot(recojo);
+
+        PuntoDeVenta local = buscarLocalActivo(request.getPuntoDeVentaId());
+        LocalTime horaRecojo = TiempoLima.horaDe(recojo);
+        LocalDate fechaRecojo = TiempoLima.fechaDe(recojo);
+        // validamos contra la hora de recojo: el local puede abrir recién a esa hora
+        // y el producto estar disponible recién ese día
+        validarHorarioDeAtencion(local, horaRecojo);
+
+        Pedido pedido = Pedido.builder()
+            .cliente(cliente)
+            .puntoDeVenta(local)
+            .estado(EstadoPedido.PENDIENTE_PAGO)
+            .tipoEntrega(TipoEntrega.PICKUP)
+            .recojoProgramadoAt(recojo)
+            .descuentoQpts(BigDecimal.ZERO)
+            .build();
+
+        agregarItemsProgramado(pedido, local, request.getItems(), horaRecojo, fechaRecojo);
+        return finalizarCreacion(pedido);
+    }
+
+    private PedidoResponse finalizarCreacion(Pedido pedido) {
         calcularTotales(pedido);
         pedido.setCodigo(generarCodigoUnico());
-
         Pedido guardado = pedidoRepository.save(pedido);
         // creado_at lo asigna la base (DEFAULT); recargamos para devolverlo en la respuesta.
         entityManager.refresh(guardado);
@@ -141,14 +205,17 @@ public class PedidoService {
     }
 
     /**
-     * Cancela un pedido del cliente. Solo se permite mientras el comercio todavía no
-     * lo aceptó ni se está buscando repartidor, es decir, mientras el estado esté en
-     * {@link EstadoPedido#CANCELABLES_POR_CLIENTE}.
+     * Cancela un pedido del cliente. Un pedido inmediato se cancela mientras el estado
+     * esté en {@link EstadoPedido#CANCELABLES_POR_CLIENTE} (hasta que el comercio lo
+     * acepta). Un pedido programado sigue su propia regla: libre mientras no se pagó, y
+     * ya pagado solo dentro de la ventana de arrepentimiento (ADR-0026).
      */
     @Transactional
     public PedidoResponse cancelarPorCliente(Usuario cliente, Long pedidoId, String razon) {
         Pedido pedido = buscarPedidoDelCliente(cliente, pedidoId);
-        if (!EstadoPedido.CANCELABLES_POR_CLIENTE.contains(pedido.getEstado())) {
+        if (pedido.esProgramado()) {
+            validarCancelacionProgramada(pedido, Instant.now());
+        } else if (!EstadoPedido.CANCELABLES_POR_CLIENTE.contains(pedido.getEstado())) {
             throw new BusinessRuleException(
                 "No puedes cancelar un pedido que el comercio ya empezó a atender");
         }
@@ -156,6 +223,27 @@ public class PedidoService {
         guardarDetalle(pedido, razon);
         Pedido cancelado = aplicarTransicion(pedido, EstadoPedido.CANCELADO_POR_CLIENTE);
         return toResponse(cancelado);
+    }
+
+    /**
+     * Reglas de cancelación de un pedido programado. Mientras no se pagó, se cancela
+     * libre. Ya pagado, solo dentro de la ventana de arrepentimiento medida desde el
+     * pago; pasada la ventana queda comprometido. Es package-private para probar con
+     * un instante fijo.
+     */
+    void validarCancelacionProgramada(Pedido pedido, Instant ahora) {
+        EstadoPedido estado = pedido.getEstado();
+        if (estado == EstadoPedido.PENDIENTE_PAGO) {
+            return;
+        }
+        if (!EstadoPedido.PROGRAMADO_ARREPENTIMIENTO.contains(estado)) {
+            throw new BusinessRuleException("Este pedido programado ya no se puede cancelar");
+        }
+        Instant limite = pedido.getPagadoAt().plus(ventanaArrepentimientoMinutos, ChronoUnit.MINUTES);
+        if (ahora.isAfter(limite)) {
+            throw new BusinessRuleException(
+                "Pasó la ventana de arrepentimiento; el pedido programado quedó comprometido");
+        }
     }
 
     // ---------------------------------------------------------------------------
@@ -240,6 +328,19 @@ public class PedidoService {
     }
 
     /**
+     * Cancela, en nombre del sistema, un pedido programado que el comercio dejó vencer
+     * (lo usa la red de seguridad). Setea el motivo y transiciona a
+     * CANCELADO_POR_COMERCIO, que ya gatilla el reembolso por venir de un estado
+     * pagado. No valida dueño: lo llama un trabajo programado, no un usuario.
+     */
+    @Transactional
+    public Pedido cancelarProgramadoVencido(Long pedidoId, MotivoCancelacion motivo) {
+        Pedido pedido = findById(pedidoId);
+        pedido.setMotivoCancelacion(motivo);
+        return aplicarTransicion(pedido, EstadoPedido.CANCELADO_POR_COMERCIO);
+    }
+
+    /**
      * Simula la confirmación del pago para poder probar el flujo del comercio antes
      * de que exista el módulo de pagos (Fase 4). Solo se expone en el perfil dev.
      */
@@ -287,9 +388,17 @@ public class PedidoService {
     // Helpers de creación
     // ---------------------------------------------------------------------------
 
-    private PuntoDeVenta buscarLocalAtendiendo(Long puntoDeVentaId) {
-        PuntoDeVenta local = puntoDeVentaRepository.findByIdAndActivoTrue(puntoDeVentaId)
+    private PuntoDeVenta buscarLocalActivo(Long puntoDeVentaId) {
+        return puntoDeVentaRepository.findByIdAndActivoTrue(puntoDeVentaId)
             .orElseThrow(() -> new ResourceNotFoundException("PuntoDeVenta", puntoDeVentaId));
+    }
+
+    /**
+     * Para un pedido inmediato exigimos además que el local esté abierto ahora. Un
+     * programado no pasa por acá: se valida contra la hora de recojo, no contra ahora.
+     */
+    private PuntoDeVenta buscarLocalAtendiendo(Long puntoDeVentaId) {
+        PuntoDeVenta local = buscarLocalActivo(puntoDeVentaId);
         if (!local.getAbierto()) {
             throw new BusinessRuleException("El local no está atendiendo en este momento");
         }
@@ -354,6 +463,52 @@ public class PedidoService {
         }
     }
 
+    /** El recojo programado debe caer entre el mínimo y el máximo de antelación. */
+    void validarHorizonte(Instant recojo, Instant ahora) {
+        Duration antelacion = Duration.between(ahora, recojo);
+        if (antelacion.compareTo(Duration.ofHours(horizonteMinimoHoras)) < 0) {
+            throw new BusinessRuleException(
+                "El recojo programado debe ser al menos " + horizonteMinimoHoras + " horas después");
+        }
+        if (antelacion.compareTo(Duration.ofDays(horizonteMaximoDias)) > 0) {
+            throw new BusinessRuleException(
+                "El recojo programado no puede ser más de " + horizonteMaximoDias + " días después");
+        }
+    }
+
+    /** El recojo programado debe caer en un slot redondo (múltiplo de los minutos configurados). */
+    void validarSlot(Instant recojo) {
+        LocalDateTime enLima = TiempoLima.enZonaLima(recojo);
+        boolean enSlot = enLima.getMinute() % slotMinutos == 0
+            && enLima.getSecond() == 0
+            && enLima.getNano() == 0;
+        if (!enSlot) {
+            throw new BusinessRuleException(
+                "El recojo programado debe caer en un intervalo de " + slotMinutos + " minutos");
+        }
+    }
+
+    /** A la fecha de recojo, el producto debe estar dentro de su vigencia (si la tiene). */
+    void validarVigencia(Producto producto, LocalDate fechaRecojo) {
+        LocalDate inicio = producto.getVigenciaInicio();
+        LocalDate fin = producto.getVigenciaFin();
+        if (inicio != null && fechaRecojo.isBefore(inicio)) {
+            throw new BusinessRuleException(
+                "El producto '" + producto.getNombre() + "' aún no está vigente para esa fecha");
+        }
+        if (fin != null && fechaRecojo.isAfter(fin)) {
+            throw new BusinessRuleException(
+                "El producto '" + producto.getNombre() + "' ya no está vigente para esa fecha");
+        }
+    }
+
+    private void validarAceptaProgramado(Producto producto) {
+        if (!Boolean.TRUE.equals(producto.getAceptaProgramado())) {
+            throw new BusinessRuleException(
+                "El producto '" + producto.getNombre() + "' no acepta pedidos programados");
+        }
+    }
+
     private void validarZonaEntrega(CrearPedidoRequest request) {
         if (request.getTipoEntrega() != TipoEntrega.DELIVERY) {
             return;
@@ -370,6 +525,20 @@ public class PedidoService {
             Producto producto = buscarProductoDisponibleDelLocal(local, itemRequest.getProductoId());
             validarHorarioDeServicio(producto, ahora);
             validarVentanaDePedido(producto, ahora);
+            ItemPedido item = construirItem(pedido, producto, itemRequest.getCantidad());
+            pedido.getItems().add(item);
+        }
+    }
+
+    /** Items de un programado: cada producto debe aceptar programados y estar disponible a la hora de recojo. */
+    private void agregarItemsProgramado(Pedido pedido, PuntoDeVenta local,
+                                        List<ItemPedidoRequest> itemsRequest,
+                                        LocalTime horaRecojo, LocalDate fechaRecojo) {
+        for (ItemPedidoRequest itemRequest : itemsRequest) {
+            Producto producto = buscarProductoDisponibleDelLocal(local, itemRequest.getProductoId());
+            validarAceptaProgramado(producto);
+            validarHorarioDeServicio(producto, horaRecojo);
+            validarVigencia(producto, fechaRecojo);
             ItemPedido item = construirItem(pedido, producto, itemRequest.getCantidad());
             pedido.getItems().add(item);
         }
@@ -531,6 +700,7 @@ public class PedidoService {
             .codigo(pedido.getCodigo())
             .estado(pedido.getEstado())
             .tipoEntrega(pedido.getTipoEntrega())
+            .recojoProgramadoAt(pedido.getRecojoProgramadoAt())
             .puntoDeVentaId(pedido.getPuntoDeVenta().getId())
             .subtotal(pedido.getSubtotal())
             .descuentoQpts(pedido.getDescuentoQpts())

@@ -39,6 +39,10 @@ public class Pedido {
     @Column(name = "tipo_entrega", nullable = false, length = 20)
     private TipoEntrega tipoEntrega;
 
+    // Hora futura de recojo de un pedido programado; null en los inmediatos (ADR-0026).
+    @Column(name = "recojo_programado_at")
+    private Instant recojoProgramadoAt;
+
     @Column(nullable = false, precision = 8, scale = 2)
     private BigDecimal subtotal;
 
@@ -80,6 +84,11 @@ public class Pedido {
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ItemPedido> items = new ArrayList<>();
+
+    /** Un pedido es programado si tiene una hora futura de recojo fijada. */
+    public boolean esProgramado() {
+        return recojoProgramadoAt != null;
+    }
 
     /**
      * Cambia el estado validando que la transición sea legal según

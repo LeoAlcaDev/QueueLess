@@ -28,11 +28,16 @@ import pe.edu.utec.queueless.puntoventa.repository.ProductoRepository;
 import pe.edu.utec.queueless.puntoventa.repository.PuntoDeVentaRepository;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
+import pe.edu.utec.queueless.shared.util.TiempoLima;
 import pe.edu.utec.queueless.usuario.entity.Rol;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -77,6 +82,10 @@ class PedidoServiceTest {
     @BeforeEach
     void inyectarEntityManager() {
         ReflectionTestUtils.setField(service, "entityManager", entityManager);
+        ReflectionTestUtils.setField(service, "horizonteMinimoHoras", 2L);
+        ReflectionTestUtils.setField(service, "horizonteMaximoDias", 7L);
+        ReflectionTestUtils.setField(service, "slotMinutos", 15);
+        ReflectionTestUtils.setField(service, "ventanaArrepentimientoMinutos", 30L);
     }
 
     // ----------------------------------------------------------------------
@@ -510,6 +519,202 @@ class PedidoServiceTest {
     }
 
     // ----------------------------------------------------------------------
+    // Pedidos programados: validación al crear (lógica pura, con instantes fijos)
+    // ----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("el horizonte acepta una hora de recojo entre el mínimo y el máximo")
+    void shouldPermitirWhenHorizonteValido() {
+        Instant ahora = Instant.parse("2026-06-21T12:00:00Z");
+        assertThatCode(() -> service.validarHorizonte(ahora.plus(3, ChronoUnit.HOURS), ahora))
+            .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("el horizonte rechaza un recojo con menos de 2 horas de antelación")
+    void shouldFallarWhenRecojoMuyPronto() {
+        Instant ahora = Instant.parse("2026-06-21T12:00:00Z");
+        assertThatThrownBy(() -> service.validarHorizonte(ahora.plus(1, ChronoUnit.HOURS), ahora))
+            .isInstanceOf(BusinessRuleException.class)
+            .hasMessageContaining("al menos");
+    }
+
+    @Test
+    @DisplayName("el horizonte rechaza un recojo a más de 7 días")
+    void shouldFallarWhenRecojoMuyLejano() {
+        Instant ahora = Instant.parse("2026-06-21T12:00:00Z");
+        assertThatThrownBy(() -> service.validarHorizonte(ahora.plus(8, ChronoUnit.DAYS), ahora))
+            .isInstanceOf(BusinessRuleException.class)
+            .hasMessageContaining("más de");
+    }
+
+    @Test
+    @DisplayName("el slot acepta una hora redonda de 15 minutos y rechaza una que no lo es")
+    void shouldValidarSlotDeQuinceMinutos() {
+        // 17:00Z = 12:00 en Lima (UTC-5), cae en slot; 17:07Z = 12:07, no
+        assertThatCode(() -> service.validarSlot(Instant.parse("2026-06-21T17:00:00Z")))
+            .doesNotThrowAnyException();
+        assertThatThrownBy(() -> service.validarSlot(Instant.parse("2026-06-21T17:07:00Z")))
+            .isInstanceOf(BusinessRuleException.class)
+            .hasMessageContaining("intervalo de 15");
+    }
+
+    @Test
+    @DisplayName("la vigencia acepta una fecha dentro del rango y rechaza fuera")
+    void shouldValidarVigencia() {
+        Producto producto = producto(1L, local(10L, usuario(2L, Rol.COMERCIO), true), "10.00", true);
+        producto.setVigenciaInicio(LocalDate.of(2026, 6, 1));
+        producto.setVigenciaFin(LocalDate.of(2026, 6, 30));
+
+        assertThatCode(() -> service.validarVigencia(producto, LocalDate.of(2026, 6, 15)))
+            .doesNotThrowAnyException();
+        assertThatThrownBy(() -> service.validarVigencia(producto, LocalDate.of(2026, 5, 30)))
+            .isInstanceOf(BusinessRuleException.class)
+            .hasMessageContaining("aún no está vigente");
+        assertThatThrownBy(() -> service.validarVigencia(producto, LocalDate.of(2026, 7, 1)))
+            .isInstanceOf(BusinessRuleException.class)
+            .hasMessageContaining("ya no está vigente");
+    }
+
+    @Test
+    @DisplayName("un producto sin vigencia está disponible cualquier fecha")
+    void shouldPermitirWhenSinVigencia() {
+        Producto producto = producto(1L, local(10L, usuario(2L, Rol.COMERCIO), true), "10.00", true);
+        assertThatCode(() -> service.validarVigencia(producto, LocalDate.of(2030, 1, 1)))
+            .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("crear un programado válido lo deja en PENDIENTE_PAGO con su hora de recojo")
+    void shouldCrearProgramadoValido() {
+        // Arrange
+        Usuario cliente = usuario(1L, Rol.CLIENTE);
+        PuntoDeVenta local = local(10L, usuario(2L, Rol.COMERCIO), true);   // sin horario => siempre abierto
+        Producto sandwich = producto(100L, local, "10.00", true);          // aceptaProgramado = true por default
+        when(puntoDeVentaRepository.findByIdAndActivoTrue(10L)).thenReturn(Optional.of(local));
+        when(productoRepository.findById(100L)).thenReturn(Optional.of(sandwich));
+        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocacion -> {
+            Pedido p = invocacion.getArgument(0);
+            p.setId(70L);
+            return p;
+        });
+        Instant recojo = recojoValido();
+        CrearPedidoRequest request = crearRequest(10L, TipoEntrega.PICKUP, null, itemRequest(100L, 1));
+        request.setRecojoProgramadoAt(recojo);
+
+        // Act
+        PedidoResponse response = service.crear(cliente, request);
+
+        // Assert
+        assertThat(response.getEstado()).isEqualTo(EstadoPedido.PENDIENTE_PAGO);
+        assertThat(response.getTipoEntrega()).isEqualTo(TipoEntrega.PICKUP);
+        assertThat(response.getRecojoProgramadoAt()).isEqualTo(recojo);
+    }
+
+    @Test
+    @DisplayName("crear un programado DELIVERY falla: solo recojo en tienda se programa")
+    void shouldFallarWhenProgramadoDelivery() {
+        Usuario cliente = usuario(1L, Rol.CLIENTE);
+        CrearPedidoRequest request = crearRequest(10L, TipoEntrega.DELIVERY, "Bloque A", itemRequest(100L, 1));
+        request.setRecojoProgramadoAt(recojoValido());
+
+        assertThatThrownBy(() -> service.crear(cliente, request))
+            .isInstanceOf(BusinessRuleException.class)
+            .hasMessageContaining("recojo en tienda");
+        verify(pedidoRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("crear un programado de un producto que no acepta programados falla")
+    void shouldFallarWhenProductoNoAceptaProgramado() {
+        Usuario cliente = usuario(1L, Rol.CLIENTE);
+        PuntoDeVenta local = local(10L, usuario(2L, Rol.COMERCIO), true);
+        Producto sinProgramado = producto(100L, local, "10.00", true);
+        sinProgramado.setAceptaProgramado(false);
+        when(puntoDeVentaRepository.findByIdAndActivoTrue(10L)).thenReturn(Optional.of(local));
+        when(productoRepository.findById(100L)).thenReturn(Optional.of(sinProgramado));
+        CrearPedidoRequest request = crearRequest(10L, TipoEntrega.PICKUP, null, itemRequest(100L, 1));
+        request.setRecojoProgramadoAt(recojoValido());
+
+        assertThatThrownBy(() -> service.crear(cliente, request))
+            .isInstanceOf(BusinessRuleException.class)
+            .hasMessageContaining("no acepta pedidos programados");
+        verify(pedidoRepository, never()).save(any());
+    }
+
+    // ----------------------------------------------------------------------
+    // Pedidos programados: cancelación del cliente (tres ramas)
+    // ----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("un programado sin pagar se cancela libre, sin candado de ventana")
+    void shouldCancelarProgramadoSinPagar() {
+        Pedido pedido = programado(EstadoPedido.PENDIENTE_PAGO, null);
+        assertThatCode(() -> service.validarCancelacionProgramada(pedido, Instant.now()))
+            .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("un programado pagado se puede cancelar dentro de la ventana de 30 min, incluso ya aceptado")
+    void shouldCancelarProgramadoDentroDeVentana() {
+        Instant ahora = Instant.parse("2026-06-21T12:00:00Z");
+        Pedido pedido = programado(EstadoPedido.ACEPTADO, ahora.minus(10, ChronoUnit.MINUTES));
+        assertThatCode(() -> service.validarCancelacionProgramada(pedido, ahora))
+            .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("un programado pagado pasada la ventana de 30 min queda bloqueado")
+    void shouldBloquearProgramadoPasadaLaVentana() {
+        Instant ahora = Instant.parse("2026-06-21T12:00:00Z");
+        Pedido pedido = programado(EstadoPedido.PAGADO_ESPERANDO_COMERCIO, ahora.minus(40, ChronoUnit.MINUTES));
+        assertThatThrownBy(() -> service.validarCancelacionProgramada(pedido, ahora))
+            .isInstanceOf(BusinessRuleException.class)
+            .hasMessageContaining("ventana de arrepentimiento");
+    }
+
+    @Test
+    @DisplayName("un programado ya en preparación no se puede cancelar por el cliente")
+    void shouldBloquearProgramadoEnPreparacion() {
+        Instant ahora = Instant.parse("2026-06-21T12:00:00Z");
+        Pedido pedido = programado(EstadoPedido.EN_PREPARACION, ahora.minus(5, ChronoUnit.MINUTES));
+        assertThatThrownBy(() -> service.validarCancelacionProgramada(pedido, ahora))
+            .isInstanceOf(BusinessRuleException.class)
+            .hasMessageContaining("ya no se puede cancelar");
+    }
+
+    @Test
+    @DisplayName("la cancelación de un pedido directo no se ve afectada por las reglas de programados")
+    void shouldNoAfectarDirectoLasReglasDeProgramado() {
+        Usuario cliente = usuario(1L, Rol.CLIENTE);
+        PuntoDeVenta local = local(10L, usuario(2L, Rol.COMERCIO), true);
+        Pedido directoAceptado = pedido(50L, cliente, local, EstadoPedido.ACEPTADO, TipoEntrega.PICKUP);
+        when(pedidoRepository.findById(50L)).thenReturn(Optional.of(directoAceptado));
+
+        // Un directo en ACEPTADO sigue sin poder cancelarse por el cliente (no es programado)
+        assertThatThrownBy(() -> service.cancelarPorCliente(cliente, 50L, null))
+            .isInstanceOf(BusinessRuleException.class)
+            .hasMessageContaining("ya empezó a atender");
+        verify(pedidoRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("la red de seguridad cancela un programado vencido con el motivo dado y dispara el evento")
+    void shouldCancelarProgramadoVencido() {
+        Usuario cliente = usuario(1L, Rol.CLIENTE);
+        PuntoDeVenta local = local(10L, usuario(2L, Rol.COMERCIO), true);
+        Pedido pedido = pedido(50L, cliente, local, EstadoPedido.PAGADO_ESPERANDO_COMERCIO, TipoEntrega.PICKUP);
+        when(pedidoRepository.findById(50L)).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
+
+        Pedido cancelado = service.cancelarProgramadoVencido(50L, MotivoCancelacion.COMERCIO_NO_ATENDIO);
+
+        assertThat(cancelado.getEstado()).isEqualTo(EstadoPedido.CANCELADO_POR_COMERCIO);
+        assertThat(cancelado.getMotivoCancelacion()).isEqualTo(MotivoCancelacion.COMERCIO_NO_ATENDIO);
+        verify(eventPublisher).publishEvent(any(PedidoEstadoCambiadoEvent.class));
+    }
+
+    // ----------------------------------------------------------------------
     // Factories
     // ----------------------------------------------------------------------
 
@@ -562,6 +767,23 @@ class PedidoServiceTest {
             .build();
         pedido.setId(id);
         return pedido;
+    }
+
+    /** Pedido programado en el estado dado, con su pagado_at (null si aún no se pagó). */
+    private Pedido programado(EstadoPedido estado, Instant pagadoAt) {
+        Pedido pedido = pedido(60L, usuario(1L, Rol.CLIENTE),
+            local(10L, usuario(2L, Rol.COMERCIO), true), estado, TipoEntrega.PICKUP);
+        pedido.setRecojoProgramadoAt(Instant.parse("2026-06-22T17:00:00Z"));
+        pedido.setPagadoAt(pagadoAt);
+        return pedido;
+    }
+
+    /** Una hora de recojo válida: ~3 h adelante, redondeada a un slot de 15 min en zona Lima. */
+    private Instant recojoValido() {
+        LocalDateTime enLima = TiempoLima.enZonaLima(Instant.now()).plusHours(3);
+        int minutoSlot = (enLima.getMinute() / 15) * 15;
+        LocalDateTime slot = enLima.withMinute(minutoSlot).withSecond(0).withNano(0);
+        return slot.atZone(TiempoLima.ZONA).toInstant();
     }
 
     private ItemPedidoRequest itemRequest(Long productoId, int cantidad) {

@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.edu.utec.queueless.pedido.service.TasaCumplimientoService;
 import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
 import pe.edu.utec.queueless.usuario.dto.*;
 import pe.edu.utec.queueless.usuario.entity.*;
@@ -30,6 +31,7 @@ public class PerfilService {
     private final PerfilComercioRepository perfilComercioRepository;
     private final PerfilRepartidorRepository perfilRepartidorRepository;
     private final ModelMapper modelMapper;
+    private final TasaCumplimientoService tasaCumplimientoService;
 
     // ---------------------------------------------------------------------------
     // Creacion de perfiles vacios (usado por register y por activarRol)
@@ -80,7 +82,10 @@ public class PerfilService {
             respuesta.cliente(modelMapper.map(buscarPerfilCliente(usuario), PerfilClienteResponse.class));
         }
         if (usuario.tieneRol(Rol.COMERCIO)) {
-            respuesta.comercio(modelMapper.map(buscarPerfilComercio(usuario), PerfilComercioResponse.class));
+            PerfilComercioResponse comercio =
+                modelMapper.map(buscarPerfilComercio(usuario), PerfilComercioResponse.class);
+            comercio.setTasaCumplimiento(tasaCumplimientoService.calcular(usuario.getId()));
+            respuesta.comercio(comercio);
         }
         if (usuario.tieneRol(Rol.REPARTIDOR)) {
             respuesta.repartidor(modelMapper.map(buscarPerfilRepartidor(usuario), PerfilRepartidorResponse.class));

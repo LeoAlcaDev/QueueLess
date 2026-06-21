@@ -77,6 +77,9 @@ public class ProductoService {
             .tipoPreparacion(request.getTipoPreparacion())
             .disponible(true)
             .alergenos(orEmpty(request.getAlergenos()))
+            .vigenciaInicio(request.getVigenciaInicio())
+            .vigenciaFin(request.getVigenciaFin())
+            .aceptaProgramado(!Boolean.FALSE.equals(request.getAceptaProgramado()))
             .horarioServicioInicio(request.getHorarioServicioInicio())
             .horarioServicioFin(request.getHorarioServicioFin())
             .tieneVentanaDePedido(Boolean.TRUE.equals(request.getTieneVentanaDePedido()))
@@ -102,6 +105,9 @@ public class ProductoService {
         producto.setCategoria(request.getCategoria());
         producto.setTipoPreparacion(request.getTipoPreparacion());
         producto.setAlergenos(orEmpty(request.getAlergenos()));
+        producto.setVigenciaInicio(request.getVigenciaInicio());
+        producto.setVigenciaFin(request.getVigenciaFin());
+        producto.setAceptaProgramado(!Boolean.FALSE.equals(request.getAceptaProgramado()));
         producto.setHorarioServicioInicio(request.getHorarioServicioInicio());
         producto.setHorarioServicioFin(request.getHorarioServicioFin());
         producto.setTieneVentanaDePedido(Boolean.TRUE.equals(request.getTieneVentanaDePedido()));
@@ -272,6 +278,9 @@ public class ProductoService {
         response.setVentanaPedidoFin(producto.getVentanaPedidoFin());
         response.setVentanaRecojoInicio(producto.getVentanaRecojoInicio());
         response.setVentanaRecojoFin(producto.getVentanaRecojoFin());
+        response.setVigenciaInicio(producto.getVigenciaInicio());
+        response.setVigenciaFin(producto.getVigenciaFin());
+        response.setAceptaProgramado(producto.getAceptaProgramado());
 
         String razon = calcularRazonNoDisponible(producto, ahora);
         response.setDisponibleAhora(razon == null);

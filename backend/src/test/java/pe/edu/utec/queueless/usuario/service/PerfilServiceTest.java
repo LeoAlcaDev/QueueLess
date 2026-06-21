@@ -8,6 +8,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
+import pe.edu.utec.queueless.pedido.service.TasaCumplimientoService;
 import pe.edu.utec.queueless.shared.domain.Alergeno;
 import pe.edu.utec.queueless.usuario.dto.ActualizarPerfilClienteRequest;
 import pe.edu.utec.queueless.usuario.entity.PerfilCliente;
@@ -49,6 +50,9 @@ class PerfilServiceTest {
 
     @Mock
     private ModelMapper modelMapper;
+
+    @Mock
+    private TasaCumplimientoService tasaCumplimientoService;
 
     @InjectMocks
     private PerfilService perfilService;

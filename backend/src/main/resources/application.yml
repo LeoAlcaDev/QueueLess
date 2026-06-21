@@ -64,6 +64,14 @@ queueless:
   pedido:
     expiracion-minutos: 30
     cancelacion-pago-pendiente-minutos: 60          # cancela pedidos sin pagar pasado este tiempo
+  programado:
+    horizonte-minimo-horas: 2                       # antelación mínima de un recojo programado
+    horizonte-maximo-dias: 7                        # antelación máxima
+    slot-minutos: 15                                # granularidad de la hora de recojo
+    ventana-arrepentimiento-minutos: 30             # ventana de cancelación del cliente, contada desde el pago
+    gracia-cancelacion-minutos: 15                  # gracia tras aceptar antes de que cancelar cuente como falla
+    gracia-recojo-vencido-minutos: 15               # margen tras el recojo antes de que la red de seguridad cancele un ACEPTADO
+    minimo-pedidos-tasa: 5                          # mínimo de programados resueltos para mostrar la tasa de cumplimiento
   queuepoints:
     puntos-por-entrega: 50
   waittime:

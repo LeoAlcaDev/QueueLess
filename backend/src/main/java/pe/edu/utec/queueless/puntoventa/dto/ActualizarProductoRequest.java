@@ -12,6 +12,7 @@ import pe.edu.utec.queueless.puntoventa.entity.TipoPreparacion;
 import pe.edu.utec.queueless.shared.domain.Alergeno;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Set;
 
@@ -50,4 +51,10 @@ public class ActualizarProductoRequest {
     private LocalTime ventanaPedidoFin;
     private LocalTime ventanaRecojoInicio;
     private LocalTime ventanaRecojoFin;
+
+    // Vigencia por fecha (opcional; ambas null = siempre vigente) y si el producto
+    // acepta pedidos programados (default true cuando no se envía).
+    private LocalDate vigenciaInicio;
+    private LocalDate vigenciaFin;
+    private Boolean aceptaProgramado;
 }
