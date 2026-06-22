@@ -11,6 +11,7 @@ import pe.edu.utec.queueless.auth.service.AuthService;
 import pe.edu.utec.queueless.integration.AbstractIntegrationTest;
 import pe.edu.utec.queueless.notification.dto.PushNotification;
 import pe.edu.utec.queueless.notification.service.NotificationService;
+import pe.edu.utec.queueless.pedido.dto.ConfirmarEntregaRequest;
 import pe.edu.utec.queueless.pedido.dto.CrearPedidoRequest;
 import pe.edu.utec.queueless.pedido.dto.ItemPedidoRequest;
 import pe.edu.utec.queueless.pedido.dto.PedidoResponse;
@@ -73,7 +74,7 @@ class PickupFlowIT extends AbstractIntegrationTest {
         pedidoService.aceptar(comercio, pedidoId);
         pedidoService.iniciarPreparacion(comercio, pedidoId);
         pedidoService.marcarListo(comercio, pedidoId);
-        pedidoService.marcarEntregado(comercio, pedidoId);
+        pedidoService.marcarEntregado(comercio, pedidoId, entregaRequest(creado.getCodigo()));
 
         Pedido persistido = pedidoRepository.findById(pedidoId).orElseThrow();
         assertThat(persistido.getEstado()).isEqualTo(EstadoPedido.ENTREGADO);
@@ -87,6 +88,12 @@ class PickupFlowIT extends AbstractIntegrationTest {
         return push -> push != null
             && ("cliente-" + clienteId).equals(push.getTopic())
             && "Entregado".equals(push.getTitulo());
+    }
+
+    private ConfirmarEntregaRequest entregaRequest(String codigo) {
+        ConfirmarEntregaRequest request = new ConfirmarEntregaRequest();
+        request.setCodigo(codigo);
+        return request;
     }
 
     private Usuario registrar(String email, Rol... roles) {

@@ -12,6 +12,7 @@ import pe.edu.utec.queueless.delivery.entity.EstadoSolicitudDelivery;
 import pe.edu.utec.queueless.delivery.entity.SolicitudDelivery;
 import pe.edu.utec.queueless.delivery.repository.SolicitudDeliveryRepository;
 import pe.edu.utec.queueless.delivery.service.SolicitudDeliveryService;
+import pe.edu.utec.queueless.pedido.dto.ConfirmarEntregaRequest;
 import pe.edu.utec.queueless.pedido.dto.PedidoResponse;
 import pe.edu.utec.queueless.pedido.entity.EstadoPedido;
 import pe.edu.utec.queueless.pedido.entity.Pedido;
@@ -30,6 +31,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -114,6 +116,63 @@ class SolicitudDeliveryServiceTest {
         verify(repository, never()).save(any());
     }
 
+    @Test
+    @DisplayName("confirmar entrega con el código correcto cierra la solicitud y mueve el pedido a ENTREGADO")
+    void shouldEntregarWhenCodigoCorrecto() {
+        Usuario repartidor = repartidor();
+        Pedido pedido = pedidoConLocal(EstadoPedido.LISTO_PARA_DELIVERY);
+        SolicitudDelivery solicitud = solicitud(EstadoSolicitudDelivery.RECOGIDO, pedido);
+        solicitud.setRepartidor(repartidor);
+        when(repository.findById(SOLICITUD_ID)).thenReturn(Optional.of(solicitud));
+        when(repository.save(solicitud)).thenReturn(solicitud);
+
+        SolicitudDeliveryResponse response =
+            service.confirmarEntrega(repartidor, SOLICITUD_ID, entregaRequest("QL-1"));
+
+        assertThat(response.getEstado()).isEqualTo(EstadoSolicitudDelivery.ENTREGADO);
+        verify(pedidoService).verificarCodigoEntrega(pedido, "QL-1");
+        verify(pedidoService).cambiarEstado(PEDIDO_ID, EstadoPedido.ENTREGADO);
+    }
+
+    @Test
+    @DisplayName("confirmar entrega con código incorrecto no cierra la solicitud ni dispara los puntos")
+    void shouldRechazarEntregaWhenCodigoIncorrecto() {
+        Usuario repartidor = repartidor();
+        Pedido pedido = pedidoConLocal(EstadoPedido.LISTO_PARA_DELIVERY);
+        SolicitudDelivery solicitud = solicitud(EstadoSolicitudDelivery.RECOGIDO, pedido);
+        solicitud.setRepartidor(repartidor);
+        when(repository.findById(SOLICITUD_ID)).thenReturn(Optional.of(solicitud));
+        doThrow(new BusinessRuleException("El código de entrega no coincide con el del pedido"))
+            .when(pedidoService).verificarCodigoEntrega(pedido, "QL-MALO");
+
+        assertThatThrownBy(() ->
+                service.confirmarEntrega(repartidor, SOLICITUD_ID, entregaRequest("QL-MALO")))
+            .isInstanceOf(BusinessRuleException.class)
+            .hasMessageContaining("código");
+
+        assertThat(solicitud.getEstado()).isEqualTo(EstadoSolicitudDelivery.RECOGIDO);
+        verify(pedidoService, never()).cambiarEstado(any(), any());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("confirmar entrega de una solicitud ya ENTREGADA falla y no vuelve a otorgar puntos")
+    void shouldRechazarEntregaRepetida() {
+        Usuario repartidor = repartidor();
+        Pedido pedido = pedidoConLocal(EstadoPedido.ENTREGADO);
+        SolicitudDelivery solicitud = solicitud(EstadoSolicitudDelivery.ENTREGADO, pedido);
+        solicitud.setRepartidor(repartidor);
+        when(repository.findById(SOLICITUD_ID)).thenReturn(Optional.of(solicitud));
+
+        assertThatThrownBy(() ->
+                service.confirmarEntrega(repartidor, SOLICITUD_ID, entregaRequest("QL-1")))
+            .isInstanceOf(BusinessRuleException.class)
+            .hasMessageContaining("RECOGIDO");
+
+        verify(pedidoService, never()).cambiarEstado(any(), any());
+        verify(repository, never()).save(any());
+    }
+
     // ---------------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------------
@@ -156,5 +215,11 @@ class SolicitudDeliveryServiceTest {
             .busquedaInicioAt(ahora).busquedaFinAt(ahora.plus(4, ChronoUnit.MINUTES)).build();
         solicitud.setId(SOLICITUD_ID);
         return solicitud;
+    }
+
+    private ConfirmarEntregaRequest entregaRequest(String codigo) {
+        ConfirmarEntregaRequest request = new ConfirmarEntregaRequest();
+        request.setCodigo(codigo);
+        return request;
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utec.queueless.auth.dto.RegisterRequest;
 import pe.edu.utec.queueless.auth.service.AuthService;
 import pe.edu.utec.queueless.integration.AbstractIntegrationTest;
+import pe.edu.utec.queueless.pedido.dto.ConfirmarEntregaRequest;
 import pe.edu.utec.queueless.pedido.dto.CrearPedidoRequest;
 import pe.edu.utec.queueless.pedido.dto.ItemPedidoRequest;
 import pe.edu.utec.queueless.pedido.dto.PedidoResponse;
@@ -98,7 +99,7 @@ class PedidoFlowIT extends AbstractIntegrationTest {
         pedidoService.iniciarPreparacion(comercio, pedidoId);
         PedidoResponse listo = pedidoService.marcarListo(comercio, pedidoId);
         assertThat(listo.getEstado()).isEqualTo(EstadoPedido.LISTO_PARA_RECOGER);
-        pedidoService.marcarEntregado(comercio, pedidoId);
+        pedidoService.marcarEntregado(comercio, pedidoId, entregaRequest(creado.getCodigo()));
 
         // Assert: terminó en ENTREGADO con todos los timestamps de transición seteados
         Pedido persistido = pedidoRepository.findById(pedidoId).orElseThrow();
@@ -135,13 +136,19 @@ class PedidoFlowIT extends AbstractIntegrationTest {
         assertThat(listo.getEstado()).isEqualTo(EstadoPedido.LISTO_PARA_DELIVERY);
 
         // La entrega de un DELIVERY no la confirma el comercio
-        assertThatThrownBy(() -> pedidoService.marcarEntregado(comercio, pedidoId))
+        assertThatThrownBy(() -> pedidoService.marcarEntregado(comercio, pedidoId, entregaRequest(creado.getCodigo())))
             .isInstanceOf(BusinessRuleException.class);
     }
 
     // ----------------------------------------------------------------------
     // Helpers
     // ----------------------------------------------------------------------
+
+    private ConfirmarEntregaRequest entregaRequest(String codigo) {
+        ConfirmarEntregaRequest request = new ConfirmarEntregaRequest();
+        request.setCodigo(codigo);
+        return request;
+    }
 
     private Usuario registrar(String email, Rol... roles) {
         RegisterRequest request = new RegisterRequest();

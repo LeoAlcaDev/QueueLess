@@ -11,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
+import pe.edu.utec.queueless.pedido.dto.ConfirmarEntregaRequest;
 import pe.edu.utec.queueless.pedido.dto.CrearPedidoRequest;
 import pe.edu.utec.queueless.pedido.dto.ItemPedidoRequest;
 import pe.edu.utec.queueless.pedido.dto.MotivoCancelacionRequest;
@@ -27,7 +28,9 @@ import pe.edu.utec.queueless.puntoventa.entity.TipoPreparacion;
 import pe.edu.utec.queueless.puntoventa.repository.ProductoRepository;
 import pe.edu.utec.queueless.puntoventa.repository.PuntoDeVentaRepository;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
+import pe.edu.utec.queueless.shared.exception.InvalidStateTransitionException;
 import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
+import pe.edu.utec.queueless.shared.qr.GeneradorQr;
 import pe.edu.utec.queueless.shared.util.TiempoLima;
 import pe.edu.utec.queueless.usuario.entity.Rol;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
@@ -73,6 +76,9 @@ class PedidoServiceTest {
 
     @Mock
     private EntityManager entityManager;
+
+    @Mock
+    private GeneradorQr generadorQr;
 
     @InjectMocks
     private PedidoService service;
@@ -321,10 +327,165 @@ class PedidoServiceTest {
         when(pedidoRepository.findById(50L)).thenReturn(Optional.of(pedido));
 
         // Act + Assert
-        assertThatThrownBy(() -> service.marcarEntregado(gestor, 50L))
+        assertThatThrownBy(() -> service.marcarEntregado(gestor, 50L, entregaRequest("QL-260524-AB123")))
             .isInstanceOf(BusinessRuleException.class)
             .hasMessageContaining("repartidor");
         verify(pedidoRepository, never()).save(any());
+    }
+
+    // ----------------------------------------------------------------------
+    // Validación de entrega por código (ADR-0027)
+    // ----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("verificar código acepta el código exacto del pedido")
+    void shouldAceptarCodigoExacto() {
+        // Arrange
+        Pedido pedido = pedido(50L, usuario(1L, Rol.CLIENTE),
+            local(10L, usuario(2L, Rol.COMERCIO), true),
+            EstadoPedido.LISTO_PARA_RECOGER, TipoEntrega.PICKUP);
+
+        // Act + Assert
+        assertThatCode(() -> service.verificarCodigoEntrega(pedido, "QL-260524-AB123"))
+            .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("verificar código tolera espacios y minúsculas (el alfabeto no distingue caja)")
+    void shouldAceptarCodigoConEspaciosYMinuscula() {
+        // Arrange
+        Pedido pedido = pedido(50L, usuario(1L, Rol.CLIENTE),
+            local(10L, usuario(2L, Rol.COMERCIO), true),
+            EstadoPedido.LISTO_PARA_RECOGER, TipoEntrega.PICKUP);
+
+        // Act + Assert
+        assertThatCode(() -> service.verificarCodigoEntrega(pedido, "  ql-260524-ab123 "))
+            .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("verificar código rechaza un código distinto")
+    void shouldRechazarCodigoDistinto() {
+        // Arrange
+        Pedido pedido = pedido(50L, usuario(1L, Rol.CLIENTE),
+            local(10L, usuario(2L, Rol.COMERCIO), true),
+            EstadoPedido.LISTO_PARA_RECOGER, TipoEntrega.PICKUP);
+
+        // Act + Assert
+        assertThatThrownBy(() -> service.verificarCodigoEntrega(pedido, "QL-260524-ZZZZZ"))
+            .isInstanceOf(BusinessRuleException.class)
+            .hasMessageContaining("código");
+    }
+
+    @Test
+    @DisplayName("marcar entregado un pickup con el código correcto cierra a ENTREGADO y oculta el código")
+    void shouldEntregarPickupWhenCodigoCorrecto() {
+        // Arrange
+        Usuario gestor = usuario(2L, Rol.COMERCIO);
+        PuntoDeVenta local = local(10L, gestor, true);
+        Pedido pedido = pedido(50L, usuario(1L, Rol.CLIENTE), local,
+            EstadoPedido.LISTO_PARA_RECOGER, TipoEntrega.PICKUP);
+        when(pedidoRepository.findById(50L)).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
+
+        // Act
+        PedidoResponse response = service.marcarEntregado(gestor, 50L, entregaRequest("QL-260524-AB123"));
+
+        // Assert
+        assertThat(response.getEstado()).isEqualTo(EstadoPedido.ENTREGADO);
+        assertThat(response.getCodigo()).isNull();
+    }
+
+    @Test
+    @DisplayName("marcar entregado con un código incorrecto no cierra el pedido")
+    void shouldNoEntregarWhenCodigoIncorrecto() {
+        // Arrange
+        Usuario gestor = usuario(2L, Rol.COMERCIO);
+        PuntoDeVenta local = local(10L, gestor, true);
+        Pedido pedido = pedido(50L, usuario(1L, Rol.CLIENTE), local,
+            EstadoPedido.LISTO_PARA_RECOGER, TipoEntrega.PICKUP);
+        when(pedidoRepository.findById(50L)).thenReturn(Optional.of(pedido));
+
+        // Act + Assert
+        assertThatThrownBy(() -> service.marcarEntregado(gestor, 50L, entregaRequest("QL-260524-ZZZZZ")))
+            .isInstanceOf(BusinessRuleException.class)
+            .hasMessageContaining("código");
+        assertThat(pedido.getEstado()).isEqualTo(EstadoPedido.LISTO_PARA_RECOGER);
+        verify(pedidoRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("marcar entregado dos veces falla por la máquina de estados (no re-entrega)")
+    void shouldFallarWhenMarcaEntregadoYaEntregado() {
+        // Arrange
+        Usuario gestor = usuario(2L, Rol.COMERCIO);
+        PuntoDeVenta local = local(10L, gestor, true);
+        Pedido pedido = pedido(50L, usuario(1L, Rol.CLIENTE), local,
+            EstadoPedido.ENTREGADO, TipoEntrega.PICKUP);
+        when(pedidoRepository.findById(50L)).thenReturn(Optional.of(pedido));
+
+        // Act + Assert
+        assertThatThrownBy(() -> service.marcarEntregado(gestor, 50L, entregaRequest("QL-260524-AB123")))
+            .isInstanceOf(InvalidStateTransitionException.class);
+        verify(pedidoRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("el comercio no ve el código del pedido, pero el cliente sí en su propio pedido")
+    void shouldOcultarCodigoAlComercioYMostrarloAlCliente() {
+        // Arrange
+        Usuario cliente = usuario(1L, Rol.CLIENTE);
+        Usuario gestor = usuario(2L, Rol.COMERCIO);
+        PuntoDeVenta local = local(10L, gestor, true);
+        Pedido pedido = pedido(50L, cliente, local,
+            EstadoPedido.LISTO_PARA_RECOGER, TipoEntrega.PICKUP);
+        when(pedidoRepository.findById(50L)).thenReturn(Optional.of(pedido));
+
+        // Act
+        PedidoResponse vistaComercio = service.verDetalleParaComercio(gestor, 50L);
+        PedidoResponse vistaCliente = service.verDetalleDeMiPedido(cliente, 50L);
+
+        // Assert
+        assertThat(vistaComercio.getCodigo()).isNull();
+        assertThat(vistaCliente.getCodigo()).isEqualTo("QL-260524-AB123");
+    }
+
+    // ----------------------------------------------------------------------
+    // QR del pedido (ADR-0027)
+    // ----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("el dueño obtiene el QR de su pedido, generado a partir del código")
+    void shouldGenerarQrDelDueno() {
+        // Arrange
+        Usuario cliente = usuario(1L, Rol.CLIENTE);
+        Pedido pedido = pedido(50L, cliente, local(10L, usuario(2L, Rol.COMERCIO), true),
+            EstadoPedido.LISTO_PARA_RECOGER, TipoEntrega.PICKUP);
+        byte[] png = {1, 2, 3};
+        when(pedidoRepository.findById(50L)).thenReturn(Optional.of(pedido));
+        when(generadorQr.generarPng("QL-260524-AB123")).thenReturn(png);
+
+        // Act
+        byte[] resultado = service.generarQrDeMiPedido(cliente, 50L);
+
+        // Assert
+        assertThat(resultado).isEqualTo(png);
+    }
+
+    @Test
+    @DisplayName("pedir el QR de un pedido ajeno se ve como inexistente (404)")
+    void shouldRechazarQrDePedidoAjeno() {
+        // Arrange
+        Usuario otroCliente = usuario(99L, Rol.CLIENTE);
+        Pedido pedido = pedido(50L, usuario(1L, Rol.CLIENTE),
+            local(10L, usuario(2L, Rol.COMERCIO), true),
+            EstadoPedido.LISTO_PARA_RECOGER, TipoEntrega.PICKUP);
+        when(pedidoRepository.findById(50L)).thenReturn(Optional.of(pedido));
+
+        // Act + Assert
+        assertThatThrownBy(() -> service.generarQrDeMiPedido(otroCliente, 50L))
+            .isInstanceOf(ResourceNotFoundException.class);
     }
 
     // ----------------------------------------------------------------------
@@ -784,6 +945,12 @@ class PedidoServiceTest {
         int minutoSlot = (enLima.getMinute() / 15) * 15;
         LocalDateTime slot = enLima.withMinute(minutoSlot).withSecond(0).withNano(0);
         return slot.atZone(TiempoLima.ZONA).toInstant();
+    }
+
+    private ConfirmarEntregaRequest entregaRequest(String codigo) {
+        ConfirmarEntregaRequest request = new ConfirmarEntregaRequest();
+        request.setCodigo(codigo);
+        return request;
     }
 
     private ItemPedidoRequest itemRequest(Long productoId, int cantidad) {

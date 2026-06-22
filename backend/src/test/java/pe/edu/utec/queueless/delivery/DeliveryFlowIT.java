@@ -14,6 +14,7 @@ import pe.edu.utec.queueless.delivery.service.SolicitudDeliveryService;
 import pe.edu.utec.queueless.integration.AbstractIntegrationTest;
 import pe.edu.utec.queueless.pago.dto.IniciarPagoResponse;
 import pe.edu.utec.queueless.pago.service.PagoService;
+import pe.edu.utec.queueless.pedido.dto.ConfirmarEntregaRequest;
 import pe.edu.utec.queueless.pedido.dto.CrearPedidoRequest;
 import pe.edu.utec.queueless.pedido.dto.ItemPedidoRequest;
 import pe.edu.utec.queueless.pedido.dto.PedidoResponse;
@@ -107,7 +108,7 @@ class DeliveryFlowIT extends AbstractIntegrationTest {
 
         // El repartidor recoge y entrega; el pedido queda ENTREGADO y se otorgan los puntos.
         solicitudDeliveryService.confirmarRecogida(ctx.repartidor(), solicitud.getId());
-        solicitudDeliveryService.confirmarEntrega(ctx.repartidor(), solicitud.getId());
+        solicitudDeliveryService.confirmarEntrega(ctx.repartidor(), solicitud.getId(), entregaRequest(ctx.pedido().getCodigo()));
         assertThat(estadoPedido(ctx)).isEqualTo(EstadoPedido.ENTREGADO);
         assertThat(solicitudDeliveryRepository.findById(solicitud.getId()).orElseThrow().getEstado())
             .isEqualTo(EstadoSolicitudDelivery.ENTREGADO);
@@ -175,7 +176,7 @@ class DeliveryFlowIT extends AbstractIntegrationTest {
         pedidoService.iniciarPreparacion(ctx.comercio(), ctx.pedido().getId());
         pedidoService.marcarListo(ctx.comercio(), ctx.pedido().getId());
         solicitudDeliveryService.confirmarRecogida(ctx.repartidor(), solicitud.getId());
-        solicitudDeliveryService.confirmarEntrega(ctx.repartidor(), solicitud.getId());
+        solicitudDeliveryService.confirmarEntrega(ctx.repartidor(), solicitud.getId(), entregaRequest(ctx.pedido().getCodigo()));
 
         esperarHasta("el repartidor recibe 50 QueuePoints", () ->
             queuePointsService.saldoDe(ctx.repartidor()).getSaldo() == 50);
@@ -265,6 +266,12 @@ class DeliveryFlowIT extends AbstractIntegrationTest {
         perfil.setDisponible(true);
         perfilRepartidorRepository.save(perfil);
         return repartidor;
+    }
+
+    private ConfirmarEntregaRequest entregaRequest(String codigo) {
+        ConfirmarEntregaRequest request = new ConfirmarEntregaRequest();
+        request.setCodigo(codigo);
+        return request;
     }
 
     private CrearPuntoDeVentaRequest localRequest(String nombre) {
