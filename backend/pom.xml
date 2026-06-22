@@ -131,6 +131,13 @@
             <version>${mercadopago.version}</version>
         </dependency>
 
+        <!-- ZXing: genera el QR que codifica el código de entrega del pedido (ADR-0027) -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+
         <!-- ========== Testing ========== -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

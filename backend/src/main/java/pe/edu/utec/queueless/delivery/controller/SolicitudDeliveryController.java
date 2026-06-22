@@ -1,6 +1,7 @@
 package pe.edu.utec.queueless.delivery.controller;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.data.domain.Page;
@@ -10,10 +11,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import pe.edu.utec.queueless.delivery.dto.SolicitudDeliveryResponse;
 import pe.edu.utec.queueless.delivery.service.SolicitudDeliveryService;
+import pe.edu.utec.queueless.pedido.dto.ConfirmarEntregaRequest;
 import pe.edu.utec.queueless.shared.dto.ApiResponse;
 import pe.edu.utec.queueless.shared.dto.PageResponse;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
@@ -78,9 +81,10 @@ public class SolicitudDeliveryController {
     @PostMapping("/solicitudes/{id}/confirmar-entrega")
     public ResponseEntity<ApiResponse<SolicitudDeliveryResponse>> confirmarEntrega(
             Authentication authentication,
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            @Valid @RequestBody ConfirmarEntregaRequest request) {
         Usuario repartidor = usuarioService.findByEmail(authentication.getName());
-        SolicitudDeliveryResponse response = service.confirmarEntrega(repartidor, id);
+        SolicitudDeliveryResponse response = service.confirmarEntrega(repartidor, id, request);
         return ResponseEntity.ok(ApiResponse.ok(response, "Entrega confirmada"));
     }
 }

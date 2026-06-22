@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -55,6 +56,16 @@ public class PedidoClienteController {
             @PathVariable Long id) {
         Usuario cliente = usuarioService.findByEmail(authentication.getName());
         return ResponseEntity.ok(ApiResponse.ok(pedidoService.verDetalleDeMiPedido(cliente, id)));
+    }
+
+    /** QR del pedido (imagen PNG) que codifica su código; solo lo obtiene el dueño. */
+    @GetMapping(value = "/{id}/qr", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> qr(
+            Authentication authentication,
+            @PathVariable Long id) {
+        Usuario cliente = usuarioService.findByEmail(authentication.getName());
+        byte[] png = pedidoService.generarQrDeMiPedido(cliente, id);
+        return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(png);
     }
 
     @PostMapping("/{id}/cancelar")

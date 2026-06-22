@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.edu.utec.queueless.pedido.dto.ConfirmarEntregaRequest;
 import pe.edu.utec.queueless.pedido.dto.CrearPedidoRequest;
 import pe.edu.utec.queueless.pedido.dto.ItemPedidoRequest;
 import pe.edu.utec.queueless.pedido.dto.ItemPedidoResponse;
@@ -29,6 +30,7 @@ import pe.edu.utec.queueless.puntoventa.repository.ProductoRepository;
 import pe.edu.utec.queueless.puntoventa.repository.PuntoDeVentaRepository;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
+import pe.edu.utec.queueless.shared.qr.GeneradorQr;
 import pe.edu.utec.queueless.shared.util.TiempoLima;
 import pe.edu.utec.queueless.usuario.entity.Rol;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
@@ -61,6 +63,7 @@ public class PedidoService {
     private final ProductoRepository productoRepository;
     private final PuntoDeVentaRepository puntoDeVentaRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final GeneradorQr generadorQr;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -102,6 +105,16 @@ public class PedidoService {
         return toResponse(pedido);
     }
 
+    /**
+     * Genera al vuelo el QR (PNG) que codifica el código del pedido del cliente.
+     * Solo el dueño lo obtiene: un pedido ajeno se ve como inexistente (404). El QR
+     * no se guarda (ADR-0027).
+     */
+    public byte[] generarQrDeMiPedido(Usuario cliente, Long pedidoId) {
+        Pedido pedido = buscarPedidoDelCliente(cliente, pedidoId);
+        return generadorQr.generarPng(pedido.getCodigo());
+    }
+
     /** Cola del comercio: pedidos activos de todos sus locales, en orden de llegada. */
     public List<PedidoResponse> listarColaDelComercio(Usuario gestor) {
         List<PuntoDeVenta> locales = puntoDeVentaRepository.findByGestorIdAndActivoTrue(gestor.getId());
@@ -116,7 +129,7 @@ public class PedidoService {
 
         List<Pedido> cola = pedidoRepository.findByPuntoDeVentaIdInAndEstadoInOrderByCreadoAtAsc(
             localesIds, EstadoPedido.ACTIVOS_PARA_COMERCIO);
-        return toResponseList(cola);
+        return toResponseComercioList(cola);
     }
 
     /** Detalle de un pedido de uno de los locales del comercio. Si es ajeno, 404. */
@@ -125,7 +138,7 @@ public class PedidoService {
         if (!esGestorDelLocal(gestor, pedido)) {
             throw new ResourceNotFoundException("Pedido", pedidoId);
         }
-        return toResponse(pedido);
+        return toResponseComercio(pedido);
     }
 
     // ---------------------------------------------------------------------------
@@ -254,14 +267,14 @@ public class PedidoService {
     public PedidoResponse aceptar(Usuario gestor, Long pedidoId) {
         Pedido pedido = buscarPedidoOperableDelGestor(gestor, pedidoId);
         Pedido aceptado = aplicarTransicion(pedido, EstadoPedido.ACEPTADO);
-        return toResponse(aceptado);
+        return toResponseComercio(aceptado);
     }
 
     @Transactional
     public PedidoResponse iniciarPreparacion(Usuario gestor, Long pedidoId) {
         Pedido pedido = buscarPedidoOperableDelGestor(gestor, pedidoId);
         Pedido enPreparacion = aplicarTransicion(pedido, EstadoPedido.EN_PREPARACION);
-        return toResponse(enPreparacion);
+        return toResponseComercio(enPreparacion);
     }
 
     /** El destino depende del tipo de entrega; el comercio no lo elige. */
@@ -270,7 +283,7 @@ public class PedidoService {
         Pedido pedido = buscarPedidoOperableDelGestor(gestor, pedidoId);
         EstadoPedido destino = estadoListoSegun(pedido.getTipoEntrega());
         Pedido listo = aplicarTransicion(pedido, destino);
-        return toResponse(listo);
+        return toResponseComercio(listo);
     }
 
     /**
@@ -278,14 +291,33 @@ public class PedidoService {
      * repartidor (Fase 5), no el comercio, así que acá se bloquea.
      */
     @Transactional
-    public PedidoResponse marcarEntregado(Usuario gestor, Long pedidoId) {
+    public PedidoResponse marcarEntregado(Usuario gestor, Long pedidoId, ConfirmarEntregaRequest request) {
         Pedido pedido = buscarPedidoOperableDelGestor(gestor, pedidoId);
         if (pedido.getTipoEntrega() == TipoEntrega.DELIVERY) {
             throw new BusinessRuleException(
                 "La entrega de un pedido DELIVERY la confirma el repartidor, no el comercio");
         }
+        // El comercio cierra el recojo contra el código que el cliente le muestra. Acá no
+        // hay puntos en juego; validar protege que ENTREGADO no se ponga sin que el cliente
+        // haya recibido (ADR-0027).
+        verificarCodigoEntrega(pedido, request.getCodigo());
         Pedido entregado = aplicarTransicion(pedido, EstadoPedido.ENTREGADO);
-        return toResponse(entregado);
+        return toResponseComercio(entregado);
+    }
+
+    /**
+     * Verifica que el código que la contraparte tecleó o escaneó coincide con el del
+     * pedido. Lo comparten el recojo (comercio) y el delivery (repartidor): es la única
+     * prueba de que el cliente, que porta el código, está presente en la entrega
+     * (ADR-0027). Comparamos sin distinguir mayúsculas porque el alfabeto del código
+     * (A-Z, 0-9) no las distingue, así toleramos el tecleo manual en minúscula; un QR
+     * siempre devuelve el código en mayúsculas tal como se generó.
+     */
+    public void verificarCodigoEntrega(Pedido pedido, String codigoProvisto) {
+        String recibido = codigoProvisto == null ? "" : codigoProvisto.trim();
+        if (!pedido.getCodigo().equalsIgnoreCase(recibido)) {
+            throw new BusinessRuleException("El código de entrega no coincide con el del pedido");
+        }
     }
 
     /** Rechazo: solo cuando el pedido todavía espera que el comercio lo acepte. */
@@ -647,7 +679,7 @@ public class PedidoService {
         pedido.setMotivoCancelacion(request.getMotivo());
         guardarDetalle(pedido, request.getDetalle());
         Pedido cancelado = aplicarTransicion(pedido, EstadoPedido.CANCELADO_POR_COMERCIO);
-        return toResponse(cancelado);
+        return toResponseComercio(cancelado);
     }
 
     private void guardarDetalle(Pedido pedido, String detalle) {
@@ -689,7 +721,26 @@ public class PedidoService {
         return respuesta;
     }
 
+    // El comercio valida la entrega contra el código que porta el cliente, así que su
+    // vista del pedido va sin el código; si lo viera, exigirlo no probaría nada. Es la
+    // misma razón por la que tampoco viaja por SSE (ADR-0027).
+    private List<PedidoResponse> toResponseComercioList(List<Pedido> pedidos) {
+        List<PedidoResponse> respuesta = new ArrayList<>();
+        for (Pedido pedido : pedidos) {
+            respuesta.add(toResponseComercio(pedido));
+        }
+        return respuesta;
+    }
+
     private PedidoResponse toResponse(Pedido pedido) {
+        return construirResponse(pedido, true);
+    }
+
+    private PedidoResponse toResponseComercio(Pedido pedido) {
+        return construirResponse(pedido, false);
+    }
+
+    private PedidoResponse construirResponse(Pedido pedido, boolean incluirCodigo) {
         List<ItemPedidoResponse> items = new ArrayList<>();
         for (ItemPedido item : pedido.getItems()) {
             items.add(toItemResponse(item));
@@ -697,7 +748,7 @@ public class PedidoService {
 
         return PedidoResponse.builder()
             .id(pedido.getId())
-            .codigo(pedido.getCodigo())
+            .codigo(incluirCodigo ? pedido.getCodigo() : null)
             .estado(pedido.getEstado())
             .tipoEntrega(pedido.getTipoEntrega())
             .recojoProgramadoAt(pedido.getRecojoProgramadoAt())
