@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import pe.edu.utec.queueless.pedido.dto.ConfirmarEntregaRequest;
 import pe.edu.utec.queueless.pedido.dto.MotivoCancelacionRequest;
 import pe.edu.utec.queueless.pedido.dto.PedidoResponse;
 import pe.edu.utec.queueless.pedido.service.PedidoService;
@@ -67,9 +68,10 @@ public class PedidoComercioController {
     @PostMapping("/{id}/marcar-entregado")
     public ResponseEntity<ApiResponse<PedidoResponse>> marcarEntregado(
             Authentication authentication,
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            @Valid @RequestBody ConfirmarEntregaRequest request) {
         Usuario gestor = usuarioService.findByEmail(authentication.getName());
-        return ResponseEntity.ok(ApiResponse.ok(pedidoService.marcarEntregado(gestor, id), "Pedido entregado"));
+        return ResponseEntity.ok(ApiResponse.ok(pedidoService.marcarEntregado(gestor, id, request), "Pedido entregado"));
     }
 
     /** Rechaza un pedido que todavía espera ser aceptado. */

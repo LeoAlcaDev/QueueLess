@@ -14,6 +14,7 @@ import pe.edu.utec.queueless.delivery.entity.EstadoSolicitudDelivery;
 import pe.edu.utec.queueless.delivery.entity.SolicitudDelivery;
 import pe.edu.utec.queueless.delivery.event.SolicitudDeliveryCreadaEvent;
 import pe.edu.utec.queueless.delivery.repository.SolicitudDeliveryRepository;
+import pe.edu.utec.queueless.pedido.dto.ConfirmarEntregaRequest;
 import pe.edu.utec.queueless.pedido.dto.PedidoResponse;
 import pe.edu.utec.queueless.pedido.entity.EstadoPedido;
 import pe.edu.utec.queueless.pedido.entity.Pedido;
@@ -169,13 +170,18 @@ public class SolicitudDeliveryService {
      * que los listeners (QueuePoints, notificación) reaccionen.
      */
     @Transactional
-    public SolicitudDeliveryResponse confirmarEntrega(Usuario repartidor, Long solicitudId) {
+    public SolicitudDeliveryResponse confirmarEntrega(Usuario repartidor, Long solicitudId,
+            ConfirmarEntregaRequest request) {
         SolicitudDelivery solicitud = buscarSolicitudDelRepartidor(repartidor, solicitudId);
         if (solicitud.getEstado() != EstadoSolicitudDelivery.RECOGIDO) {
             throw new BusinessRuleException(
                 "Solo se puede confirmar entrega desde RECOGIDO (estado actual: "
                     + solicitud.getEstado() + ")");
         }
+        // El repartidor cierra contra el código que le muestra el cliente. Lo validamos
+        // antes de tocar nada: si no coincide, el pedido no transiciona a ENTREGADO y no
+        // se disparan los QueuePoints del repartidor (ADR-0027).
+        pedidoService.verificarCodigoEntrega(solicitud.getPedido(), request.getCodigo());
         solicitud.setEstado(EstadoSolicitudDelivery.ENTREGADO);
         solicitud.setEntregadoAt(Instant.now());
         SolicitudDelivery actualizada = repository.save(solicitud);
@@ -318,7 +324,6 @@ public class SolicitudDeliveryService {
         return SolicitudDeliveryResponse.builder()
             .id(solicitud.getId())
             .pedidoId(pedido.getId())
-            .pedidoCodigo(pedido.getCodigo())
             .puntoDeVentaId(local.getId())
             .puntoDeVentaNombre(local.getNombre())
             .puntoDeVentaUbicacion(local.getUbicacion())
