@@ -59,6 +59,50 @@ final class PlantillasCorreo {
         </tr>
         """;
 
+    static final String ACUSE_RECLAMO_HTML = """
+        <!DOCTYPE html>
+        <html lang="es">
+          <body style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.5;">
+            <h1 style="color: #4f46e5;">Recibimos tu reclamo, %s</h1>
+            <p>Registramos tu %s con el código de constancia <strong>%s</strong>.</p>
+            <p>Te responderemos a más tardar el <strong>%s</strong>.</p>
+            <p style="color: #6b7280; font-size: 12px; margin-top: 32px;">
+              QueueLess — Libro de reclamaciones. Guardá este correo como constancia.
+            </p>
+          </body>
+        </html>
+        """;
+
+    static final String NOTIFICACION_RECLAMO_HTML = """
+        <!DOCTYPE html>
+        <html lang="es">
+          <body style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.5;">
+            <h1 style="color: #4f46e5;">Nuevo %s recibido</h1>
+            <p>Código de constancia: <strong>%s</strong>.</p>
+            <p><strong>Detalle:</strong></p>
+            <p style="white-space: pre-wrap;">%s</p>
+            <p>Plazo para responder: <strong>%s</strong>.</p>
+            <p style="color: #6b7280; font-size: 12px; margin-top: 32px;">
+              QueueLess — Libro de reclamaciones.
+            </p>
+          </body>
+        </html>
+        """;
+
+    static final String RESPUESTA_RECLAMO_HTML = """
+        <!DOCTYPE html>
+        <html lang="es">
+          <body style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.5;">
+            <h1 style="color: #4f46e5;">Respondimos tu reclamo, %s</h1>
+            <p>Sobre tu reclamo con código <strong>%s</strong>:</p>
+            <p style="white-space: pre-wrap;">%s</p>
+            <p style="color: #6b7280; font-size: 12px; margin-top: 32px;">
+              QueueLess — Libro de reclamaciones.
+            </p>
+          </body>
+        </html>
+        """;
+
     private PlantillasCorreo() {
     }
 }
