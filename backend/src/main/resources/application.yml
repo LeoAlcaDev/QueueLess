@@ -98,6 +98,9 @@ queueless:
   email:
     from: ${MAIL_FROM:no-reply@queueless.local}
     from-name: ${MAIL_FROM_NAME:QueueLess}
+  reclamo:
+    plazo-respuesta-dias-habiles: 15                 # plazo legal de respuesta (Ley 32495); aproximación que salta fines de semana
+    operadores-email: ${RECLAMO_OPERADORES_EMAIL:operadores@queueless.local}
 
 springdoc:
   api-docs:

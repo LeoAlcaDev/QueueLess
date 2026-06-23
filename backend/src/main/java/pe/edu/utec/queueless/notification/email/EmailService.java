@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.util.HtmlUtils;
 import pe.edu.utec.queueless.pedido.entity.ItemPedido;
 import pe.edu.utec.queueless.pedido.entity.Pedido;
+import pe.edu.utec.queueless.reclamo.entity.Reclamo;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 import pe.edu.utec.queueless.shared.util.TiempoLima;
 
@@ -41,6 +42,8 @@ public class EmailService {
 
     private static final DateTimeFormatter FORMATO_FECHA_RECIBO =
         DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final DateTimeFormatter FORMATO_FECHA_CORTA =
+        DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
     private final String from;
@@ -121,5 +124,46 @@ public class EmailService {
             return "";
         }
         return LocalDateTime.ofInstant(instante, TiempoLima.ZONA).format(FORMATO_FECHA_RECIBO);
+    }
+
+    /** Acuse de recibo del reclamo al usuario que lo presentó (ADR-0029). */
+    public void sendAcuseReclamo(Reclamo reclamo) {
+        String html = String.format(
+            PlantillasCorreo.ACUSE_RECLAMO_HTML,
+            HtmlUtils.htmlEscape(reclamo.getUsuario().getNombreCompleto()),
+            HtmlUtils.htmlEscape(reclamo.getTipo().getEtiqueta().toLowerCase(Locale.ROOT)),
+            HtmlUtils.htmlEscape(reclamo.getCodigoConstancia()),
+            HtmlUtils.htmlEscape(formatearFechaCorta(reclamo.getPlazoRespuestaAt())));
+        enviar(reclamo.getUsuario().getEmail(),
+            "Recibimos tu reclamo " + reclamo.getCodigoConstancia(), html);
+    }
+
+    /** Notifica un reclamo nuevo a su destinatario: el comercio o el correo de operadores. */
+    public void sendNotificacionReclamo(String destinatario, Reclamo reclamo) {
+        String html = String.format(
+            PlantillasCorreo.NOTIFICACION_RECLAMO_HTML,
+            HtmlUtils.htmlEscape(reclamo.getTipo().getEtiqueta()),
+            HtmlUtils.htmlEscape(reclamo.getCodigoConstancia()),
+            HtmlUtils.htmlEscape(reclamo.getDetalle()),
+            HtmlUtils.htmlEscape(formatearFechaCorta(reclamo.getPlazoRespuestaAt())));
+        enviar(destinatario, "Nuevo reclamo " + reclamo.getCodigoConstancia(), html);
+    }
+
+    /** Envía al usuario la respuesta que el comercio dio a su reclamo. */
+    public void sendRespuestaReclamo(Reclamo reclamo) {
+        String html = String.format(
+            PlantillasCorreo.RESPUESTA_RECLAMO_HTML,
+            HtmlUtils.htmlEscape(reclamo.getUsuario().getNombreCompleto()),
+            HtmlUtils.htmlEscape(reclamo.getCodigoConstancia()),
+            HtmlUtils.htmlEscape(reclamo.getRespuesta()));
+        enviar(reclamo.getUsuario().getEmail(),
+            "Respuesta a tu reclamo " + reclamo.getCodigoConstancia(), html);
+    }
+
+    private String formatearFechaCorta(Instant instante) {
+        if (instante == null) {
+            return "";
+        }
+        return LocalDateTime.ofInstant(instante, TiempoLima.ZONA).format(FORMATO_FECHA_CORTA);
     }
 }
