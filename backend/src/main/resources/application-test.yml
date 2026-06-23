@@ -5,9 +5,9 @@ spring:
       hibernate:
         format_sql: false
   flyway:
-    # En tests aplicamos el schema completo (V1..V8) pero NO los seeds de demo (V99)
+    # En tests aplicamos el schema completo (V1..V9) pero NO los seeds de demo (V99)
     locations: classpath:db/migration
-    target: 8
+    target: 9
 
 logging:
   level:
