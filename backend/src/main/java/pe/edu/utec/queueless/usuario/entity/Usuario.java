@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import pe.edu.utec.queueless.shared.domain.BaseEntity;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -32,6 +33,14 @@ public class Usuario extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private Set<Rol> roles = new HashSet<>();
+
+    // Versión de los Términos y Condiciones que el usuario aceptó, y cuándo (ADR-0030).
+    // Nulos hasta que acepta; guardamos solo la última aceptación, no un historial.
+    @Column(name = "tyc_version_aceptada", length = 20)
+    private String tycVersionAceptada;
+
+    @Column(name = "tyc_aceptado_at")
+    private Instant tycAceptadoAt;
 
     public boolean tieneRol(Rol rol) {
         return roles.contains(rol);
