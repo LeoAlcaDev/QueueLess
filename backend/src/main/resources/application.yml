@@ -78,6 +78,9 @@ queueless:
     pedidos-minimos-fase2: 50
     minutos-por-pedido-en-cola: 3                    # peso de cada pedido en cola (estrategia manual)
     retraining-cron: "0 */15 * * * *"               # cada 15 min
+  ocupacion:
+    minimo-pedidos: 5                               # mínimo de pedidos en una franja para mostrar su nivel y tiempo
+    ventana-dias: 90                                # ventana reciente sobre la que se calcula la afluencia
   storage:
     impl: ${STORAGE_IMPL:local}                     # local | s3
     local-base-path: ./uploads

@@ -3,6 +3,8 @@ package pe.edu.utec.queueless.pedido.repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import pe.edu.utec.queueless.pedido.entity.EstadoPedido;
 import pe.edu.utec.queueless.pedido.entity.Pedido;
 
@@ -44,4 +46,14 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     /** Todos los pedidos programados de los locales de un gestor; alimentan la tasa de cumplimiento. */
     List<Pedido> findByPuntoDeVentaGestorIdAndRecojoProgramadoAtIsNotNull(Long gestorId);
+
+    /** Instantes de creación de los pedidos pagados de un local desde una fecha; alimentan la curva de ocupación (ADR-0028). */
+    @Query("""
+        SELECT p.creadoAt FROM Pedido p
+        WHERE p.puntoDeVenta.id = :puntoDeVentaId
+          AND p.pagadoAt IS NOT NULL
+          AND p.creadoAt >= :desde
+        """)
+    List<Instant> findCreadoAtDePedidosConcretados(@Param("puntoDeVentaId") Long puntoDeVentaId,
+                                                   @Param("desde") Instant desde);
 }
