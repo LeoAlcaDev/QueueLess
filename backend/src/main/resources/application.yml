@@ -103,6 +103,15 @@ queueless:
     operadores-email: ${RECLAMO_OPERADORES_EMAIL:operadores@queueless.local}
   tyc:
     version-vigente: ${TYC_VERSION:2026-06-23}      # misma versión que el encabezado de docs/legal/terminos-y-condiciones.md
+  recomendador:
+    proveedor: ${RECOMENDADOR_PROVEEDOR:gemini}     # gemini | fake
+    gemini:
+      api-key: ${GEMINI_API_KEY:}                   # secreto; sin él el asistente degrada (warning en dev, falla en prod)
+      modelo: ${GEMINI_MODELO:gemini-3.5-flash}     # intercambiable en una línea, sin tocar código
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
+      timeout-ms: ${RECOMENDADOR_TIMEOUT_MS:8000}   # al vencer, cae al degradado en vez de colgar la petición
+    historial-maximo-turnos: 6                      # últimos turnos que viajan al modelo (no se persiste la charla)
+    maximo-candidatos: 20                           # tope de candidatos al modelo: solo lo mínimo necesario
 
 springdoc:
   api-docs:

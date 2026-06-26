@@ -8,8 +8,10 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
+import pe.edu.utec.queueless.puntoventa.entity.AptitudDietetica;
 import pe.edu.utec.queueless.puntoventa.entity.TipoPreparacion;
 import pe.edu.utec.queueless.shared.domain.Alergeno;
+import pe.edu.utec.queueless.usuario.entity.ToleranciaPicante;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -42,6 +44,12 @@ public class CrearProductoRequest {
 
     // Alérgenos que el producto declara contener (opcional, de la lista cerrada).
     private Set<@NotNull Alergeno> alergenos;
+
+    // Dietas para las que el comercio declara apto el producto (opcional).
+    private Set<@NotNull AptitudDietetica> aptitudesDieteticas;
+
+    // Nivel de picante del producto (opcional), en la misma escala que la tolerancia del cliente.
+    private ToleranciaPicante nivelPicante;
 
     // Horario de servicio (opcional). Las ventanas por lote aplican solo cuando
     // tieneVentanaDePedido es true. Las combinaciones válidas se validan en el service.

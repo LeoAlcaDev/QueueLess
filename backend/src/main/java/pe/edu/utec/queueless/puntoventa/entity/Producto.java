@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import pe.edu.utec.queueless.shared.domain.Alergeno;
 import pe.edu.utec.queueless.shared.domain.BaseEntity;
+import pe.edu.utec.queueless.usuario.entity.ToleranciaPicante;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -53,6 +54,25 @@ public class Producto extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private Set<Alergeno> alergenos = new HashSet<>();
+
+    // Dietas para las que el producto se declara apto (vegetariano/vegano). Declararlas
+    // es opcional y, como con los alérgenos, que la lista esté vacía no afirma que el
+    // producto no sea apto: solo que no se declaró (ADR-0025). El sin gluten no vive acá:
+    // se resuelve por el alérgeno GLUTEN.
+    @ElementCollection
+    @CollectionTable(name = "producto_aptitud_dietetica",
+        joinColumns = @JoinColumn(name = "producto_id"))
+    @Column(name = "aptitud", length = 20)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private Set<AptitudDietetica> aptitudesDieteticas = new HashSet<>();
+
+    // Nivel de picante del producto en la misma escala con la que el cliente declara su
+    // tolerancia, para que comparar uno contra otro sea directo. Nullable: si no se
+    // declara, el asistente lo dice en vez de asumir (el cruce vive en ADR-0031).
+    @Enumerated(EnumType.STRING)
+    @Column(name = "nivel_picante", length = 20)
+    private ToleranciaPicante nivelPicante;
 
     // Horario de servicio: si ambos tienen valor, el producto se vende solo entre
     // esas horas. Ambos null = se vende todo el día que el local esté abierto.

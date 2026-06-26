@@ -202,6 +202,46 @@ mantenimiento para ahorrar una comparación de conjuntos que no es cara.
   de alérgenos—, y mientras tanto el campo de texto libre absorbe lo que la lista
   no tiene.
 
+## Actualización — Fase E: aptitud dietética y nivel de picante del producto
+
+Cuando escribimos este ADR dejamos los hábitos —restricciones de dieta, tolerancia al picante— solo del
+lado del **cliente**: el `PerfilCliente` podía declarar que evita el gluten, que es vegano o que aguanta
+poco picante, pero al `Producto` solo le habíamos dado los alérgenos. Quedó una **asimetría**: el cliente
+podía decir "soy vegano", pero ningún producto podía decir "yo soy apto para veganos", así que no había con
+qué cruzar esas restricciones. En su momento no molestó porque, como dijimos arriba, quien consume todo
+esto —un asistente que recomienda— llegaba en una fase posterior. Esa fase llegó (ADR-0031), y para cruzar
+con confianza necesitábamos cerrar la asimetría.
+
+La cerramos dándole al `Producto` los atributos que reflejan lo que el cliente ya declara:
+
+- **Aptitud dietética** (`Set<AptitudDietetica>`, un enum nuevo con `VEGETARIANO` y `VEGANO`), guardada en
+  una tabla hija `producto_aptitud_dietetica` con el mismo `@ElementCollection` que ya usan los alérgenos.
+  Es un conjunto porque un producto puede declararse las dos cosas, y porque todo vegano es además
+  vegetariano.
+- **Nivel de picante** (`nivelPicante`), reusando la misma escala ordinal `ToleranciaPicante` (`NINGUNA`,
+  `BAJA`, `MEDIA`, `ALTA`) con la que el cliente declara su tolerancia. Reusar la escala vuelve trivial la
+  comparación "el picante del plato no supera la tolerancia del cliente": son el mismo orden.
+
+El `SIN_GLUTEN` **no** recibe un atributo nuevo en el producto, a propósito: se resuelve por la vía del
+alérgeno `GLUTEN` que el producto ya declara —pedir sin gluten es, para el filtro, evitar el alérgeno
+gluten—. Modelarlo aparte duplicaría un dato que ya tenemos y abriría la puerta a que las dos fuentes se
+contradigan.
+
+El cruce en sí —cómo el asistente compara el perfil con estos atributos para armar el conjunto seguro, y la
+asimetría entre declaración negativa (los alérgenos y el picante se excluyen cuando se declaran en contra) y
+positiva (la aptitud vegetariana/vegana se exige declarada)— vive en ADR-0031, no acá. Este ADR solo deja
+los datos guardados y editables, igual que hizo con los alérgenos: los campos nuevos se declaran en el alta
+y la edición de producto del comercio, son opcionales y arrancan vacíos, así que ningún producto existente
+cambia de comportamiento.
+
+Sigue valiendo, ahora también para estos campos, la regla de oro del ADR: **la ausencia de declaración nunca
+significa aptitud**. Que un producto no se declare vegano no lo vuelve no-vegano para el sistema; simplemente
+no se le ofrece a quien exige vegano, porque no podemos afirmar lo que el dato no dice.
+
+El cambio entra con la migración `V10__producto_aptitud_dietetica_y_picante.sql` (la tabla hija más la
+columna) y el `flyway.target` de los tests sube a 10 para que el Postgres de integración la aplique
+(ADR-0002).
+
 ## Anexo — Glosario de términos técnicos
 
 **`@ElementCollection`.** La anotación de JPA para guardar una colección de
@@ -247,6 +287,14 @@ Ejemplo concreto: `ToleranciaPicante` va de `NINGUNA` a `ALTA` pasando por `BAJA
 y `MEDIA`; ese orden significa algo (cuánto picante aguanta el cliente), cosa que
 en `Alergeno` no pasa: ahí `MANI` y `SOYA` no están uno "antes" del otro.
 
+**Aptitud dietética (del producto).** La contracara de las restricciones del cliente: lo que el producto
+declara que **cumple**. A diferencia de los alérgenos, que declaran lo que el producto **contiene** (y se
+excluyen al cruzar), la aptitud declara para qué dieta el producto **es apto** (y se exige al cruzar).
+
+Ejemplo concreto: un wrap de lentejas declara `AptitudDietetica.VEGANO`; a un cliente vegano se le ofrece, y
+a uno vegetariano también (todo vegano es vegetariano); un plato que no declara nada no se le ofrece a
+ninguno de los dos, aunque quizás lo fuera.
+
 ## Referencias
 
 - ADR-0003 — Modelo de entidades (el `PerfilCliente` que extendemos, el `Producto`
@@ -262,3 +310,6 @@ en `Alergeno` no pasa: ahí `MANI` y `SOYA` no están uno "antes" del otro.
 - `backend/src/main/java/pe/edu/utec/queueless/usuario/dto/ActualizarPerfilClienteRequest.java` y `PerfilClienteResponse.java` — la entrada y salida del perfil con los campos nuevos.
 - `backend/src/main/java/pe/edu/utec/queueless/usuario/service/PerfilService.java` — donde se persisten los campos editados.
 - `backend/src/main/resources/db/migration/V6__perfil_y_producto_alergenos.sql` — las tablas hijas y las columnas nuevas.
+- `backend/src/main/java/pe/edu/utec/queueless/puntoventa/entity/AptitudDietetica.java` — el enum de aptitud dietética del producto (ampliación Fase E).
+- `backend/src/main/resources/db/migration/V10__producto_aptitud_dietetica_y_picante.sql` — la tabla hija de aptitud y la columna de picante del producto (ampliación Fase E).
+- ADR-0031 — Asistente de recomendación con IA (el cruce determinista que consume estos atributos).
