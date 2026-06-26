@@ -77,6 +77,8 @@ public class ProductoService {
             .tipoPreparacion(request.getTipoPreparacion())
             .disponible(true)
             .alergenos(orEmpty(request.getAlergenos()))
+            .aptitudesDieteticas(orEmpty(request.getAptitudesDieteticas()))
+            .nivelPicante(request.getNivelPicante())
             .vigenciaInicio(request.getVigenciaInicio())
             .vigenciaFin(request.getVigenciaFin())
             .aceptaProgramado(!Boolean.FALSE.equals(request.getAceptaProgramado()))
@@ -105,6 +107,8 @@ public class ProductoService {
         producto.setCategoria(request.getCategoria());
         producto.setTipoPreparacion(request.getTipoPreparacion());
         producto.setAlergenos(orEmpty(request.getAlergenos()));
+        producto.setAptitudesDieteticas(orEmpty(request.getAptitudesDieteticas()));
+        producto.setNivelPicante(request.getNivelPicante());
         producto.setVigenciaInicio(request.getVigenciaInicio());
         producto.setVigenciaFin(request.getVigenciaFin());
         producto.setAceptaProgramado(!Boolean.FALSE.equals(request.getAceptaProgramado()));
@@ -270,6 +274,8 @@ public class ProductoService {
         // copiamos a un Set nuevo para forzar la inicialización lazy dentro de la
         // transacción; si no, al serializar fuera de ella saltaría LazyInitializationException
         response.setAlergenos(new HashSet<>(producto.getAlergenos()));
+        response.setAptitudesDieteticas(new HashSet<>(producto.getAptitudesDieteticas()));
+        response.setNivelPicante(producto.getNivelPicante());
 
         response.setHorarioServicioInicio(producto.getHorarioServicioInicio());
         response.setHorarioServicioFin(producto.getHorarioServicioFin());
@@ -333,7 +339,7 @@ public class ProductoService {
     }
 
     /** Un conjunto nulo (campo no enviado) se guarda como vacío, no como null. */
-    private static Set<Alergeno> orEmpty(Set<Alergeno> alergenos) {
-        return alergenos != null ? alergenos : new HashSet<>();
+    private static <T> Set<T> orEmpty(Set<T> valores) {
+        return valores != null ? valores : new HashSet<>();
     }
 }

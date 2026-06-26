@@ -4,8 +4,10 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import pe.edu.utec.queueless.puntoventa.entity.AptitudDietetica;
 import pe.edu.utec.queueless.puntoventa.entity.TipoPreparacion;
 import pe.edu.utec.queueless.shared.domain.Alergeno;
+import pe.edu.utec.queueless.usuario.entity.ToleranciaPicante;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -31,6 +33,8 @@ public class ProductoResponse {
     private TipoPreparacion tipoPreparacion;
     private Boolean disponible;
     private Set<Alergeno> alergenos;
+    private Set<AptitudDietetica> aptitudesDieteticas;
+    private ToleranciaPicante nivelPicante;
 
     private LocalTime horarioServicioInicio;
     private LocalTime horarioServicioFin;
