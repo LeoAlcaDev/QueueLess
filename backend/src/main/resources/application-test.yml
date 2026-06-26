@@ -21,3 +21,5 @@ queueless:
     impl: local
   firebase:
     enabled: false
+  recomendador:
+    proveedor: fake          # los tests usan el doble determinista, nunca la API real
