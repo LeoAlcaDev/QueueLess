@@ -13,6 +13,8 @@ import pe.edu.utec.queueless.waittime.strategy.ManualDeclaredStrategy;
 import pe.edu.utec.queueless.waittime.strategy.PredictiveStrategy;
 import pe.edu.utec.queueless.waittime.strategy.WaitTimeStrategy;
 
+import java.util.List;
+
 /**
  * Calcula el tiempo de espera estimado de un local y decide qué estrategia usar
  * (manual o predictiva) según cuántos pedidos entregados acumuló ese local.
@@ -34,8 +36,9 @@ public class WaitTimeService {
         PuntoDeVenta puntoDeVenta = puntoDeVentaRepository.findByIdAndActivoTrue(puntoDeVentaId)
             .orElseThrow(() -> new ResourceNotFoundException("PuntoDeVenta", puntoDeVentaId));
 
-        int pedidosEnCola = pedidoRepository.countByPuntoDeVentaIdAndEstado(
-            puntoDeVentaId, EstadoPedido.EN_PREPARACION);
+        // La cola que demora son los pedidos ya aceptados y aún no listos, igual que mide el entrenamiento.
+        int pedidosEnCola = pedidoRepository.countByPuntoDeVentaIdAndEstadoIn(
+            puntoDeVentaId, List.of(EstadoPedido.ACEPTADO, EstadoPedido.EN_PREPARACION));
         int entregados = pedidoRepository.countByPuntoDeVentaIdAndEstado(
             puntoDeVentaId, EstadoPedido.ENTREGADO);
 

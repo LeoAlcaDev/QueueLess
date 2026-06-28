@@ -16,6 +16,7 @@ import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
 import pe.edu.utec.queueless.waittime.strategy.ManualDeclaredStrategy;
 import pe.edu.utec.queueless.waittime.strategy.PredictiveStrategy;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,7 +59,8 @@ class WaitTimeServiceTest {
     void shouldUsarManualWhenPocosEntregados() {
         PuntoDeVenta local = local(1L);
         when(puntoDeVentaRepository.findByIdAndActivoTrue(1L)).thenReturn(Optional.of(local));
-        when(pedidoRepository.countByPuntoDeVentaIdAndEstado(1L, EstadoPedido.EN_PREPARACION)).thenReturn(2);
+        when(pedidoRepository.countByPuntoDeVentaIdAndEstadoIn(
+            1L, List.of(EstadoPedido.ACEPTADO, EstadoPedido.EN_PREPARACION))).thenReturn(2);
         when(pedidoRepository.countByPuntoDeVentaIdAndEstado(1L, EstadoPedido.ENTREGADO)).thenReturn(10);
         when(manual.estimarMinutos(local, 2)).thenReturn(16);
 
@@ -72,7 +74,8 @@ class WaitTimeServiceTest {
     void shouldUsarPredictivaWhenMuchosEntregados() {
         PuntoDeVenta local = local(1L);
         when(puntoDeVentaRepository.findByIdAndActivoTrue(1L)).thenReturn(Optional.of(local));
-        when(pedidoRepository.countByPuntoDeVentaIdAndEstado(1L, EstadoPedido.EN_PREPARACION)).thenReturn(2);
+        when(pedidoRepository.countByPuntoDeVentaIdAndEstadoIn(
+            1L, List.of(EstadoPedido.ACEPTADO, EstadoPedido.EN_PREPARACION))).thenReturn(2);
         when(pedidoRepository.countByPuntoDeVentaIdAndEstado(1L, EstadoPedido.ENTREGADO)).thenReturn(50);
         when(predictive.estimarMinutos(local, 2)).thenReturn(25);
 
