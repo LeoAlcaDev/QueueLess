@@ -130,9 +130,10 @@ public class PuntoDeVentaService {
         return puntoDeVenta;
     }
 
+    // un local que no es del gestor se trata como inexistente para no filtrar qué ids de otros comercios existen
     private void validarEsDelGestor(PuntoDeVenta puntoDeVenta, Usuario gestor) {
         if (!puntoDeVenta.getGestor().getId().equals(gestor.getId())) {
-            throw new BusinessRuleException("El punto de venta no pertenece a este comercio");
+            throw new ResourceNotFoundException("PuntoDeVenta", puntoDeVenta.getId());
         }
     }
 

@@ -12,13 +12,13 @@ import pe.edu.utec.queueless.puntoventa.entity.PuntoDeVenta;
 import pe.edu.utec.queueless.puntoventa.entity.TipoPreparacion;
 import pe.edu.utec.queueless.puntoventa.repository.ProductoRepository;
 import pe.edu.utec.queueless.puntoventa.repository.PuntoDeVentaRepository;
-import pe.edu.utec.queueless.shared.domain.Alergeno;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
 import pe.edu.utec.queueless.shared.storage.StorageService;
 import pe.edu.utec.queueless.shared.util.TiempoLima;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -42,8 +42,10 @@ public class ProductoService {
     // Lectura
     // ---------------------------------------------------------------------------
 
-    /** Catalogo publico de un local: solo los productos disponibles. */
+    /** Catalogo publico de un local: solo los productos disponibles. Un local dado de baja se ve como 404. */
     public List<ProductoResponse> listarPorPuntoDeVenta(Long puntoDeVentaId) {
+        puntoDeVentaRepository.findByIdAndActivoTrue(puntoDeVentaId)
+            .orElseThrow(() -> new ResourceNotFoundException("PuntoDeVenta", puntoDeVentaId));
         List<Producto> productos = repository.findByPuntoDeVentaIdAndDisponibleTrue(puntoDeVentaId);
         return toResponseList(productos);
     }
@@ -148,10 +150,15 @@ public class ProductoService {
         Producto producto = buscarProductoDelGestor(gestor, productoId);
         validarImagen(file);
 
-        String url = storageService.upload(CARPETA_FOTOS, file);
-        producto.setFotoUrl(url);
-
+        String anterior = producto.getFotoUrl();
+        String nuevaUrl = storageService.upload(CARPETA_FOTOS, file);
+        producto.setFotoUrl(nuevaUrl);
         Producto actualizado = repository.save(producto);
+
+        // ya guardada la nueva foto, borramos la anterior para no dejar archivos huérfanos en el storage
+        if (anterior != null && !anterior.equals(nuevaUrl)) {
+            storageService.delete(anterior);
+        }
         return toResponse(actualizado);
     }
 
@@ -159,20 +166,22 @@ public class ProductoService {
     // Helpers
     // ---------------------------------------------------------------------------
 
+    // un local que no es del gestor se trata como inexistente para no filtrar qué ids de otros comercios existen
     private PuntoDeVenta buscarLocalActivoDelGestor(Usuario gestor, Long puntoDeVentaId) {
         PuntoDeVenta puntoDeVenta = puntoDeVentaRepository.findByIdAndActivoTrue(puntoDeVentaId)
             .orElseThrow(() -> new ResourceNotFoundException("PuntoDeVenta", puntoDeVentaId));
         if (!puntoDeVenta.getGestor().getId().equals(gestor.getId())) {
-            throw new BusinessRuleException("El punto de venta no pertenece a este comercio");
+            throw new ResourceNotFoundException("PuntoDeVenta", puntoDeVentaId);
         }
         return puntoDeVenta;
     }
 
+    // mismo criterio que con los locales: un producto de otro comercio se ve como 404
     private Producto buscarProductoDelGestor(Usuario gestor, Long productoId) {
         Producto producto = findById(productoId);
         Long gestorDelLocal = producto.getPuntoDeVenta().getGestor().getId();
         if (!gestorDelLocal.equals(gestor.getId())) {
-            throw new BusinessRuleException("El producto no pertenece a este comercio");
+            throw new ResourceNotFoundException("Producto", productoId);
         }
         return producto;
     }
@@ -192,8 +201,21 @@ public class ProductoService {
     // ---------------------------------------------------------------------------
 
     private void validarConfiguracionDeHorarios(Producto producto) {
+        validarVigencia(producto);
         validarConfiguracionHorarioServicio(producto);
         validarConfiguracionVentanas(producto);
+    }
+
+    /** Si se dan ambas fechas de vigencia, el inicio no puede caer después del fin (el mismo día es válido). */
+    private void validarVigencia(Producto producto) {
+        LocalDate inicio = producto.getVigenciaInicio();
+        LocalDate fin = producto.getVigenciaFin();
+        if (inicio == null || fin == null) {
+            return;
+        }
+        if (inicio.isAfter(fin)) {
+            throw new BusinessRuleException("La vigencia debe empezar antes o el mismo dia que termina");
+        }
     }
 
     /** Horario de servicio: o se dan inicio y fin (con inicio antes de fin), o ninguno. */
