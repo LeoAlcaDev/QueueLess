@@ -314,6 +314,36 @@ Ya cubierto arriba: dos templates estáticos no justifican la dependencia.
   antes de inyectarlo en el template; el `EmailServiceTest` valida el
   escape con un caso `<script>alert(1)</script>`.
 
+## Actualización — correos del libro de reclamaciones
+
+El cuerpo de este ADR describe el alcance original: dos correos transaccionales
+—bienvenida y recibo de pedido entregado— con sus dos listeners. Al sumar el
+libro de reclamaciones (ADR-0029) extendimos `EmailService` con tres correos
+más, así que hoy la fachada hospeda **cinco** correos, cada uno con su plantilla
+en `PlantillasCorreo`:
+
+- **Bienvenida** (`sendBienvenida`) — tras el alta del usuario.
+- **Recibo del pedido entregado** (`sendRecibo`) — comprobante con los items y el
+  total.
+- **Acuse del reclamo** (`sendAcuseReclamo`) — confirmación con el código de
+  constancia al usuario que presentó el reclamo.
+- **Notificación del reclamo** (`sendNotificacionReclamo`) — aviso al
+  destinatario, el comercio o el correo de operadores.
+- **Respuesta del reclamo** (`sendRespuestaReclamo`) — la respuesta que el
+  comercio dio, enviada al usuario.
+
+El recibo además arma cada fila con el fragmento `FILA_ITEM_HTML`, que no es un
+correo en sí sino una parte reutilizada de la plantilla `RECIBO_HTML`.
+
+Lo que no cambia con esta extensión es el resto del diseño: las cinco plantillas
+siguen siendo `String.format` sobre text blocks, sin Thymeleaf. Son estáticas (un
+saludo, algo de texto, a lo sumo la tabla de items del recibo), así que el
+balance de la sección "Por qué `String.format` y no Thymeleaf" se mantiene.
+También se conservan la fachada tolerante con `ObjectProvider`, el modo `[EMAIL
+DEV]` y el envío best-effort por listeners `@Async` +
+`@TransactionalEventListener`; los correos del reclamo los dispara
+`ReclamoEmailListener` con el mismo patrón (ADR-0029).
+
 ## Anexo — Glosario de términos técnicos
 
 **SMTP (Simple Mail Transfer Protocol).** Protocolo estándar para mandar

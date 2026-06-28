@@ -99,7 +99,7 @@ class CatalogoMockMvcIT extends AbstractIntegrationTest {
     void shouldReturnEstimatedTimeWhenStoreExists() throws Exception {
         mockMvc.perform(get("/api/v1/puntos-de-venta/{id}/tiempo-estimado", puntoDeVentaId))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.minutos").isNumber());
+            .andExpect(jsonPath("$.data.minutos").isNumber());
     }
 
     private Usuario registrar(String email) {

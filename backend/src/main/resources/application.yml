@@ -102,7 +102,7 @@ queueless:
     plazo-respuesta-dias-habiles: 15                 # plazo legal de respuesta (Ley 32495); aproximación que salta fines de semana
     operadores-email: ${RECLAMO_OPERADORES_EMAIL:operadores@queueless.local}
   tyc:
-    version-vigente: ${TYC_VERSION:2026-06-23}      # misma versión que el encabezado de docs/legal/terminos-y-condiciones.md
+    version-vigente: ${TYC_VERSION:2026-06-28}      # misma versión que el encabezado de docs/legal/terminos-y-condiciones.md
   recomendador:
     proveedor: ${RECOMENDADOR_PROVEEDOR:gemini}     # gemini | fake
     gemini:

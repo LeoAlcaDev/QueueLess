@@ -90,6 +90,14 @@ contra la plataforma los cierra el equipo de operadores por correo, y dejarlos c
 dentro de la app queda para cuando exista un rol operador. Evitamos así abrir un frente de
 panel admin que esta fase no necesita.
 
+### Responder un reclamo es una acción única
+
+La respuesta del comercio solo aplica a un reclamo **PENDIENTE**: al responder se
+guarda el texto, el reclamo pasa a **RESPONDIDO** y se sella `respondidoAt`. Un
+reclamo ya RESPONDIDO no se vuelve a responder; intentarlo se rechaza como regla
+de negocio (422). El chequeo de estado corre después del de propiedad, para no
+revelarle a un comercio ajeno que el reclamo siquiera existe.
+
 ### Sin caminos a medias
 
 El endpoint de registro acepta a cualquier usuario autenticado y solo ofrece dos
@@ -253,6 +261,7 @@ Ejemplo concreto: un reclamo `contra = PLATAFORMA` se notifica a
 
 ## Referencias
 
+- ADR-0002 — Flyway y `ddl-auto: validate` (por qué la tabla nueva necesita una migración versionada y por qué se sube el `flyway.target` de los tests de integración).
 - ADR-0009 — Eventos de dominio (el patrón `@TransactionalEventListener` + `@Async` que reusan los correos del reclamo).
 - ADR-0011 — Zona horaria fija `America/Lima` (el cálculo del plazo va en esa zona).
 - ADR-0013 — Integración con pasarela de pagos (el criterio de 404 ante un acceso cruzado por id, que usa el responder del comercio).

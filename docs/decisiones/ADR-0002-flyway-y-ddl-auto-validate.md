@@ -17,14 +17,28 @@ La estructura de migraciones es:
 
 ```
 backend/src/main/resources/db/migration/
-├── V1__schema_inicial.sql      Schema completo: 13 tablas + índices + triggers + constraints
-├── V2__catalogos_base.sql      Datos de catálogo necesarios para todos los ambientes
-└── V99__seed_dev_data.sql      Datos demo para desarrollo (no se aplica en tests ni prod)
+├── V1__schema_inicial.sql                          Schema base: tablas núcleo + índices + triggers + constraints
+├── V2__catalogos_base.sql                          Datos de catálogo necesarios para todos los ambientes
+├── V3__punto_de_venta_activo.sql                   Flag de local activo
+├── V4__motivo_cancelacion_pedido.sql               Motivo de cancelación en el pedido
+├── V5__horarios_y_ventanas_producto.sql            Horarios del local y ventanas de disponibilidad del producto
+├── V6__perfil_y_producto_alergenos.sql             Alérgenos del perfil cliente y del producto
+├── V7__producto_vigencia_y_pedido_programado.sql   Vigencia del producto y pedidos programados
+├── V8__reclamos.sql                                Tabla de reclamos (libro de reclamaciones)
+├── V9__usuario_aceptacion_tyc.sql                  Aceptación de términos y condiciones por usuario
+├── V10__producto_aptitud_dietetica_y_picante.sql   Aptitud dietética y nivel de picante del producto
+└── V99__seed_dev_data.sql                          Datos demo para desarrollo (cómo se aplica por perfil, más abajo)
 ```
 
-La numeración `V99` para los seeds de desarrollo es intencional: deja espacio para muchas migraciones reales (V3, V4, ..., V50) sin chocar.
+La numeración `V99` para los seeds de desarrollo es intencional: deja espacio para muchas migraciones reales (V11, V12, ...) sin chocar.
 
-En `application-test.yml` configuramos `flyway.target: 2` para que en tests **no se carguen los seeds de demo** (V99). Los tests trabajan contra una base vacía que cada test rellena con lo que necesita.
+En `application-test.yml` fijamos `flyway.target: 10` para que en tests se aplique todo el schema (V1 a V10) pero **no los seeds de demo** (V99): cada test arranca con la base sin datos y la rellena con lo que necesita.
+
+Conviene ser explícitos sobre qué pasa con V99 en cada perfil, porque el tope solo está puesto en tests:
+
+- **dev** (perfil por defecto): no hay `flyway.target`, así que Flyway aplica todo, V99 incluida. Es lo que queremos: los datos demo para desarrollar.
+- **test**: el `flyway.target: 10` corta antes de V99, así que los seeds no entran.
+- **prod**: hoy `application-prod.yml` tampoco fija `flyway.target`, de modo que **V99 también correría en producción**, cargando usuarios y locales de demo. Mientras no haya un despliegue real no hace daño, pero el día que se despliegue hay que evitarlo: lo directo es fijar `flyway.target: 10` en el perfil prod; si para entonces hubiera migraciones reales más allá de V10, la alternativa es mover los seeds a una ubicación de Flyway que solo el perfil dev incluya.
 
 ## Por qué no `ddl-auto: update`
 
@@ -135,6 +149,6 @@ Mantener una carpeta de SQL y aplicarlos a mano cuando hace falta. Descartada po
 ## Referencias
 
 - `backend/src/main/resources/application.yml` — configuración de Hibernate y Flyway.
-- `backend/src/main/resources/application-test.yml` — `flyway.target: 2` para tests sin seeds.
-- `backend/src/main/resources/db/migration/` — las 3 migraciones del proyecto.
+- `backend/src/main/resources/application-test.yml` — `flyway.target: 10` para tests sin seeds.
+- `backend/src/main/resources/db/migration/` — las migraciones del proyecto (V1 a V10 + V99).
 - Documentación oficial de Flyway: https://documentation.red-gate.com/fd

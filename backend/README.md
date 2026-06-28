@@ -29,11 +29,16 @@ Swagger UI en `http://localhost:8090/swagger-ui.html`.
 | `DB_USERNAME` | Usuario de la base de datos                   |
 | `DB_PASSWORD` | Password de la base de datos                  |
 | `JWT_SECRET` | Llave HMAC para firmar tokens (mín. 32 bytes) |
-| `JWT_EXPIRATION_MS` | Tiempo de vida del token (ms)                 |
-| `FIREBASE_CREDENTIALS_JSON` | Service account JSON en base64                |
+| `JWT_ACCESS_EXPIRATION_MS` | Tiempo de vida del access token (ms)                 |
+| `JWT_REFRESH_EXPIRATION_MS` | Tiempo de vida del refresh token (ms) |
+| `FIREBASE_ENABLED` | Activa el push (default `false`); para mandar push en prod hay que ponerla en `true` |
+| `FIREBASE_CREDENTIALS_JSON` | Service account JSON en base64 (si `FIREBASE_ENABLED=true`)                |
 | `AWS_REGION` | Región del bucket S3                          |
 | `AWS_S3_BUCKET` | Nombre del bucket para imágenes               |
-| `MERCADOPAGO_ACCESS_TOKEN` | Token de la pasarela (sandbox o prod)         |
+| `PAGO_GATEWAY` | Pasarela activa: `mock` (default) o `mercadopago`; en prod hay que ponerla en `mercadopago` para cobrar de verdad |
+| `MERCADOPAGO_ACCESS_TOKEN` | Token de la pasarela, si `PAGO_GATEWAY=mercadopago`         |
+| `MERCADOPAGO_WEBHOOK_SECRET` | Secret HMAC del webhook; con `mercadopago`, el arranque en prod aborta si está vacío |
+| `GEMINI_API_KEY` | API key del asistente de recomendación (proveedor `gemini` por defecto); sin ella el arranque en prod aborta |
 | `MAIL_HOST` | Host SMTP (ej. `email-smtp.us-east-1.amazonaws.com`). Vacío deshabilita el envío (ver [ADR-0021](../docs/decisiones/ADR-0021-email-complementario-al-push.md)) |
 | `MAIL_PORT` | Puerto SMTP (default 587)                     |
 | `MAIL_USERNAME` | Usuario SMTP                                  |
@@ -128,6 +133,11 @@ src/main/java/pe/edu/utec/queueless/
 ├── delivery/           SolicitudDelivery, matcher de repartidores
 ├── queuepoints/        MovimientoQueuePoints
 ├── waittime/           Diferenciador técnico — predicción 2 fases
-├── notification/       FCM (push) + email transaccional (bienvenida y recibo)
+├── recomendador/       Asistente de recomendación con IA (Gemini)
+├── ocupacion/          Ocupación de locales por franja horaria
+├── reclamo/            Libro de reclamaciones
+├── tyc/                Aceptación de términos y condiciones
+├── sse/                Server-Sent Events para el seguimiento del pedido
+├── notification/       FCM (push) + email transaccional (bienvenida, recibo, reclamos)
 └── scheduling/         Jobs @Scheduled (expiración, retraining)
 ```

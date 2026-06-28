@@ -120,13 +120,13 @@ String[] authorities = usuario.getRoles().stream()
     .toArray(String[]::new);
 ```
 
-Camila recibe `["ROLE_CLIENTE", "ROLE_REPARTIDOR"]`. Cuando intenta acceder a `/api/cliente/pedidos`, Spring Security verifica que tenga `ROLE_CLIENTE` y la deja pasar. Si intenta `/api/comercio/cola`, verifica `ROLE_COMERCIO`, no lo encuentra, y devuelve 403.
+Camila recibe `["ROLE_CLIENTE", "ROLE_REPARTIDOR"]`. Cuando intenta acceder a `/api/v1/cliente/pedidos`, Spring Security verifica que tenga `ROLE_CLIENTE` y la deja pasar. Si intenta `/api/v1/comercio/cola`, verifica `ROLE_COMERCIO`, no lo encuentra, y devuelve 403.
 
 ## Cómo se activa un rol nuevo
 
 Cuando un usuario quiere activar un rol que no tiene (ejemplo: un cliente que se anota para ser repartidor), el flujo es:
 
-1. El cliente hace POST a `/api/usuarios/me/activar-rol` con `{ "rol": "REPARTIDOR" }`.
+1. El cliente hace POST a `/api/v1/usuarios/me/activar-rol` con `{ "rol": "REPARTIDOR" }`.
 2. `UsuarioService.activarRol(usuarioId, REPARTIDOR)`:
    - Verifica que el rol no esté ya activo.
    - Agrega `REPARTIDOR` al set de roles del usuario.
@@ -134,9 +134,9 @@ Cuando un usuario quiere activar un rol que no tiene (ejemplo: un cliente que se
    - Persiste todo en transacción.
 3. La próxima vez que el usuario hace login (o refresca su token), su JWT incluye el nuevo rol.
 
-**Importante:** el método `UsuarioService.activarRol` está marcado como TODO de Semana 1 en el código actual. La creación automática del perfil vacío es la pieza que falta. Sin esa pieza, un usuario podría tener el rol activo pero sin perfil asociado, lo que rompe queries que asumen "si tiene rol REPARTIDOR, tiene PerfilRepartidor".
+**Importante:** `UsuarioService.activarRol` delega la creación del perfil vacío en `PerfilService.crearPerfilParaRol`, que corre dentro de la misma transacción que el alta del rol. Así nunca queda un usuario con el rol activo pero sin perfil asociado, lo que rompería queries que asumen "si tiene rol REPARTIDOR, tiene PerfilRepartidor". El método es idempotente: si el perfil ya existe, no lo recrea.
 
-Lo mismo aplica para `AuthService.register`, que también tiene un TODO para crear los perfiles correspondientes al momento de registrar a un usuario nuevo con uno o más roles iniciales.
+Lo mismo aplica para `AuthService.register`: después de guardar al usuario nuevo, llama a `PerfilService.crearPerfilesParaRoles` para dar de alta, en la misma transacción, el perfil de cada uno de los roles iniciales.
 
 ## Endpoints organizados por rol
 
@@ -145,17 +145,17 @@ Los endpoints están agrupados por rol en la URL, y Spring Security valida el ro
 | Path | Quién puede acceder |
 |---|---|
 | `/api/auth/**` | Público (register, login) |
-| `GET /api/puntos-de-venta/**` | Público (cualquiera puede ver el catálogo) |
-| `/api/cliente/**` | Solo usuarios con rol CLIENTE |
-| `/api/comercio/**` | Solo usuarios con rol COMERCIO |
-| `/api/repartidor/**` | Solo usuarios con rol REPARTIDOR |
-| `/api/usuarios/me` | Cualquier usuario autenticado |
+| `GET /api/v1/puntos-de-venta/**` | Público (cualquiera puede ver el catálogo) |
+| `/api/v1/cliente/**` | Solo usuarios con rol CLIENTE |
+| `/api/v1/comercio/**` | Solo usuarios con rol COMERCIO |
+| `/api/v1/repartidor/**` | Solo usuarios con rol REPARTIDOR |
+| `/api/v1/usuarios/me` | Cualquier usuario autenticado |
 | `/api/pago/webhook/**` | Público (la firma se valida adentro del handler) |
 | `/v3/api-docs/**`, `/swagger-ui/**` | Público |
 
 Esto es lo que está en `SecurityConfig.securityFilterChain`. El matching se hace a nivel de path, no de método, por simplicidad y performance.
 
-Si Camila (CLIENTE + REPARTIDOR) intenta acceder a `/api/comercio/cola`, Spring Security la rechaza con 403, aunque sí tenga otros roles activos. No hay confusión: una petición es a un endpoint específico, y ese endpoint pertenece a un rol específico.
+Si Camila (CLIENTE + REPARTIDOR) intenta acceder a `/api/v1/comercio/cola`, Spring Security la rechaza con 403, aunque sí tenga otros roles activos. No hay confusión: una petición es a un endpoint específico, y ese endpoint pertenece a un rol específico.
 
 ## Alternativas consideradas
 
@@ -192,16 +192,16 @@ Descartado porque:
 - **Tipo seguro en código Java.** `usuario.getPerfilCliente()` devuelve un `PerfilCliente`, no un `Map<String, Object>`.
 - **Schema limpio.** Cada tabla tiene columnas relevantes a su entidad, sin NULLs sistemáticos.
 - **Lazy loading.** Las relaciones LAZY hacen que cargar un Usuario no traiga sus perfiles a menos que los necesites.
-- **Autorización por rol simple.** El matcher en `SecurityConfig` es legible: `/api/cliente/**` → `hasRole("CLIENTE")`. Nada más.
+- **Autorización por rol simple.** El matcher en `SecurityConfig` es legible: `/api/v1/cliente/**` → `hasRole("CLIENTE")`. Nada más.
 
 ### Negativas
 
 - **Más JOINs cuando queremos el perfil completo.** Para mostrar el dashboard de Camila con sus datos de cliente Y de repartidora, hay que joinear 3 tablas. Manageable con `@EntityGraph` o queries específicos cuando importa.
-- **La creación de perfiles tiene que coordinarse con la activación de roles.** Activar el rol sin crear el perfil deja al usuario en estado inconsistente. Por eso el TODO en `AuthService.register` y `UsuarioService.activarRol`.
+- **La creación de perfiles tiene que coordinarse con la activación de roles.** Activar el rol sin crear el perfil dejaría al usuario en estado inconsistente. Por eso tanto `AuthService.register` como `UsuarioService.activarRol` crean el perfil en la misma transacción en que activan el rol.
 
 ### Riesgos
 
-- **Riesgo de inconsistencia: rol activo sin perfil asociado.** Si por un bug el set de roles tiene REPARTIDOR pero no hay fila en `perfil_repartidor`, cualquier query que asuma "tiene rol → tiene perfil" explota. Mitigación: implementar el TODO de crear perfiles automáticamente al activar el rol. Validación adicional con constraint a nivel de DB (no implementado aún pero posible).
+- **Riesgo de inconsistencia: rol activo sin perfil asociado.** Si por un bug el set de roles tiene REPARTIDOR pero no hay fila en `perfil_repartidor`, cualquier query que asuma "tiene rol → tiene perfil" explota. Mitigación: la creación del perfil corre en la misma transacción que la activación del rol (en `UsuarioService.activarRol` y `AuthService.register`), de modo que ambas se confirman juntas o no se confirman. Validación adicional con constraint a nivel de DB (no implementado aún pero posible).
 - **Riesgo de roles huérfanos en `usuario_roles`.** Si borramos un usuario sin cascada, los roles quedan colgados. Mitigación: el `ON DELETE CASCADE` en la FK de `usuario_roles` lo previene.
 
 ## Anexo — Glosario de términos técnicos

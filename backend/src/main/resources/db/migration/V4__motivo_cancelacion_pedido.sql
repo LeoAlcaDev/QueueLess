@@ -1,10 +1,8 @@
--- =============================================================================
 -- Motivo de cancelacion estructurado del pedido.
 -- Antes habia una sola columna de texto libre (razon_cancelacion). Ahora el
 -- comercio elige un motivo de una lista corta (motivo_cancelacion) y, si quiere,
 -- agrega un detalle. Se renombra la columna vieja a detalle_cancelacion para que
 -- quede claro que es el texto libre, y se agrega el motivo estructurado.
--- =============================================================================
 
 ALTER TABLE pedido RENAME COLUMN razon_cancelacion TO detalle_cancelacion;
 

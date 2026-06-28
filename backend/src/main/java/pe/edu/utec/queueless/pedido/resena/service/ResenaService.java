@@ -38,10 +38,7 @@ public class ResenaService {
     private final PedidoService pedidoService;
     private final SolicitudDeliveryRepository solicitudDeliveryRepository;
 
-    // ---------------------------------------------------------------------------
     // Escritura
-    // ---------------------------------------------------------------------------
-
     @Transactional
     public ResenaResponse crear(Usuario autor, Long pedidoId, CrearResenaRequest request) {
         // Valida la propiedad del pedido con el patrón del proyecto: si es ajeno,
@@ -65,10 +62,7 @@ public class ResenaService {
         return ResenaResponse.from(guardada);
     }
 
-    // ---------------------------------------------------------------------------
     // Lectura pública
-    // ---------------------------------------------------------------------------
-
     public Page<ResenaResponse> listarDePuntoDeVenta(Long puntoDeVentaId, Pageable pageable) {
         return paginar(ObjetivoResena.PUNTO_DE_VENTA, puntoDeVentaId, pageable);
     }
@@ -86,10 +80,7 @@ public class ResenaService {
             .map(ResenaResponse::from);
     }
 
-    // ---------------------------------------------------------------------------
     // Validaciones
-    // ---------------------------------------------------------------------------
-
     private void validarPedidoEntregado(Pedido pedido) {
         if (pedido.getEstado() != EstadoPedido.ENTREGADO) {
             throw new BusinessRuleException(

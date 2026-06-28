@@ -4,8 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
- * Respuesta del endpoint público de tiempo estimado. Se serializa como
- * {@code {"minutos": N}}, la forma que fija el ADR del modelo de tiempos de espera.
+ * Respuesta del endpoint público de tiempo estimado. Viaja dentro del envoltorio
+ * {@code ApiResponse} común a la API, así que el cliente lo lee en {@code data.minutos}.
  */
 @Getter
 @AllArgsConstructor

@@ -56,20 +56,23 @@ estimado = tiempoPromedioDeclarado + (pedidos_en_cola × minutos_por_pedido_en_c
 - `tiempoPromedioDeclarado` es el campo que el comercio configura en su
   `PuntoDeVenta` (por ejemplo, "mi local tarda unos 10 minutos en promedio").
 - `pedidos_en_cola` es una métrica dinámica: la cantidad de pedidos **del mismo
-  punto de venta que están en estado `EN_PREPARACION`** en el momento de la
-  consulta. Es la cocina ocupada ahora mismo. Se calcula con un conteo barato
-  (un `COUNT` con índice sobre `estado` + `punto_de_venta_id`), no recorriendo
-  pedidos en memoria.
+  punto de venta que están en estado `ACEPTADO` o `EN_PREPARACION`** en el momento
+  de la consulta. Es la cocina comprometida ahora mismo: lo que el comercio ya
+  tomó y lo que está cocinando. Se calcula con un conteo barato (un `COUNT` con
+  índice sobre `estado` + `punto_de_venta_id`), no recorriendo pedidos en memoria.
 - `minutos_por_pedido_en_cola` es el peso de cada pedido en cola. Es
   configurable en `application.yml` con la clave nueva
   `queueless.waittime.minutos-por-pedido-en-cola` y un valor por defecto de 3
   minutos. Ejemplo: un local que declara 10 minutos y tiene 4 pedidos en
-  preparación estima `10 + 4 × 3 = 22` minutos.
+  cola estima `10 + 4 × 3 = 22` minutos.
 
-Elegimos `EN_PREPARACION` (y no, por ejemplo, todos los pedidos activos del
-local) porque ese estado representa la comida que la cocina está cocinando ahora.
-Un pedido que todavía está en `PAGADO_ESPERANDO_COMERCIO` aún no consume tiempo
-de cocina, así que sumarlo inflaría el estimado sin razón.
+Contamos `ACEPTADO` y `EN_PREPARACION` (y no, por ejemplo, todos los pedidos
+activos del local) porque son los dos estados por los que pasa un pedido entre que
+el comercio lo acepta y lo deja listo: trabajo que la cocina ya tomó. Un pedido en
+`PAGADO_ESPERANDO_COMERCIO` todavía no fue aceptado y no consume tiempo de cocina,
+así que sumarlo inflaría el estimado sin razón. Esa ventana —de `aceptadoAt` a
+`listoAt`— es además la que el modelo mide al entrenar, así que contar lo mismo al
+predecir es lo que mantiene alineados los dos lados (ver "Actualización").
 
 ### Modelo predictivo: regresión por bins con tres dimensiones
 
@@ -93,12 +96,12 @@ esa combinación, y el contador de cuántos pedidos aportaron a ese promedio.
 
 Ejemplo concreto de una celda: "lunes, 12:00, 3–5 pedidos en cola = 18 minutos
 (con 27 pedidos detrás)". Cuando un cliente pregunta el tiempo estimado un lunes
-al mediodía y el local tiene 4 pedidos en preparación, la predicción es esos 18
+al mediodía y el local tiene 4 pedidos en cola, la predicción es esos 18
 minutos.
 
 "Pedidos en cola" significa lo mismo acá que en la estrategia manual: la cantidad
-de pedidos del local en estado `EN_PREPARACION`. La diferencia es el momento en
-que se mide. Para armar la celda al entrenar, se cuenta cuántos había cuando ese
+de pedidos del local en estado `ACEPTADO` o `EN_PREPARACION`. La diferencia es el
+momento en que se mide. Para armar la celda al entrenar, se cuenta cuántos había cuando ese
 pedido fue aceptado (su contexto histórico); para predecir, se cuenta cuántos hay
 al momento de la consulta. Usar la misma definición en los dos lados es lo que
 hace que el bucket con el que se guarda un dato sea el mismo con el que después se
@@ -114,7 +117,7 @@ locales en memoria; no hay una instancia de modelo suelta por cada uno.
 
 ### Selección automática de estrategia por local
 
-`WaitTimeService.estimar(puntoDeVenta)` elige la estrategia según cuántos
+`WaitTimeService.estimarMinutos(puntoDeVentaId)` elige la estrategia según cuántos
 pedidos `ENTREGADO` tiene ese local en su historia:
 
 - Menos de 50 pedidos entregados → estrategia manual.
@@ -204,14 +207,15 @@ dejamos anotado como hallazgo tranquilizador, no como algo a resolver.
 
 ### Endpoint público de tiempo estimado
 
-Exponemos `GET /api/puntos-de-venta/{id}/tiempo-estimado`, que devuelve un JSON
-`{"minutos": N}`. Es público (sin token), porque un cliente quiere ver cuánto va
-a tardar antes de loguearse o de armar el pedido. No hace falta tocar la
-configuración de seguridad: la regla existente que deja público todo
-`GET /api/puntos-de-venta/**` ya lo cubre. El endpoint lo atiende un controller
-nuevo, `WaitTimeController`, dentro de `waittime/controller/`. La ruta vive bajo
-`/api/puntos-de-venta/` aunque el controller esté en el módulo `waittime`; la
-URL agrupa por recurso (el punto de venta), no por módulo de código.
+Exponemos `GET /api/v1/puntos-de-venta/{id}/tiempo-estimado`, que devuelve los
+minutos dentro del envoltorio `ApiResponse` común a la API (el cliente los lee en
+`data.minutos`; ver "Actualización"). Es público (sin token), porque un cliente
+quiere ver cuánto va a tardar antes de loguearse o de armar el pedido. No hace
+falta tocar la configuración de seguridad: la regla existente que deja público
+todo `GET /api/v1/puntos-de-venta/**` ya lo cubre. El endpoint lo atiende un
+controller nuevo, `WaitTimeController`, dentro de `waittime/controller/`. La ruta
+vive bajo `/api/v1/puntos-de-venta/` aunque el controller esté en el módulo
+`waittime`; la URL agrupa por recurso (el punto de venta), no por módulo de código.
 
 ### Qué datos hay al arrancar Fase 6
 
@@ -350,6 +354,21 @@ desde ya es cero.
   `listoAt` quedaran mal por un bug en la máquina de estados, el modelo aprende
   tiempos falsos. Mitigación: esos timestamps los setea `Pedido.transicionarA` en
   un solo lugar, y la máquina de estados está cubierta por tests.
+
+## Actualización — Fase 1 (cola) y Fase 3 (contrato del endpoint)
+
+Dos cosas cambiaron respecto de lo que decía el cuerpo y ya quedaron corregidas arriba:
+
+- **La cola cuenta `ACEPTADO` + `EN_PREPARACION`, no solo `EN_PREPARACION`.** Al
+  consolidar el módulo encontramos un desajuste entre entrenar y predecir: al
+  predecir se contaba solo `EN_PREPARACION`, pero la ventana con la que el modelo
+  arma cada celda (`aceptadoAt ≤ t < listoAt`) abarca también los pedidos en
+  `ACEPTADO`. El modelo aprendía con una cola más amplia que la que recibía al
+  servir y subestimaba el tiempo. Ahora `WaitTimeService` cuenta los dos estados
+  (`countByPuntoDeVentaIdAndEstadoIn`) y ambos lados miden lo mismo.
+- **El endpoint envuelve la respuesta en `ApiResponse`.** Para alinearlo con el
+  resto de la API, `GET /api/v1/puntos-de-venta/{id}/tiempo-estimado` ya no devuelve
+  `{"minutos":N}` plano sino `{"success":true,"data":{"minutos":N},"message":null}`.
 
 ## Anexo — Glosario de términos técnicos
 

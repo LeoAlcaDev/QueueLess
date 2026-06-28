@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import pe.edu.utec.queueless.shared.dto.ApiResponse;
 import pe.edu.utec.queueless.waittime.dto.TiempoEstimadoResponse;
 import pe.edu.utec.queueless.waittime.service.WaitTimeService;
 
@@ -20,7 +21,8 @@ public class WaitTimeController {
     private final WaitTimeService waitTimeService;
 
     @GetMapping("/{id}/tiempo-estimado")
-    public ResponseEntity<TiempoEstimadoResponse> tiempoEstimado(@PathVariable Long id) {
-        return ResponseEntity.ok(new TiempoEstimadoResponse(waitTimeService.estimarMinutos(id)));
+    public ResponseEntity<ApiResponse<TiempoEstimadoResponse>> tiempoEstimado(@PathVariable Long id) {
+        TiempoEstimadoResponse tiempo = new TiempoEstimadoResponse(waitTimeService.estimarMinutos(id));
+        return ResponseEntity.ok(ApiResponse.ok(tiempo));
     }
 }

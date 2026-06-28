@@ -34,7 +34,7 @@ public class OpenApiConfig {
                 .version("0.0.1-SNAPSHOT")
                 .description("..."))
             .components(new Components()
-                .addSecuritySchemes("bearer-jwt",
+                .addSecuritySchemes("bearerAuth",
                     new SecurityScheme()
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
@@ -75,7 +75,7 @@ springdoc-openapi es el reemplazo recomendado por la comunidad y por el propio e
 
 ## Cómo se integra con la autenticación JWT
 
-El esquema de seguridad declarado en `OpenApiConfig` (`bearer-jwt`) le dice a Swagger UI que los endpoints protegidos requieren un header `Authorization: Bearer <token>`. En la UI hay un botón "Authorize" en la esquina superior derecha donde se pega el token. Una vez autorizado, todos los requests subsiguientes incluyen el header automáticamente.
+El esquema de seguridad declarado en `OpenApiConfig` (`bearerAuth`) le dice a Swagger UI que los endpoints protegidos requieren un header `Authorization: Bearer <token>`. En la UI hay un botón "Authorize" en la esquina superior derecha donde se pega el token. Una vez autorizado, todos los requests subsiguientes incluyen el header automáticamente.
 
 El flujo típico de prueba en Swagger UI es:
 
@@ -162,7 +162,7 @@ Ejemplo concreto del proyecto: cuando levantás el backend con perfil dev y vas 
 
 **Tag (en OpenAPI).** Agrupación lógica de endpoints. Sirve para que Swagger UI los muestre organizados por funcionalidad en lugar de en una lista plana. En QueueLess usamos `@Tag(name = "Pedidos (cliente)", description = "...")` en los controllers para agrupar.
 
-**Security scheme.** Definición de cómo se autentica una API. OpenAPI soporta varios tipos: `apiKey`, `http` (Basic, Bearer), `oauth2`, `openIdConnect`. Nosotros declaramos un esquema `bearer-jwt` que es `http` + `bearer` + formato `JWT`.
+**Security scheme.** Definición de cómo se autentica una API. OpenAPI soporta varios tipos: `apiKey`, `http` (Basic, Bearer), `oauth2`, `openIdConnect`. Nosotros declaramos un esquema `bearerAuth` que es `http` + `bearer` + formato `JWT`.
 
 **Code-first vs API-first.** Dos enfoques para mantener el contrato de una API:
 

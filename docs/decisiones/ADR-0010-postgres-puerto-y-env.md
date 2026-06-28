@@ -77,10 +77,17 @@ Esta decisión es revisable: si en algún momento el equipo crece y aparecen má
 | `POSTGRES_HOST_PORT` | Puerto donde docker-compose expone Postgres | `5467` |
 | `JWT_SECRET` | Secret para firmar JWTs | placeholder de 32 chars |
 | `MERCADOPAGO_ACCESS_TOKEN` | Token de la pasarela (Semana 2) | vacío |
+| `MERCADOPAGO_WEBHOOK_SECRET` | Secret para validar la firma del webhook de MercadoPago (Semana 2); en dev, vacío relaja la validación con un warning | vacío |
 | `FIREBASE_CREDENTIALS_JSON` | Credenciales de FCM en base64 (Semana 2) | vacío |
 | `FIREBASE_ENABLED` | Activar push notifications | `false` |
 | `AWS_REGION` | Región AWS para S3 (Semana 3) | vacío |
 | `AWS_S3_BUCKET` | Nombre del bucket S3 | vacío |
+| `MAIL_HOST` | Host del servidor SMTP del correo transaccional (Semana 3); vacío deja el correo en modo `[EMAIL DEV]` (ADR-0021) | vacío |
+| `MAIL_PORT` | Puerto del servidor SMTP | `587` |
+| `MAIL_USERNAME` | Usuario de autenticación SMTP | vacío |
+| `MAIL_PASSWORD` | Contraseña o App Password SMTP | vacío |
+| `MAIL_FROM` | Dirección remitente de los correos | `no-reply@queueless.local` |
+| `MAIL_FROM_NAME` | Nombre visible del remitente | `QueueLess` |
 
 Las variables vacías corresponden a integraciones futuras. En dev no las necesitamos (usamos `MockPaymentGateway` y `LocalStorageService`).
 

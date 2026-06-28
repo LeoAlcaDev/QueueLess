@@ -1,4 +1,4 @@
-# ADR-0003 — Modelo de 12 entidades del dominio
+# ADR-0003 — Modelo de 13 entidades del dominio
 
 ## Contexto
 
@@ -10,11 +10,11 @@ La pregunta concreta era: ¿cuántas entidades necesitamos y cómo se relacionan
 - Un modelo "explotado" de 20+ entidades con cada concepto separado.
 - Un modelo intermedio que refleje el dominio real.
 
-Este ADR fija la decisión que tomamos: un modelo de 12 entidades, y justifica cada una.
+Este ADR fija la decisión que tomamos: un modelo de 13 entidades, y justifica cada una.
 
 ## Decisión
 
-Modelamos el dominio con **12 entidades JPA** organizadas feature-first:
+Modelamos el dominio con **13 entidades JPA** organizadas feature-first:
 
 | # | Entidad | Módulo | Razón corta |
 |---|---|---|---|
@@ -30,6 +30,7 @@ Modelamos el dominio con **12 entidades JPA** organizadas feature-first:
 | 10 | `SolicitudDelivery` | delivery | Solicitud de entrega entre estudiantes (solo DELIVERY) |
 | 11 | `Resena` | pedido (subpaquete) | Reseña post-entrega sobre punto o repartidor |
 | 12 | `MovimientoQueuePoints` | queuepoints | Movimiento de saldo en formato ledger |
+| 13 | `Reclamo` | reclamo | Reclamo o queja del libro de reclamaciones sobre un pedido o el servicio |
 
 Adicionalmente hay 1 enum modelado como `@ElementCollection`: `Rol` (CLIENTE/COMERCIO/REPARTIDOR), que vive en una tabla de unión `usuario_roles` asociada a `Usuario`. Ese enum NO es una entidad JPA, es un valor.
 
@@ -47,7 +48,7 @@ Son entidades canónicas que aparecerían en cualquier dominio similar.
 
 **Producto.** Ítem que un PuntoDeVenta vende. Tiene precio, descripción, foto, categoría y disponibilidad. Pertenece a un PuntoDeVenta vía `@ManyToOne`. Es necesario separar de PuntoDeVenta porque un local tiene varios productos con ciclo de vida propio (un producto se puede agotar sin que cierre el local).
 
-**Pedido.** El corazón del sistema. Una orden de un cliente en un PuntoDeVenta, con su máquina de estados de 11 estados, total, descuentos, timestamps por transición. Documentado en detalle en ADR-0009.
+**Pedido.** El corazón del sistema. Una orden de un cliente en un PuntoDeVenta, con su máquina de estados de 11 estados, total, descuentos, timestamps por transición. La máquina de estados vive en `pedido/entity/EstadoPedido.java`; sus transiciones se documentan en ADR-0013 y ADR-0014.
 
 **ItemPedido.** Línea de detalle dentro de un Pedido (qué producto, cuántas unidades, precio unitario, subtotal). Es una entidad clásica de "header-detail": no puede existir sin Pedido (`ON DELETE CASCADE`) pero necesita identidad propia para tracking individual (un cliente puede tener 3 hamburguesas y 2 gaseosas en el mismo pedido).
 
@@ -181,8 +182,8 @@ Lo descartamos porque:
 
 ### Negativas
 
-- **Más JOINs en queries.** Para mostrar el detalle de un Pedido con su Pago y su SolicitudDelivery hace falta unir 3 tablas. Mitigación: el `@OneToOne` con FK directa hace los joins baratos. Los índices están puestos (`idx_pago_pedido`, etc.).
-- **Más boilerplate inicial.** 12 entidades + 12 repositorios + servicios. Más código que escribir. Mitigación: Lombok reduce el boilerplate en entidades. Spring genera los repos sin código.
+- **Más JOINs en queries.** Para mostrar el detalle de un Pedido con su Pago y su SolicitudDelivery hace falta unir 3 tablas. Mitigación: el `@OneToOne` usa una FK directa con restricción `UNIQUE` sobre `pedido_id`, que Postgres respalda con un índice único, así que ese join sale barato sin necesidad de un índice adicional.
+- **Más boilerplate inicial.** 13 entidades + 13 repositorios + servicios. Más código que escribir. Mitigación: Lombok reduce el boilerplate en entidades. Spring genera los repos sin código.
 - **Curva de aprendizaje para alguien nuevo.** Hay que entender por qué los perfiles están separados. Mitigación: este ADR.
 
 ### Riesgos
@@ -190,9 +191,15 @@ Lo descartamos porque:
 - **Riesgo de inconsistencia entre las máquinas de estado de Pedido y los módulos satélite (Pago, SolicitudDelivery).** Si Pedido pasa a `ENTREGADO` pero SolicitudDelivery sigue en `ASIGNADO`, hay desincronización. Mitigación: los listeners de eventos (ADR-0009) consumen `PedidoEstadoCambiadoEvent` y mantienen la coherencia. Tests de integración validarán esto al implementar Semana 2-3.
 - **Riesgo de perfil faltante.** Si un usuario activa el rol COMERCIO pero PerfilComercio no se crea, el sistema se rompe en runtime al consultar el RUC. Mitigación: el TODO de Semana 1 en `AuthService.register` es precisamente eso — crear automáticamente los perfiles vacíos al activar el rol. Pendiente al cierre de este ADR.
 
+## Actualización — Reclamo, la 13.ª entidad (ADR-0029)
+
+Después de fijar el modelo original de 12 entidades sumamos una más: `Reclamo`, en el módulo `reclamo/`. Es el libro de reclamaciones que exige la normativa peruana de protección al consumidor: registra un reclamo o una queja de un usuario contra un comercio o contra la plataforma, con su código de constancia, su plazo de respuesta y su propio estado (`EstadoReclamo`, con una mini máquina de estados PENDIENTE → RESPONDIDO). Su tabla `reclamo` la crea la migración V8 y su diseño se defiende en detalle en ADR-0029.
+
+Con esto el modelo pasa a 13 entidades. La tabla de la decisión y los conteos de este ADR ya la incluyen; la defensa entidad por entidad de los Grupos A y B de arriba corresponde a las 12 originales, y la justificación de `Reclamo` vive en su propio ADR-0029 para no duplicarla acá.
+
 ## Anexo A — Cómo vive cada entidad en la base
 
-V1 `__schema_inicial.sql` materializa las 12 entidades en 12 tablas más `usuario_roles` (tabla de unión para el `@ElementCollection`). Total: 13 tablas físicas.
+V1 `__schema_inicial.sql` materializa las primeras 12 entidades en 12 tablas, más `usuario_roles` (tabla de unión para el `@ElementCollection`). La entidad `Reclamo`, agregada después, suma su tabla `reclamo` en V8. Total: 14 tablas físicas (13 de entidades más `usuario_roles`).
 
 Las cifras siguientes son **estimaciones realistas para el contexto UTEC**: la población total del campus ronda los pocos miles de estudiantes, así que el volumen del MVP es modesto.
 
@@ -211,6 +218,7 @@ Las cifras siguientes son **estimaciones realistas para el contexto UTEC**: la p
 | solicitud_delivery | ~30% de los pedidos |
 | resena | ~50% de los pedidos entregados |
 | movimiento_queuepoints | Crece con cada entrega completada |
+| reclamo | Pocos (disputas puntuales sobre un pedido o el servicio) |
 
 Volumen modesto: la base entera entra holgadamente en una instancia chica de Postgres. No anticipamos problemas de performance con esta escala.
 
@@ -267,6 +275,8 @@ Ejemplo concreto del proyecto: el módulo `pago/` hoy usa `MockPaymentGateway` e
 - `backend/src/main/java/pe/edu/utec/queueless/pedido/entity/Pedido.java` — con su máquina de estados.
 - `backend/src/main/java/pe/edu/utec/queueless/pago/entity/Pago.java` — Pago separado.
 - `backend/src/main/java/pe/edu/utec/queueless/delivery/entity/SolicitudDelivery.java` — Delivery separado.
+- `backend/src/main/java/pe/edu/utec/queueless/reclamo/entity/Reclamo.java` — la 13.ª entidad (libro de reclamaciones).
 - ADR-0007 — Multi-rol y composición de perfiles (detalle de la decisión 2-3-4).
 - ADR-0008 — Ledger pattern para QueuePoints (detalle de la decisión 12).
 - ADR-0009 — Eventos de dominio (cómo se mantiene coherencia entre módulos).
+- ADR-0029 — Libro de reclamaciones (defensa de la entidad `Reclamo`).

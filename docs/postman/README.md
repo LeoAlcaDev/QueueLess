@@ -7,8 +7,8 @@ QueuePoints. Las requests **se encadenan solas** (los tokens y los ids se guarda
 en variables de colección con scripts), así que se corre toda de un solo click sin
 copiar nada a mano.
 
-La copia maestra vive en la **raíz del repo** (`postman_collection.json` +
-`QueueLess.dev.postman_environment.json`); esta carpeta guarda una copia con esta guía.
+Esta carpeta es la **fuente de verdad** de la colección: `postman_collection.json` (la
+colección) y `QueueLess.dev.postman_environment.json` (el environment), junto con esta guía.
 
 ## Cómo usarla
 
@@ -21,7 +21,8 @@ La copia maestra vive en la **raíz del repo** (`postman_collection.json` +
    `QueueLess.dev.postman_environment.json`.
 3. Seleccioná el environment **QueueLess dev** (arriba a la derecha).
 4. Abrí el **Collection Runner** (botón *Run*), elegí la colección y *Run QueueLess API - E2E*.
-   Las 8 carpetas corren en orden y cada request valida su código de estado.
+   Las carpetas **01–08** son el recorrido end-to-end encadenado y corren en orden; cada
+   request valida su código de estado.
 
 > La colección es **idempotente**: cada corrida usa emails con `{{$timestamp}}`, así
 > que se puede correr varias veces sin chocar con correos duplicados.
@@ -38,6 +39,15 @@ La copia maestra vive en la **raíz del repo** (`postman_collection.json` +
 | **06 Reseña** | El cliente reseña el local del pedido entregado (201). |
 | **07 Flujo DELIVERY** | Pedido delivery → pago → webhook → el repartidor toma la solicitud, el comercio la prepara, y el repartidor confirma recogida y entrega (200). |
 | **08 QueuePoints** | Saldo y movimientos del cliente (200), y un canje rechazado con **422**: el cliente no gana QueuePoints (solo el repartidor, por entrega completada). |
+
+Las carpetas **09–24** son **cobertura del contrato**: una request por cada endpoint del
+backend (actualización de perfiles, lecturas y acciones del cliente, gestión y acciones del
+comercio, CRUD de puntos de venta y productos, reseñas públicas, reclamos, términos, ocupación,
+asistente, consulta de pago, helpers de dev y los streams SSE), más algunos casos negativos
+(propiedad ajena → 404, duplicado → 409). Reutilizan los tokens e ids que el recorrido 01–08
+dejó en variables, así que conviene correr primero el end-to-end. No todas pasan en una sola
+corrida —algunas mutan estado o dependen del momento—; su objetivo es documentar el contrato
+que consume el frontend, no ser un segundo happy-path.
 
 ## Notas sobre el flujo de delivery
 

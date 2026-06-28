@@ -69,13 +69,16 @@ Marcamos los listeners con `@Async("queuelessTaskExecutor")`. Eso hace que cada 
 
 ## Listeners actuales
 
-Al cierre de Semana 1 tenemos 3 listeners registrados al evento:
+Hoy hay 6 listeners registrados al evento:
 
 | Listener | Módulo | Reacciona a | Acción |
 |---|---|---|---|
-| `PedidoNotificationListener` | notification | Cualquier cambio de estado | Manda push al cliente con el estado nuevo |
-| `PagoListener` | pago | Cancelaciones desde estados pagados | Inicia reembolso vía la pasarela |
-| `EntregaCompletadaListener` | queuepoints | Transición a ENTREGADO con delivery | Registra movimiento GANADO al repartidor |
+| `PedidoNotificationListener` | notification | Cualquier cambio, salvo PENDIENTE_PAGO y la cancelación del cliente desde PENDIENTE_PAGO | Manda push al cliente con el mensaje del estado nuevo |
+| `PagoListener` | pago | Cancelación desde un estado con pago confirmado | Inicia reembolso vía la pasarela |
+| `EntregaCompletadaListener` | queuepoints | Transición a ENTREGADO con SolicitudDelivery entregada | Registra movimiento GANADO al repartidor |
+| `CrearSolicitudDeliveryListener` | delivery | Transición a PAGADO_BUSCANDO_REPARTIDOR en pedidos DELIVERY | Crea la SolicitudDelivery para arrancar la búsqueda |
+| `PedidoSseListener` | sse | Cualquier cambio, salvo PENDIENTE_PAGO | Reparte el cambio por SSE al cliente y al comercio |
+| `PedidoEntregadoEmailListener` | notification (email) | Transición a ENTREGADO | Manda el recibo por correo al cliente |
 
 Todos siguen el mismo patrón:
 
@@ -175,6 +178,13 @@ Descartado porque:
 - **Riesgo de orden no determinístico entre listeners.** Si dos listeners reaccionan al mismo evento, no hay garantía de en qué orden corren. Mitigación: los listeners son independientes entre sí; no debe haber dependencias entre lo que hacen.
 - **Riesgo de perder eventos si el proceso cae.** Como los eventos viven en memoria, si el backend se reinicia entre el commit y la ejecución de los listeners, los listeners no corren. Mitigación a futuro: outbox pattern (persistir el evento en la misma transacción y un job lo procesa después). No implementado en el MVP.
 
+## Actualización — Fase 2: más listeners y un evento propio del módulo pago
+
+Dos cosas cambiaron respecto de lo que decía el cuerpo y ya quedaron corregidas arriba:
+
+- **Los listeners sobre `PedidoEstadoCambiadoEvent` pasaron de 3 a 6.** A los tres originales (push, reembolso por cancelación y QueuePoints) se sumaron `CrearSolicitudDeliveryListener` (crea la SolicitudDelivery cuando el pedido entra en búsqueda de repartidor), `PedidoSseListener` (reparte el cambio por SSE al cliente y al comercio) y `PedidoEntregadoEmailListener` (manda el recibo por correo al entregar). Todos mantienen el patrón `@Async` + `@TransactionalEventListener`; los que necesitan navegar asociaciones lazy del pedido abren su propia transacción `REQUIRES_NEW` de solo lectura.
+- **Apareció un segundo evento de dominio, `ReembolsoRequeridoEvent` (paquete `pago.event`).** No es un evento de transición del pedido: lo publica el módulo pago cuando un pago se confirma sobre un pedido que ya está en estado terminal, es decir, el dinero se capturó pero el pedido no puede recibirlo. Su listener es `PagoListener.onReembolsoRequerido`, también `@Async @TransactionalEventListener`, y termina en el mismo `ReembolsoService.emitirReembolso` que el camino de cancelación. Es la primera excepción al "un único evento global": el global sigue cubriendo las transiciones del pedido, y este otro queda acotado al bounded context de pagos.
+
 ## Anexo — Glosario de términos técnicos
 
 **Evento de dominio.** Un objeto que representa "algo que pasó" en el sistema, en términos del dominio. No es un comando ("hacé X"), es un hecho ("X pasó"). Se publica una vez y puede ser escuchado por cero o muchos receptores.
@@ -203,8 +213,12 @@ Ejemplo concreto: cuando el comercio marca un pedido como ENTREGADO, el cliente 
 
 - `backend/src/main/java/pe/edu/utec/queueless/pedido/event/PedidoEstadoCambiadoEvent.java` — el evento.
 - `backend/src/main/java/pe/edu/utec/queueless/pedido/service/PedidoService.java` — donde se publica.
-- `backend/src/main/java/pe/edu/utec/queueless/notification/listener/PedidoNotificationListener.java` — listener de notificaciones.
-- `backend/src/main/java/pe/edu/utec/queueless/pago/listener/PagoListener.java` — listener de reembolsos.
+- `backend/src/main/java/pe/edu/utec/queueless/notification/listener/PedidoNotificationListener.java` — listener de notificaciones push.
+- `backend/src/main/java/pe/edu/utec/queueless/notification/email/PedidoEntregadoEmailListener.java` — listener del recibo por correo.
+- `backend/src/main/java/pe/edu/utec/queueless/pago/listener/PagoListener.java` — listener de reembolsos (cancelación y `ReembolsoRequeridoEvent`).
+- `backend/src/main/java/pe/edu/utec/queueless/pago/event/ReembolsoRequeridoEvent.java` — evento propio del módulo pago.
 - `backend/src/main/java/pe/edu/utec/queueless/queuepoints/listener/EntregaCompletadaListener.java` — listener de QueuePoints.
+- `backend/src/main/java/pe/edu/utec/queueless/delivery/listener/CrearSolicitudDeliveryListener.java` — listener que crea la SolicitudDelivery.
+- `backend/src/main/java/pe/edu/utec/queueless/sse/PedidoSseListener.java` — listener que reparte el cambio por SSE.
 - `backend/src/main/java/pe/edu/utec/queueless/config/AsyncConfig.java` — configuración del `ThreadPoolTaskExecutor`.
 - ADR-0008 — Ledger pattern para QueuePoints (idempotencia detallada).

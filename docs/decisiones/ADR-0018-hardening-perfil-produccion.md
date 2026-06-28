@@ -149,15 +149,21 @@ Sirve como checklist de despliegue:
 | `SPRING_PROFILES_ACTIVE=prod` | Activa el perfil de producción (carga `application-prod.yml`). |
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Conexión a Postgres. |
 | `JWT_SECRET` | Secret para firmar JWTs. Al menos 32 bytes en UTF-8, distinto del valor por defecto. |
-| `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET` | Pasarela de pagos real (ver ADR-0013). |
+| `PAGO_GATEWAY` | Selecciona la pasarela de pagos. Por defecto `mock`; hay que ponerlo en `mercadopago` para procesar pagos reales (ver ADR-0013). |
+| `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET` | Pasarela de pagos real, cuando `PAGO_GATEWAY=mercadopago` (ver ADR-0013). |
 | `AWS_S3_BUCKET`, `AWS_REGION` | Bucket y región de S3 (`AWS_REGION` por defecto `us-east-1`; ver ADR-0017). |
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Credenciales de escritura de S3 (las toma el SDK de AWS del entorno). |
-| `FIREBASE_CREDENTIALS_JSON` | Credenciales de FCM en base64 (ver ADR-0016). |
+| `FIREBASE_ENABLED` | Activa las notificaciones push. Por defecto `false`; hay que ponerlo en `true` para enviar por FCM (ver ADR-0016). |
+| `FIREBASE_CREDENTIALS_JSON` | Credenciales de FCM en base64, cuando `FIREBASE_ENABLED=true` (ver ADR-0016). |
 
-Algunas elecciones de comportamiento de producción están fijadas directamente en el
-perfil (`storage.impl: s3`, `firebase.enabled: true`, `pago.gateway` con valor por
-defecto `mercadopago`), así que no necesitan variable propia. Las que están arriba
-son las que sí hay que setear, porque no tienen un valor por defecto seguro.
+El único comportamiento de producción que el perfil deja fijado sin necesidad de una
+variable propia es el almacenamiento: `storage.impl` toma por defecto `s3`, que es
+justo lo que producción quiere. En cambio, el gateway de pagos y las notificaciones
+push arrancan con un valor por defecto conservador —`pago.gateway` en `mock` y
+`firebase.enabled` en `false`—, así que para usar la pasarela o el push reales hay
+que activarlos explícitamente con `PAGO_GATEWAY=mercadopago` y `FIREBASE_ENABLED=true`
+(ambas en la tabla de arriba). El resto de las variables de la tabla son obligatorias
+porque no tienen un valor por defecto seguro.
 
 ## Por qué validamos solo `JWT_SECRET` al arrancar y no todas las variables
 

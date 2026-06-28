@@ -33,7 +33,7 @@ QueueLess distingue tres situaciones donde aparece tiempo, y cada una se maneja 
 **2. Decisiones de hora-de-pared local** (qué hora es ahora en Lima). Ejemplo: "¿el local está abierto a esta hora?". Acá sí importa la zona horaria, porque "las 7 de la noche" significa cosas distintas en zonas distintas.
 
 - **Java**: tipo `LocalTime` o `LocalDate`.
-- **Cómo se construye en código**: `LocalTime.now(ZONA_LIMA)` o `LocalDate.now(ZONA_LIMA)`. Siempre con la zona explícita, nunca sin zona.
+- **Cómo se construye en código**: `LocalTime.now(TiempoLima.ZONA)` o `LocalDate.now(TiempoLima.ZONA)`. Siempre con la zona explícita, nunca sin zona.
 
 **3. Configuración de horarios del negocio** (cuándo abre el local). Ejemplo: "el café abre a las 7:00". Esto es una hora-de-pared abstracta, sin fecha.
 
@@ -41,20 +41,20 @@ QueueLess distingue tres situaciones donde aparece tiempo, y cada una se maneja 
 - **Base de datos**: columna `TIME`.
 - **Interpretación**: siempre hora de Lima, no hora UTC.
 
-### La constante `ZONA_LIMA`
+### La zona vive en `shared/util/TiempoLima`
 
-Hoy vive como constante privada en `PedidoService`:
+La zona está centralizada en una utilidad compartida:
 
 ```java
-private static final ZoneId ZONA_LIMA = ZoneId.of("America/Lima");
+public static final ZoneId ZONA = ZoneId.of("America/Lima"); // en shared/util/TiempoLima
 ```
 
-Se usa en dos lugares de esa clase:
+`PedidoService` la usa en dos lugares:
 
-- `LocalTime.now(ZONA_LIMA)` para validar que el cliente intenta crear un pedido dentro del horario del local.
-- `LocalDate.now(ZONA_LIMA)` para generar el `YYMMDD` del código del pedido.
+- `LocalTime.now(TiempoLima.ZONA)` para validar que el cliente intenta crear un pedido dentro del horario del local.
+- `LocalDate.now(TiempoLima.ZONA)` para generar el `YYMMDD` del código del pedido.
 
-**Mientras un solo módulo la use, vive ahí. Cuando un segundo módulo (waittime, delivery, notifications) necesite la misma constante, se promueve a un lugar compartido.** Esto sigue la regla del 3 del proyecto: no abstraer hasta que haga falta.
+Empezó como constante privada de `PedidoService`, pero hoy la comparten varios módulos —además de `pedido`, la usan `puntoventa`, `reclamo`, `notification`, `ocupacion`, `waittime` y el recomendador—, así que se promovió a `shared/util/TiempoLima`. Es la regla del 3 del proyecto aplicada en el momento justo: no se abstrajo hasta que un segundo módulo la necesitó.
 
 ### La configuración global de Hibernate
 
@@ -83,7 +83,7 @@ void validarHorarioDeAtencion(PuntoDeVenta local, LocalTime ahora) {
 }
 ```
 
-El método de creación llama `validarHorarioDeAtencion(local, LocalTime.now(ZONA_LIMA))`. Los tests llaman directamente al helper con horas fijas (`LocalTime.of(14, 0)`), sin pasar por `now()` ni necesitar mockear nada. Solución limpia, sin introducir `Clock` inyectado (patrón que el proyecto no usa todavía).
+El método de creación llama `validarHorarioDeAtencion(local, LocalTime.now(TiempoLima.ZONA))`. Los tests llaman directamente al helper con horas fijas (`LocalTime.of(14, 0)`), sin pasar por `now()` ni necesitar mockear nada. Solución limpia, sin introducir `Clock` inyectado (patrón que el proyecto no usa todavía).
 
 ## Por qué no usamos `TIMESTAMP WITH TIME ZONE` en la base
 
@@ -133,9 +133,9 @@ Es preferible ser explícito: `LocalTime.now(ZONA_LIMA)` en cada llamada, así e
 
 ### Alternativa 4 — Centralizar la zona en una utility class desde el día uno
 
-Crear `shared/util/Zonas.java` con la constante pública, listo para que cualquier módulo la use.
+Crear la utilidad compartida con la constante pública desde el arranque, lista para que cualquier módulo la use.
 
-Lo descartamos hoy porque solo un módulo (`pedido`) la necesita. Cuando un segundo módulo aparezca, lo extraemos. La constante privada actual no es deuda técnica: es la implementación más simple que funciona para el caso real.
+En su momento lo dejamos para más adelante: mientras solo `pedido` la necesitaba, una constante local era lo más simple. Cuando apareció el segundo módulo la promovimos a `shared/util/TiempoLima`, que es donde vive hoy. No fue deuda técnica: fue aplicar la regla del 3 en el momento justo.
 
 ## Consecuencias
 
@@ -148,14 +148,14 @@ Lo descartamos hoy porque solo un módulo (`pedido`) la necesita. Cuando un segu
 
 ### Negativas
 
-- **Hay que recordar usar `ZONA_LIMA`**: cada vez que un desarrollador escribe `LocalTime.now()` o `LocalDate.now()` sin zona, técnicamente funciona en dev (Lima) pero rompería en prod (UTC). Mitigación: este ADR + revisión de código + lint si se quiere ser estricto.
-- **Hay duplicación potencial**: cuando un segundo módulo necesite la zona, va a tener que decidir si replica la constante o la promueve a compartido. Mitigación: cuando pase, se actualiza este ADR.
+- **Hay que recordar usar `TiempoLima.ZONA`**: cada vez que un desarrollador escribe `LocalTime.now()` o `LocalDate.now()` sin zona, técnicamente funciona en dev (Lima) pero rompería en prod (UTC). Mitigación: este ADR + revisión de código + lint si se quiere ser estricto.
+- **La duplicación ya se resolvió**: cuando un segundo módulo necesitó la zona, en lugar de replicar la constante la movimos a `shared/util/TiempoLima`; hoy todos la importan de ahí.
 - **Limitación a una sola zona**: si en el futuro QueueLess opera en varias zonas distintas, hay que refactorizar varias cosas (la constante, la config de Hibernate, los `TIMESTAMP` de la DB). Mitigación: no es un caso real hoy, lo manejamos cuando aparezca.
 
 ### Riesgos
 
 - **Cambiar `hibernate.jdbc.time_zone` rompe la interpretación de los datos viejos**. Si alguien edita `application.yml` y cambia la zona a otra, los timestamps almacenados se reinterpretan: una creación que fue "11:30 hora Lima" pasaría a leerse como "11:30 en la otra zona", cambiando el instante real. Mitigación: este ADR documenta que la zona es parte del contrato con la DB, no una preferencia de runtime.
-- **Riesgo de inconsistencia futura entre módulos**. Si Fase 4 (pagos) o Fase 5 (delivery) implementan validaciones de hora local sin usar `ZONA_LIMA`, va a haber bugs sutiles. Mitigación: este ADR + cuando se haga el refactor a `shared/util/`, se vuelve más fácil de descubrir.
+- **Riesgo de inconsistencia entre módulos**. Si un módulo implementa una validación de hora local sin usar `TiempoLima.ZONA` (por ejemplo, un `LocalTime.now()` sin zona), habría bugs sutiles. Mitigación: la constante ya está centralizada en `shared/util/`, así que lo correcto es importarla de ahí; este ADR lo documenta.
 - **Tests que usen `LocalTime.now()` real**. Cualquier test que dependa de la hora real del sistema es candidato a flakiness. Mitigación: el patrón del helper package-private establecido en `PedidoService` es replicable.
 
 ## Anexo — Glosario de términos técnicos
@@ -191,9 +191,10 @@ Lo descartamos hoy porque solo un módulo (`pedido`) la necesita. Cuando un segu
 ## Referencias
 
 - `backend/src/main/resources/application.yml` — `hibernate.jdbc.time_zone: America/Lima`.
-- `backend/src/main/java/pe/edu/utec/queueless/pedido/service/PedidoService.java` — constante `ZONA_LIMA` y su uso en `validarHorarioDeAtencion` y `generarCodigoUnico`.
+- `backend/src/main/java/pe/edu/utec/queueless/shared/util/TiempoLima.java` — la constante `ZONA`, compartida por los módulos que trabajan con hora de Lima.
+- `backend/src/main/java/pe/edu/utec/queueless/pedido/service/PedidoService.java` — uso de `TiempoLima.ZONA` en `validarHorarioDeAtencion` y `generarCodigoUnico`.
 - `backend/src/main/java/pe/edu/utec/queueless/pedido/entity/Pedido.java` — campos `Instant` para timestamps de auditoría.
 - `backend/src/main/resources/db/migration/V1__schema_inicial.sql` — tipos `TIMESTAMP` en la tabla `pedido`.
-- ADR-0003 — Modelo de 12 entidades (define qué campos llevan timestamps).
+- ADR-0003 — Modelo de entidades del dominio (define qué campos llevan timestamps).
 - ADR-0009 — Eventos de dominio (los eventos viajan con `Instant`, no con zona).
 - ADR-0010 — Postgres puerto y env (configuración de la conexión a la base).

@@ -81,10 +81,7 @@ public class PedidoService {
     @Value("${queueless.programado.ventana-arrepentimiento-minutos}")
     private long ventanaArrepentimientoMinutos;
 
-    // ---------------------------------------------------------------------------
     // Lectura
-    // ---------------------------------------------------------------------------
-
     public Pedido findById(Long id) {
         return pedidoRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Pedido", id));
@@ -141,10 +138,7 @@ public class PedidoService {
         return toResponseComercio(pedido);
     }
 
-    // ---------------------------------------------------------------------------
     // Acciones del cliente
-    // ---------------------------------------------------------------------------
-
     @Transactional
     public PedidoResponse crear(Usuario cliente, CrearPedidoRequest request) {
         validarEsCliente(cliente);
@@ -259,10 +253,7 @@ public class PedidoService {
         }
     }
 
-    // ---------------------------------------------------------------------------
     // Acciones del comercio (cada una valida que el pedido sea de un local del gestor)
-    // ---------------------------------------------------------------------------
-
     @Transactional
     public PedidoResponse aceptar(Usuario gestor, Long pedidoId) {
         Pedido pedido = buscarPedidoOperableDelGestor(gestor, pedidoId);
@@ -343,11 +334,8 @@ public class PedidoService {
         return aplicarCancelacionPorComercio(pedido, request);
     }
 
-    // ---------------------------------------------------------------------------
     // Transición de estado (utilidad interna; la usan el job de expiración y, en dev,
     // el endpoint que simula el pago)
-    // ---------------------------------------------------------------------------
-
     /**
      * Cambia el estado respetando la máquina de estados de {@link Pedido} y publica
      * {@link PedidoEstadoCambiadoEvent} para que los listeners (notificación,
@@ -432,10 +420,7 @@ public class PedidoService {
         return guardado;
     }
 
-    // ---------------------------------------------------------------------------
     // Helpers de creación
-    // ---------------------------------------------------------------------------
-
     private PuntoDeVenta buscarLocalActivo(Long puntoDeVentaId) {
         return puntoDeVentaRepository.findByIdAndActivoTrue(puntoDeVentaId)
             .orElseThrow(() -> new ResourceNotFoundException("PuntoDeVenta", puntoDeVentaId));
@@ -648,10 +633,7 @@ public class PedidoService {
         return "QL-" + fecha + "-" + sufijo;
     }
 
-    // ---------------------------------------------------------------------------
     // Helpers de autorización por dueño
-    // ---------------------------------------------------------------------------
-
     private void validarEsCliente(Usuario usuario) {
         if (!usuario.tieneRol(Rol.CLIENTE)) {
             throw new BusinessRuleException("Solo un usuario con rol CLIENTE puede crear pedidos");
@@ -696,10 +678,7 @@ public class PedidoService {
         return gestorDelLocal.equals(gestor.getId());
     }
 
-    // ---------------------------------------------------------------------------
     // Helpers varios
-    // ---------------------------------------------------------------------------
-
     /** Lógica común de rechazar/cancelar: guarda motivo + detalle y aplica la transición. */
     private PedidoResponse aplicarCancelacionPorComercio(Pedido pedido, MotivoCancelacionRequest request) {
         pedido.setMotivoCancelacion(request.getMotivo());
@@ -735,10 +714,7 @@ public class PedidoService {
             new PedidoEstadoCambiadoEvent(pedido.getId(), null, pedido.getEstado()));
     }
 
-    // ---------------------------------------------------------------------------
     // Mapeo a DTO (manual; el response no es 1:1 con la entidad)
-    // ---------------------------------------------------------------------------
-
     private List<PedidoResponse> toResponseList(List<Pedido> pedidos) {
         List<PedidoResponse> respuesta = new ArrayList<>();
         for (Pedido pedido : pedidos) {

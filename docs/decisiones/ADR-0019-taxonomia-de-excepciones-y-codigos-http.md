@@ -68,12 +68,16 @@ es la tabla completa de lo que mapea hoy:
 | `MethodArgumentNotValidException` (falla `@Valid`) | **400** | "Errores de validación" + detalle por campo |
 | `HttpMessageNotReadableException` (cuerpo malformado) | **400** | "El cuerpo de la petición no se puede leer" |
 | `MethodArgumentTypeMismatchException` (parámetro con tipo inválido) | **400** | "Parámetro con formato inválido: {nombre}" |
+| `MissingServletRequestParameterException` (falta un query param requerido) | **400** | "Falta el parámetro requerido: {nombre}" |
+| `MissingServletRequestPartException` (falta una parte del multipart) | **400** | "Falta la parte requerida de la petición: {nombre}" |
+| `ConstraintViolationException` (validación sobre parámetros/path) | **400** | "Errores de validación" |
 | `BadCredentialsException` | **401** | "Credenciales inválidas" |
 | `AccessDeniedException` (Spring Security) | **403** | "Acceso denegado" |
 | `ForbiddenOperationException` | **403** | el mensaje de la excepción |
 | `ResourceNotFoundException` | **404** | el mensaje de la excepción |
 | `NoResourceFoundException` (ruta no mapeada) | **404** | "Recurso no encontrado" |
 | `DuplicateResourceException` | **409** | el mensaje de la excepción |
+| `DataIntegrityViolationException` (choque de restricción en la base) | **409** | "El recurso ya existe o viola una restricción de integridad" |
 | `BusinessRuleException` y subtipos sin handler propio | **422** | el mensaje de la excepción |
 | `Exception` (cualquier otra) | **500** | "Ocurrió un error inesperado" (el detalle solo al log) |
 
@@ -90,6 +94,15 @@ El punto clave de la jerarquía es cómo Spring elige el handler: **gana el más
 `BusinessRuleException` y salen como 422. Es exactamente lo que queremos: un 422 sensato
 por defecto para toda regla de negocio, y un código más fino solo donde lo amerita.
 
+Las tres entradas de **400** sobre parámetros (`MissingServletRequestParameterException`,
+`MissingServletRequestPartException`, `ConstraintViolationException`) cubren los errores de
+forma que no llegan por el `@Valid` del cuerpo: un query param obligatorio ausente, una parte
+faltante en una subida multipart, o una validación sobre un parámetro o variable de ruta. La
+entrada de `DataIntegrityViolationException` -> **409** es la red de seguridad ante una
+carrera: si dos registros con el mismo correo pasan a la vez el chequeo previo y chocan recién
+contra la restricción `UNIQUE` de la base, el cliente recibe un 409 coherente en lugar del 500
+que salía antes.
+
 ### Convención de códigos para crear y borrar
 
 - **201 Created** en todas las creaciones: registro de usuario, alta de punto de venta,
@@ -100,12 +113,11 @@ por defecto para toda regla de negocio, y un código más fino solo donde lo ame
 
 Esta convención aplica a **todos** los endpoints de creación del backend, **incluido
 `POST /api/auth/register`**. Importa anotarlo porque el registro y el webhook de la
-pasarela son los dos endpoints que se mantienen **sin versionar** cuando el resto de la
-API pase a `/api/v1/` (decisión que llega en otra fase del roadmap): el 201 del registro
-se queda en `/api/auth/register`, no migra a `/api/v1/auth/register`. No agregamos cabecera
-`Location` al registro porque no existe un endpoint que exponga el usuario por id (solo
-`/api/usuarios/me`, relativo al autenticado); el cuerpo ya devuelve el id y el token, que
-es lo que el cliente necesita.
+pasarela son los dos endpoints que se mantienen **sin versionar**: el resto de la API vive
+bajo `/api/v1/` (ver ADR-0022), pero el 201 del registro se queda en `/api/auth/register`,
+no en `/api/v1/auth/register`. No agregamos cabecera `Location` al registro porque no existe
+un endpoint que exponga el usuario por id (solo `/api/v1/usuarios/me`, relativo al
+autenticado); el cuerpo ya devuelve el id y el token, que es lo que el cliente necesita.
 
 ### Las rutas no mapeadas devuelven 404
 
@@ -275,3 +287,21 @@ sentido de negocio.
 - `backend/src/main/java/pe/edu/utec/queueless/shared/exception/ErrorResponse.java` — la forma uniforme de la respuesta de error.
 - `backend/src/main/java/pe/edu/utec/queueless/auth/controller/AuthController.java` — 201 en el registro.
 - `backend/src/main/java/pe/edu/utec/queueless/puntoventa/controller/ComercioPuntoDeVentaController.java`, `ComercioProductoController.java` — 201 al crear, 204 al borrar.
+
+## Actualización — Fase 1 (propiedad de un recurso ajeno: dónde cae 404 y dónde 422)
+
+La frontera entre 404 y 403 que fija este ADR la afinamos al implementar la gestión de
+recursos por dueño, y conviene dejar por escrito dónde cae cada caso, porque no es uniforme:
+
+- En `ProductoService` y `PuntoDeVentaService`, cuando un gestor intenta operar sobre un
+  punto de venta o un producto que no es suyo, respondemos **404** (`ResourceNotFoundException`),
+  no 422. El recurso existe, pero es de otro comercio: tratarlo como "no encontrado" evita
+  filtrar su existencia, exactamente el criterio de acceso cruzado por id del ADR-0013.
+- En `pedido`, en cambio, `buscarPedidoOperableDelGestor` mantiene a propósito el **422**
+  (`BusinessRuleException`) cuando el pedido no pertenece a un local del gestor. Es una
+  operación del gestor sobre un pedido que existe, así que la tratamos como regla de negocio
+  violada ("este pedido no pertenece a uno de tus locales"), no como un recurso ajeno que
+  haya que ocultar.
+
+Los dos criterios conviven sin contradicción: ocultar la existencia de un recurso ajeno por
+id -> 404; bloquear una operación de negocio sobre un pedido ya identificado -> 422.
