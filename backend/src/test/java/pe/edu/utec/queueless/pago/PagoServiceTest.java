@@ -8,9 +8,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import pe.edu.utec.queueless.pago.dto.IniciarPagoResponse;
 import pe.edu.utec.queueless.pago.entity.EstadoPago;
 import pe.edu.utec.queueless.pago.entity.Pago;
+import pe.edu.utec.queueless.pago.event.ReembolsoRequeridoEvent;
 import pe.edu.utec.queueless.pago.gateway.IniciarCobroResult;
 import pe.edu.utec.queueless.pago.gateway.PaymentGateway;
 import pe.edu.utec.queueless.pago.repository.PagoRepository;
@@ -43,6 +45,7 @@ class PagoServiceTest {
     @Mock private PagoRepository pagoRepository;
     @Mock private PedidoService pedidoService;
     @Mock private PaymentGateway paymentGateway;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks private PagoService pagoService;
 
@@ -125,6 +128,7 @@ class PagoServiceTest {
         assertThat(pago.getEstado()).isEqualTo(EstadoPago.CONFIRMADO);
         assertThat(pago.getConfirmadoAt()).isNotNull();
         verify(pedidoService).cambiarEstado(42L, EstadoPedido.PAGADO_ESPERANDO_COMERCIO);
+        verify(eventPublisher, never()).publishEvent(any(ReembolsoRequeridoEvent.class));
     }
 
     @Test
@@ -151,6 +155,21 @@ class PagoServiceTest {
 
         verify(pedidoService, never()).cambiarEstado(any(), any());
         verify(pagoRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("confirmar un pago cuyo pedido ya está terminal pide el reembolso y no transiciona")
+    void shouldPedirReembolsoWhenPedidoTerminal() {
+        pedido.setEstado(EstadoPedido.CANCELADO_POR_CLIENTE);
+        Pago pago = pagoBase();
+        when(pagoRepository.findByReferenciaExterna("ref-1")).thenReturn(Optional.of(pago));
+        when(pagoRepository.save(any(Pago.class))).thenAnswer(i -> i.getArgument(0));
+
+        pagoService.confirmar("ref-1");
+
+        assertThat(pago.getEstado()).isEqualTo(EstadoPago.CONFIRMADO);
+        verify(eventPublisher).publishEvent(any(ReembolsoRequeridoEvent.class));
+        verify(pedidoService, never()).cambiarEstado(any(), any());
     }
 
     private Pago pagoBase() {

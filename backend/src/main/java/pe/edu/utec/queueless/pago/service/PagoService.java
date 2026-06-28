@@ -2,11 +2,13 @@ package pe.edu.utec.queueless.pago.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utec.queueless.pago.dto.IniciarPagoResponse;
 import pe.edu.utec.queueless.pago.entity.EstadoPago;
 import pe.edu.utec.queueless.pago.entity.Pago;
+import pe.edu.utec.queueless.pago.event.ReembolsoRequeridoEvent;
 import pe.edu.utec.queueless.pago.gateway.IniciarCobroResult;
 import pe.edu.utec.queueless.pago.gateway.PaymentGateway;
 import pe.edu.utec.queueless.pago.repository.PagoRepository;
@@ -38,6 +40,7 @@ public class PagoService {
     private final PagoRepository pagoRepository;
     private final PedidoService pedidoService;
     private final PaymentGateway paymentGateway;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Crea el Pago en PENDIENTE, dispara el cobro contra la pasarela y
@@ -123,6 +126,16 @@ public class PagoService {
             pago.setReferenciaExterna(nuevaReferenciaExterna);
         }
         pago = pagoRepository.save(pago);
+
+        // Si el pedido ya murió antes de que el pago llegara (p. ej. lo canceló el job de
+        // pago pendiente), el dinero igual se capturó: reconocemos el pago y pedimos el
+        // reembolso en vez de forzar una transición ilegal que perdería la captura.
+        if (pago.getPedido().getEstado().esTerminal()) {
+            log.warn("Pago {} confirmado sobre el pedido {} ya terminal ({}); se pedirá el reembolso",
+                pago.getId(), pago.getPedido().getId(), pago.getPedido().getEstado());
+            eventPublisher.publishEvent(new ReembolsoRequeridoEvent(pago.getPedido().getId()));
+            return pago;
+        }
 
         EstadoPedido siguiente = siguienteEstadoTrasPago(pago.getPedido().getTipoEntrega());
         pedidoService.cambiarEstado(pago.getPedido().getId(), siguiente);

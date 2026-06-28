@@ -130,6 +130,21 @@ class PuntoDeVentaServiceTest {
     }
 
     @Test
+    @DisplayName("eliminar un local de otro comercio lanza ResourceNotFoundException")
+    void shouldFallarWhenEliminaLocalAjeno() {
+        // Arrange
+        Usuario comercio = usuario(2L, Rol.COMERCIO);
+        Usuario otroComercio = usuario(3L, Rol.COMERCIO);
+        PuntoDeVenta ajeno = local(50L, otroComercio, true);
+        when(repository.findById(50L)).thenReturn(Optional.of(ajeno));
+
+        // Act + Assert
+        assertThatThrownBy(() -> service.eliminar(comercio, 50L))
+            .isInstanceOf(ResourceNotFoundException.class);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("actualizar un local inactivo se comporta como 404")
     void shouldDevolver404WhenLocalInactivo() {
         // Arrange

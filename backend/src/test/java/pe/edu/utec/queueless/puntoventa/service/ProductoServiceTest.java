@@ -131,6 +131,21 @@ class ProductoServiceTest {
     }
 
     @Test
+    @DisplayName("eliminar un producto de un local ajeno lanza ResourceNotFoundException")
+    void shouldFallarWhenEliminaProductoAjeno() {
+        // Arrange
+        Usuario comercio = usuario(2L);
+        Usuario otro = usuario(3L);
+        Producto ajeno = producto(10L, localDe(otro), true);
+        when(repository.findById(10L)).thenReturn(Optional.of(ajeno));
+
+        // Act + Assert
+        assertThatThrownBy(() -> service.eliminar(comercio, 10L))
+            .isInstanceOf(ResourceNotFoundException.class);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("listar el catálogo de un local inactivo o inexistente lanza ResourceNotFoundException")
     void shouldFallarWhenListaCatalogoDeLocalInexistente() {
         // Arrange

@@ -1,6 +1,7 @@
 package pe.edu.utec.queueless.auth;
 
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -76,5 +77,21 @@ class JwtServiceTest {
         // Act & Assert
         assertThatThrownBy(() -> jwtService.parseClaims(vencido))
             .isInstanceOf(ExpiredJwtException.class);
+    }
+
+    @Test
+    @DisplayName("un token firmado con otro secreto se rechaza al parsearlo")
+    void shouldRejectTokenSignedWithDifferentSecret() {
+        // Arrange: un emisor con un secreto distinto firma un token por lo demás válido
+        JwtService otroEmisor = new JwtService();
+        ReflectionTestUtils.setField(otroEmisor, "secret", "otra-clave-distinta-para-jwt-con-mas-de-32-bytes");
+        ReflectionTestUtils.setField(otroEmisor, "accessExpirationMs", 900_000L);
+        ReflectionTestUtils.setField(otroEmisor, "refreshExpirationMs", 2_592_000_000L);
+        ReflectionTestUtils.setField(otroEmisor, "issuer", "queueless-test");
+        String tokenAjeno = otroEmisor.generateAccessToken(usuario, 1L, Set.of(Rol.CLIENTE));
+
+        // Act & Assert
+        assertThatThrownBy(() -> jwtService.parseClaims(tokenAjeno))
+            .isInstanceOf(SignatureException.class);
     }
 }

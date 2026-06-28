@@ -324,7 +324,7 @@ class PedidoServiceTest {
         PuntoDeVenta local = local(10L, gestor, true);
         Pedido pedido = pedido(50L, usuario(1L, Rol.CLIENTE), local,
             EstadoPedido.LISTO_PARA_DELIVERY, TipoEntrega.DELIVERY);
-        when(pedidoRepository.findById(50L)).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(pedido));
 
         // Act + Assert
         assertThatThrownBy(() -> service.marcarEntregado(gestor, 50L, entregaRequest("QL-260524-AB123")))
@@ -385,7 +385,7 @@ class PedidoServiceTest {
         PuntoDeVenta local = local(10L, gestor, true);
         Pedido pedido = pedido(50L, usuario(1L, Rol.CLIENTE), local,
             EstadoPedido.LISTO_PARA_RECOGER, TipoEntrega.PICKUP);
-        when(pedidoRepository.findById(50L)).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(pedido));
         when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
 
         // Act
@@ -404,7 +404,7 @@ class PedidoServiceTest {
         PuntoDeVenta local = local(10L, gestor, true);
         Pedido pedido = pedido(50L, usuario(1L, Rol.CLIENTE), local,
             EstadoPedido.LISTO_PARA_RECOGER, TipoEntrega.PICKUP);
-        when(pedidoRepository.findById(50L)).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(pedido));
 
         // Act + Assert
         assertThatThrownBy(() -> service.marcarEntregado(gestor, 50L, entregaRequest("QL-260524-ZZZZZ")))
@@ -423,12 +423,50 @@ class PedidoServiceTest {
         PuntoDeVenta local = local(10L, gestor, true);
         Pedido pedido = pedido(50L, usuario(1L, Rol.CLIENTE), local,
             EstadoPedido.ENTREGADO, TipoEntrega.PICKUP);
-        when(pedidoRepository.findById(50L)).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(pedido));
 
         // Act + Assert
         assertThatThrownBy(() -> service.marcarEntregado(gestor, 50L, entregaRequest("QL-260524-AB123")))
             .isInstanceOf(InvalidStateTransitionException.class);
         verify(pedidoRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("expirarRecojo pasa a EXPIRADO un pedido que sigue en LISTO_PARA_RECOGER")
+    void shouldExpirarWhenSigueEnListoParaRecoger() {
+        // Arrange
+        PuntoDeVenta local = local(10L, usuario(2L, Rol.COMERCIO), true);
+        Pedido pedido = pedido(50L, usuario(1L, Rol.CLIENTE), local,
+            EstadoPedido.LISTO_PARA_RECOGER, TipoEntrega.PICKUP);
+        when(pedidoRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
+
+        // Act
+        boolean expiro = service.expirarRecojo(50L);
+
+        // Assert
+        assertThat(expiro).isTrue();
+        assertThat(pedido.getEstado()).isEqualTo(EstadoPedido.EXPIRADO);
+        verify(eventPublisher).publishEvent(any(PedidoEstadoCambiadoEvent.class));
+    }
+
+    @Test
+    @DisplayName("expirarRecojo no toca un pedido que el comercio ya entregó")
+    void shouldNoExpirarWhenYaNoEstaListoParaRecoger() {
+        // Arrange
+        PuntoDeVenta local = local(10L, usuario(2L, Rol.COMERCIO), true);
+        Pedido pedido = pedido(50L, usuario(1L, Rol.CLIENTE), local,
+            EstadoPedido.ENTREGADO, TipoEntrega.PICKUP);
+        when(pedidoRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(pedido));
+
+        // Act
+        boolean expiro = service.expirarRecojo(50L);
+
+        // Assert
+        assertThat(expiro).isFalse();
+        assertThat(pedido.getEstado()).isEqualTo(EstadoPedido.ENTREGADO);
+        verify(pedidoRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any(PedidoEstadoCambiadoEvent.class));
     }
 
     @Test

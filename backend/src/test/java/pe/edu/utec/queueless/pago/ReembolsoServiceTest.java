@@ -6,17 +6,21 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
 import pe.edu.utec.queueless.pago.entity.EstadoPago;
 import pe.edu.utec.queueless.pago.entity.Pago;
 import pe.edu.utec.queueless.pago.gateway.PaymentGateway;
 import pe.edu.utec.queueless.pago.repository.PagoRepository;
 import pe.edu.utec.queueless.pago.service.ReembolsoService;
+import pe.edu.utec.queueless.shared.exception.PaymentException;
 
 import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,19 +30,14 @@ class ReembolsoServiceTest {
 
     @Mock private PagoRepository pagoRepository;
     @Mock private PaymentGateway paymentGateway;
+    @Mock private PlatformTransactionManager transactionManager;
 
     @InjectMocks private ReembolsoService reembolsoService;
 
     @Test
     @DisplayName("emite reembolso, marca pago como REEMBOLSADO y persiste")
     void shouldReembolsarWhenPagoConfirmado() {
-        Pago pago = Pago.builder()
-            .monto(new BigDecimal("30.00"))
-            .metodo("MOCK")
-            .estado(EstadoPago.CONFIRMADO)
-            .referenciaExterna("ref-1")
-            .build();
-        pago.setId(1L);
+        Pago pago = pagoConfirmado();
         when(pagoRepository.findByPedidoId(42L)).thenReturn(Optional.of(pago));
         when(pagoRepository.save(any(Pago.class))).thenAnswer(i -> i.getArgument(0));
 
@@ -69,5 +68,30 @@ class ReembolsoServiceTest {
         reembolsoService.emitirReembolso(42L);
 
         verify(paymentGateway, never()).reembolsar(any());
+    }
+
+    @Test
+    @DisplayName("si la pasarela falla, el pago no queda REEMBOLSADO y el error se propaga")
+    void shouldNoMarcarReembolsadoWhenPasarelaFalla() {
+        Pago pago = pagoConfirmado();
+        when(pagoRepository.findByPedidoId(42L)).thenReturn(Optional.of(pago));
+        doThrow(new PaymentException("la pasarela no responde")).when(paymentGateway).reembolsar(pago);
+
+        assertThatThrownBy(() -> reembolsoService.emitirReembolso(42L))
+            .isInstanceOf(PaymentException.class);
+
+        assertThat(pago.getEstado()).isEqualTo(EstadoPago.CONFIRMADO);
+        verify(pagoRepository, never()).save(any());
+    }
+
+    private Pago pagoConfirmado() {
+        Pago pago = Pago.builder()
+            .monto(new BigDecimal("30.00"))
+            .metodo("MOCK")
+            .estado(EstadoPago.CONFIRMADO)
+            .referenciaExterna("ref-1")
+            .build();
+        pago.setId(1L);
+        return pago;
     }
 }

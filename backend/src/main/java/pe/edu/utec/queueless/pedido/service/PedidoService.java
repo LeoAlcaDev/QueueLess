@@ -292,7 +292,7 @@ public class PedidoService {
      */
     @Transactional
     public PedidoResponse marcarEntregado(Usuario gestor, Long pedidoId, ConfirmarEntregaRequest request) {
-        Pedido pedido = buscarPedidoOperableDelGestor(gestor, pedidoId);
+        Pedido pedido = buscarPedidoOperableDelGestorConBloqueo(gestor, pedidoId);
         if (pedido.getTipoEntrega() == TipoEntrega.DELIVERY) {
             throw new BusinessRuleException(
                 "La entrega de un pedido DELIVERY la confirma el repartidor, no el comercio");
@@ -357,6 +357,22 @@ public class PedidoService {
     public Pedido cambiarEstado(Long pedidoId, EstadoPedido nuevoEstado) {
         Pedido pedido = findById(pedidoId);
         return aplicarTransicion(pedido, nuevoEstado);
+    }
+
+    /**
+     * La invoca el job de expiración: relee el pedido con bloqueo y solo lo pasa a
+     * EXPIRADO si sigue en LISTO_PARA_RECOGER. Si el comercio ya lo entregó, no lo
+     * toca. Devuelve si de verdad lo expiró, para que el job lo loguee solo cuando pasó.
+     */
+    @Transactional
+    public boolean expirarRecojo(Long pedidoId) {
+        Pedido pedido = pedidoRepository.findByIdForUpdate(pedidoId)
+            .orElseThrow(() -> new ResourceNotFoundException("Pedido", pedidoId));
+        if (pedido.getEstado() != EstadoPedido.LISTO_PARA_RECOGER) {
+            return false;
+        }
+        aplicarTransicion(pedido, EstadoPedido.EXPIRADO);
+        return true;
     }
 
     /**
@@ -659,6 +675,16 @@ public class PedidoService {
     /** Devuelve el pedido si es de un local del gestor; si no, es un error de negocio (422). */
     private Pedido buscarPedidoOperableDelGestor(Usuario gestor, Long pedidoId) {
         Pedido pedido = findById(pedidoId);
+        if (!esGestorDelLocal(gestor, pedido)) {
+            throw new BusinessRuleException("Este pedido no pertenece a uno de tus locales");
+        }
+        return pedido;
+    }
+
+    /** Igual que el anterior pero con la fila bloqueada, para el cierre de entrega que compite con el job de expiración. */
+    private Pedido buscarPedidoOperableDelGestorConBloqueo(Usuario gestor, Long pedidoId) {
+        Pedido pedido = pedidoRepository.findByIdForUpdate(pedidoId)
+            .orElseThrow(() -> new ResourceNotFoundException("Pedido", pedidoId));
         if (!esGestorDelLocal(gestor, pedido)) {
             throw new BusinessRuleException("Este pedido no pertenece a uno de tus locales");
         }
