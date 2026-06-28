@@ -1,8 +1,10 @@
 package pe.edu.utec.queueless.pedido.repository;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import pe.edu.utec.queueless.pedido.entity.EstadoPedido;
@@ -16,6 +18,15 @@ import java.util.Optional;
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     Optional<Pedido> findByCodigo(String codigo);
+
+    /**
+     * Trae el pedido con bloqueo de escritura. Lo usan el job de expiración y el
+     * cierre de entrega para no pisarse: el segundo en entrar relee la fila ya
+     * transicionada y, al re-chequear el estado, no la degrada ni la cierra dos veces.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Pedido p WHERE p.id = :id")
+    Optional<Pedido> findByIdForUpdate(@Param("id") Long id);
 
     /** Historial del cliente, del más reciente al más antiguo; el id desempata para una paginación estable. */
     Page<Pedido> findByClienteIdOrderByCreadoAtDescIdDesc(Long clienteId, Pageable pageable);

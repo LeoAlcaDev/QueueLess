@@ -36,8 +36,14 @@ public class ExpirarPedidosJob {
         List<Pedido> candidatos = pedidoRepository.findByEstadoAndListoAtBefore(
             EstadoPedido.LISTO_PARA_RECOGER, cutoff);
         for (Pedido p : candidatos) {
-            log.info("Expirando pedido {}", p.getCodigo());
-            pedidoService.cambiarEstado(p.getId(), EstadoPedido.EXPIRADO);
+            try {
+                // el service relee la fila con bloqueo para no expirar un pedido que el comercio acaba de entregar
+                if (pedidoService.expirarRecojo(p.getId())) {
+                    log.info("Pedido {} expirado por no recogerse a tiempo", p.getCodigo());
+                }
+            } catch (RuntimeException e) {
+                log.error("No se pudo expirar el pedido {}", p.getCodigo(), e);
+            }
         }
     }
 }
