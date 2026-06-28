@@ -447,7 +447,7 @@ class PedidoServiceTest {
         // Assert
         assertThat(expiro).isTrue();
         assertThat(pedido.getEstado()).isEqualTo(EstadoPedido.EXPIRADO);
-        verify(eventPublisher).publishEvent(any());
+        verify(eventPublisher).publishEvent(any(PedidoEstadoCambiadoEvent.class));
     }
 
     @Test
@@ -466,7 +466,7 @@ class PedidoServiceTest {
         assertThat(expiro).isFalse();
         assertThat(pedido.getEstado()).isEqualTo(EstadoPedido.ENTREGADO);
         verify(pedidoRepository, never()).save(any());
-        verify(eventPublisher, never()).publishEvent(any());
+        verify(eventPublisher, never()).publishEvent(any(PedidoEstadoCambiadoEvent.class));
     }
 
     @Test

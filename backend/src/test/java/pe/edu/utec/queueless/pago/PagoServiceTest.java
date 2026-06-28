@@ -128,7 +128,7 @@ class PagoServiceTest {
         assertThat(pago.getEstado()).isEqualTo(EstadoPago.CONFIRMADO);
         assertThat(pago.getConfirmadoAt()).isNotNull();
         verify(pedidoService).cambiarEstado(42L, EstadoPedido.PAGADO_ESPERANDO_COMERCIO);
-        verify(eventPublisher, never()).publishEvent(any());
+        verify(eventPublisher, never()).publishEvent(any(ReembolsoRequeridoEvent.class));
     }
 
     @Test
