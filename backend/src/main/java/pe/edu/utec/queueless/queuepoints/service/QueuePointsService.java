@@ -37,10 +37,7 @@ public class QueuePointsService {
     private final MovimientoQueuePointsRepository repository;
     private final UsuarioRepository usuarioRepository;
 
-    // ---------------------------------------------------------------------------
     // Consulta
-    // ---------------------------------------------------------------------------
-
     public SaldoResponse saldoDe(Usuario usuario) {
         Integer saldo = repository.calcularSaldo(usuario.getId());
         return SaldoResponse.builder()
@@ -57,10 +54,7 @@ public class QueuePointsService {
             .map(MovimientoResponse::from);
     }
 
-    // ---------------------------------------------------------------------------
     // Escritura
-    // ---------------------------------------------------------------------------
-
     /**
      * Registra puntos GANADOS por el usuario. Idempotente: si ya existe un
      * movimiento GANADO con la misma referencia, devuelve el existente.

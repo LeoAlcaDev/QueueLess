@@ -30,10 +30,7 @@ public class PuntoDeVentaService {
     private final PuntoDeVentaRepository repository;
     private final TasaCumplimientoService tasaCumplimientoService;
 
-    // ---------------------------------------------------------------------------
     // Catalogo publico
-    // ---------------------------------------------------------------------------
-
     public List<PuntoDeVentaResponse> listarAbiertos() {
         List<PuntoDeVenta> locales = repository.findByAbiertoTrueAndActivoTrue();
         List<PuntoDeVentaResponse> respuesta = new ArrayList<>();
@@ -50,10 +47,7 @@ public class PuntoDeVentaService {
         return toResponsePublico(puntoDeVenta);
     }
 
-    // ---------------------------------------------------------------------------
     // Gestion por el comercio
-    // ---------------------------------------------------------------------------
-
     public List<PuntoDeVentaResponse> listarPorGestor(Usuario gestor) {
         List<PuntoDeVenta> locales = repository.findByGestorIdAndActivoTrue(gestor.getId());
         return toResponseList(locales);
@@ -119,10 +113,7 @@ public class PuntoDeVentaService {
         repository.save(puntoDeVenta);
     }
 
-    // ---------------------------------------------------------------------------
     // Helpers
-    // ---------------------------------------------------------------------------
-
     private PuntoDeVenta buscarActivoDelGestor(Usuario gestor, Long id) {
         PuntoDeVenta puntoDeVenta = repository.findByIdAndActivoTrue(id)
             .orElseThrow(() -> new ResourceNotFoundException("PuntoDeVenta", id));

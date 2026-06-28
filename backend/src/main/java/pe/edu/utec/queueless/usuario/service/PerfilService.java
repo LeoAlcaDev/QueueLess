@@ -33,10 +33,7 @@ public class PerfilService {
     private final ModelMapper modelMapper;
     private final TasaCumplimientoService tasaCumplimientoService;
 
-    // ---------------------------------------------------------------------------
     // Creacion de perfiles vacios (usado por register y por activarRol)
-    // ---------------------------------------------------------------------------
-
     /** Crea el perfil vacio de cada rol del conjunto. Usado al registrar un usuario. */
     public void crearPerfilesParaRoles(Usuario usuario, Set<Rol> roles) {
         for (Rol rol : roles) {
@@ -70,10 +67,7 @@ public class PerfilService {
         }
     }
 
-    // ---------------------------------------------------------------------------
     // Lectura
-    // ---------------------------------------------------------------------------
-
     /** Devuelve los perfiles del usuario segun los roles que tenga activos. */
     @Transactional(readOnly = true)
     public PerfilesResponse obtenerPerfiles(Usuario usuario) {
@@ -94,10 +88,7 @@ public class PerfilService {
         return respuesta.build();
     }
 
-    // ---------------------------------------------------------------------------
     // Actualizacion (solo los campos que el propio usuario puede editar)
-    // ---------------------------------------------------------------------------
-
     public PerfilClienteResponse actualizarPerfilCliente(Usuario usuario,
                                                          ActualizarPerfilClienteRequest request) {
         PerfilCliente perfil = buscarPerfilCliente(usuario);
@@ -129,11 +120,8 @@ public class PerfilService {
         return modelMapper.map(actualizado, PerfilRepartidorResponse.class);
     }
 
-    // ---------------------------------------------------------------------------
     // Helpers: cargan el perfil del usuario o lanzan 404 si no existe.
     // Por la invariante, "no existe" implica que el usuario no tiene ese rol.
-    // ---------------------------------------------------------------------------
-
     private PerfilCliente buscarPerfilCliente(Usuario usuario) {
         return perfilClienteRepository.findById(usuario.getId())
             .orElseThrow(() -> new ResourceNotFoundException("El usuario no tiene perfil de cliente"));

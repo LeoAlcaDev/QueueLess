@@ -54,10 +54,7 @@ public class SolicitudDeliveryService {
     @Value("${queueless.delivery.busqueda-timeout-minutos}")
     private int timeoutMinutos;
 
-    // ---------------------------------------------------------------------------
     // Lectura
-    // ---------------------------------------------------------------------------
-
     /** Solicitudes esperando repartidor: lo que el repartidor ve en su feed. */
     public List<SolicitudDeliveryResponse> listarDisponibles() {
         List<SolicitudDelivery> solicitudes =
@@ -80,10 +77,7 @@ public class SolicitudDeliveryService {
         return toResponse(solicitud);
     }
 
-    // ---------------------------------------------------------------------------
     // Creación (la dispara el listener cuando el pedido DELIVERY queda buscando repartidor)
-    // ---------------------------------------------------------------------------
-
     /**
      * Crea la SolicitudDelivery del pedido si todavía no existe. Es idempotente
      * porque la columna {@code pedido_id} de {@code solicitud_delivery} tiene
@@ -122,10 +116,7 @@ public class SolicitudDeliveryService {
         return guardada;
     }
 
-    // ---------------------------------------------------------------------------
     // Acciones del repartidor
-    // ---------------------------------------------------------------------------
-
     /** Transición BUSCANDO → ASIGNADO. La primera aceptación gana; el resto recibe 422. */
     @Transactional
     public SolicitudDeliveryResponse aceptar(Usuario repartidor, Long solicitudId) {
@@ -193,10 +184,7 @@ public class SolicitudDeliveryService {
         return toResponse(actualizada);
     }
 
-    // ---------------------------------------------------------------------------
     // Acciones del cliente durante la búsqueda
-    // ---------------------------------------------------------------------------
-
     /**
      * Reactiva la búsqueda de repartidor reusando la misma solicitud (la columna
      * pedido_id es única, así que no se crea otra fila): la deja de nuevo en
@@ -290,10 +278,7 @@ public class SolicitudDeliveryService {
         return Optional.of(solicitud.getPedido().getCliente().getId());
     }
 
-    // ---------------------------------------------------------------------------
     // Helpers
-    // ---------------------------------------------------------------------------
-
     public SolicitudDelivery findByPedidoId(Long pedidoId) {
         return repository.findByPedidoId(pedidoId)
             .orElseThrow(() -> new ResourceNotFoundException(

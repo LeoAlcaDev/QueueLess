@@ -1,8 +1,6 @@
--- =============================================================================
 -- Libro de reclamaciones (ADR-0029)
 -- Reclamos de consumidor contra un comercio o contra la plataforma, con su acuse,
 -- código de constancia, plazo de respuesta y estado.
--- =============================================================================
 
 CREATE TABLE reclamo (
     id                 BIGSERIAL PRIMARY KEY,

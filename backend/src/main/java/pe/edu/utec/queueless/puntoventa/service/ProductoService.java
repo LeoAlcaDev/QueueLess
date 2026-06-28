@@ -38,10 +38,7 @@ public class ProductoService {
     private final PuntoDeVentaRepository puntoDeVentaRepository;
     private final StorageService storageService;
 
-    // ---------------------------------------------------------------------------
     // Lectura
-    // ---------------------------------------------------------------------------
-
     /** Catalogo publico de un local: solo los productos disponibles. Un local dado de baja se ve como 404. */
     public List<ProductoResponse> listarPorPuntoDeVenta(Long puntoDeVentaId) {
         puntoDeVentaRepository.findByIdAndActivoTrue(puntoDeVentaId)
@@ -62,10 +59,7 @@ public class ProductoService {
             .orElseThrow(() -> new ResourceNotFoundException("Producto", id));
     }
 
-    // ---------------------------------------------------------------------------
     // Gestion por el comercio
-    // ---------------------------------------------------------------------------
-
     @Transactional
     public ProductoResponse crear(Usuario gestor, CrearProductoRequest request) {
         PuntoDeVenta puntoDeVenta = buscarLocalActivoDelGestor(gestor, request.getPuntoDeVentaId());
@@ -162,10 +156,7 @@ public class ProductoService {
         return toResponse(actualizado);
     }
 
-    // ---------------------------------------------------------------------------
     // Helpers
-    // ---------------------------------------------------------------------------
-
     // un local que no es del gestor se trata como inexistente para no filtrar qué ids de otros comercios existen
     private PuntoDeVenta buscarLocalActivoDelGestor(Usuario gestor, Long puntoDeVentaId) {
         PuntoDeVenta puntoDeVenta = puntoDeVentaRepository.findByIdAndActivoTrue(puntoDeVentaId)
@@ -196,10 +187,7 @@ public class ProductoService {
         }
     }
 
-    // ---------------------------------------------------------------------------
     // Validación de la configuración de horarios (al crear y al actualizar)
-    // ---------------------------------------------------------------------------
-
     private void validarConfiguracionDeHorarios(Producto producto) {
         validarVigencia(producto);
         validarConfiguracionHorarioServicio(producto);
@@ -275,10 +263,7 @@ public class ProductoService {
         }
     }
 
-    // ---------------------------------------------------------------------------
     // Mapeo a response (con disponibilidad calculada al vuelo)
-    // ---------------------------------------------------------------------------
-
     private ProductoResponse toResponse(Producto producto) {
         return toResponse(producto, TiempoLima.ahora());
     }

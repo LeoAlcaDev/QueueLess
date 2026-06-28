@@ -1,11 +1,7 @@
--- =============================================================================
 -- QueueLess — Schema inicial (V1)
 -- Crea todas las tablas, índices, FKs y catálogos del sistema.
--- =============================================================================
 
--- -----------------------------------------------------------------------------
 -- USUARIO + ROLES (multi-rol)
--- -----------------------------------------------------------------------------
 CREATE TABLE usuario (
     id              BIGSERIAL PRIMARY KEY,
     email           VARCHAR(150) NOT NULL UNIQUE,
@@ -29,9 +25,7 @@ CREATE TABLE usuario_roles (
 
 CREATE INDEX idx_usuario_roles_rol ON usuario_roles(rol);
 
--- -----------------------------------------------------------------------------
 -- PERFILES (uno por rol; relación 1:0..1 con Usuario)
--- -----------------------------------------------------------------------------
 CREATE TABLE perfil_cliente (
     usuario_id          BIGINT PRIMARY KEY REFERENCES usuario(id) ON DELETE CASCADE,
     direccion_preferida VARCHAR(200),
@@ -59,9 +53,7 @@ CREATE TABLE perfil_repartidor (
     updated_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- -----------------------------------------------------------------------------
 -- PUNTO DE VENTA + PRODUCTO
--- -----------------------------------------------------------------------------
 CREATE TABLE punto_de_venta (
     id                          BIGSERIAL PRIMARY KEY,
     nombre                      VARCHAR(120) NOT NULL,
@@ -96,9 +88,7 @@ CREATE TABLE producto (
 CREATE INDEX idx_producto_punto_de_venta ON producto(punto_de_venta_id);
 CREATE INDEX idx_producto_disponible ON producto(disponible);
 
--- -----------------------------------------------------------------------------
 -- PEDIDO + ITEM_PEDIDO + máquina de estados
--- -----------------------------------------------------------------------------
 CREATE TABLE pedido (
     id                  BIGSERIAL PRIMARY KEY,
     codigo              VARCHAR(20) NOT NULL UNIQUE,           -- ej. "A4F-2390"
@@ -150,9 +140,7 @@ CREATE TABLE item_pedido (
 
 CREATE INDEX idx_item_pedido_pedido ON item_pedido(pedido_id);
 
--- -----------------------------------------------------------------------------
 -- PAGO
--- -----------------------------------------------------------------------------
 CREATE TABLE pago (
     id                BIGSERIAL PRIMARY KEY,
     pedido_id         BIGINT NOT NULL UNIQUE REFERENCES pedido(id),
@@ -171,9 +159,7 @@ CREATE TABLE pago (
 CREATE INDEX idx_pago_estado ON pago(estado);
 CREATE INDEX idx_pago_referencia_externa ON pago(referencia_externa);
 
--- -----------------------------------------------------------------------------
 -- SOLICITUD DELIVERY
--- -----------------------------------------------------------------------------
 CREATE TABLE solicitud_delivery (
     id              BIGSERIAL PRIMARY KEY,
     pedido_id       BIGINT NOT NULL UNIQUE REFERENCES pedido(id),
@@ -193,9 +179,7 @@ CREATE TABLE solicitud_delivery (
 CREATE INDEX idx_solicitud_delivery_estado ON solicitud_delivery(estado);
 CREATE INDEX idx_solicitud_delivery_repartidor ON solicitud_delivery(repartidor_id);
 
--- -----------------------------------------------------------------------------
 -- RESEÑA (sobre punto de venta o repartidor, asociada a un pedido entregado)
--- -----------------------------------------------------------------------------
 CREATE TABLE resena (
     id            BIGSERIAL PRIMARY KEY,
     pedido_id     BIGINT NOT NULL REFERENCES pedido(id),
@@ -212,9 +196,7 @@ CREATE TABLE resena (
 
 CREATE INDEX idx_resena_objetivo ON resena(objetivo_tipo, objetivo_id);
 
--- -----------------------------------------------------------------------------
 -- MOVIMIENTO QUEUEPOINTS
--- -----------------------------------------------------------------------------
 CREATE TABLE movimiento_queuepoints (
     id              BIGSERIAL PRIMARY KEY,
     usuario_id      BIGINT NOT NULL REFERENCES usuario(id),
@@ -231,9 +213,7 @@ CREATE TABLE movimiento_queuepoints (
 CREATE INDEX idx_mov_qpts_usuario ON movimiento_queuepoints(usuario_id);
 CREATE INDEX idx_mov_qpts_referencia ON movimiento_queuepoints(referencia_tipo, referencia_id);
 
--- -----------------------------------------------------------------------------
 -- TRIGGER: updated_at automático en filas modificadas
--- -----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION trg_set_updated_at() RETURNS trigger AS $$
 BEGIN
     NEW.updated_at = CURRENT_TIMESTAMP;
