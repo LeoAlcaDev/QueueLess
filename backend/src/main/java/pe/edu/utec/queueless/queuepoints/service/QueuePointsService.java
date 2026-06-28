@@ -15,6 +15,7 @@ import pe.edu.utec.queueless.queuepoints.repository.MovimientoQueuePointsReposit
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.shared.exception.InsufficientPointsException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
+import pe.edu.utec.queueless.usuario.repository.UsuarioRepository;
 
 import java.util.Optional;
 
@@ -34,6 +35,7 @@ import java.util.Optional;
 public class QueuePointsService {
 
     private final MovimientoQueuePointsRepository repository;
+    private final UsuarioRepository usuarioRepository;
 
     // ---------------------------------------------------------------------------
     // Consulta
@@ -79,8 +81,11 @@ public class QueuePointsService {
     public MovimientoQueuePoints canjear(Usuario usuario, int monto,
                                          String referenciaTipo, Long referenciaId,
                                          String descripcion) {
+        // tomamos el lock de la fila del usuario para que sus canjes concurrentes se serialicen y no gasten dos veces el mismo saldo
+        usuarioRepository.findByIdForUpdate(usuario.getId());
+
         Optional<MovimientoQueuePoints> existente =
-            buscarExistente(TipoMovimiento.CANJEADO, referenciaTipo, referenciaId);
+            buscarCanjeExistente(usuario.getId(), referenciaTipo, referenciaId);
         if (existente.isPresent()) {
             return existente.get();
         }
@@ -120,6 +125,16 @@ public class QueuePointsService {
         }
         return repository.findFirstByTipoAndReferenciaTipoAndReferenciaId(
             tipo, referenciaTipo, referenciaId);
+    }
+
+    private Optional<MovimientoQueuePoints> buscarCanjeExistente(Long usuarioId,
+                                                                 String referenciaTipo,
+                                                                 Long referenciaId) {
+        if (referenciaTipo == null || referenciaId == null) {
+            return Optional.empty();
+        }
+        return repository.findFirstByUsuarioIdAndTipoAndReferenciaTipoAndReferenciaId(
+            usuarioId, TipoMovimiento.CANJEADO, referenciaTipo, referenciaId);
     }
 
     private MovimientoQueuePoints guardar(Usuario usuario, TipoMovimiento tipo, int monto,

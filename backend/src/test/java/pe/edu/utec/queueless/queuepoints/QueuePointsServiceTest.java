@@ -19,7 +19,9 @@ import pe.edu.utec.queueless.queuepoints.entity.TipoMovimiento;
 import pe.edu.utec.queueless.queuepoints.repository.MovimientoQueuePointsRepository;
 import pe.edu.utec.queueless.queuepoints.service.QueuePointsService;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
+import pe.edu.utec.queueless.shared.exception.InsufficientPointsException;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
+import pe.edu.utec.queueless.usuario.repository.UsuarioRepository;
 
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +42,8 @@ import static org.mockito.Mockito.when;
 class QueuePointsServiceTest {
 
     @Mock private MovimientoQueuePointsRepository repository;
+
+    @Mock private UsuarioRepository usuarioRepository;
 
     @InjectMocks private QueuePointsService service;
 
@@ -90,8 +94,8 @@ class QueuePointsServiceTest {
     @Test
     @DisplayName("canjear con saldo insuficiente lanza BusinessRuleException")
     void shouldFallarWhenSaldoInsuficiente() {
-        when(repository.findFirstByTipoAndReferenciaTipoAndReferenciaId(
-            TipoMovimiento.CANJEADO, "PEDIDO", 10L)).thenReturn(Optional.empty());
+        when(repository.findFirstByUsuarioIdAndTipoAndReferenciaTipoAndReferenciaId(
+            1L, TipoMovimiento.CANJEADO, "PEDIDO", 10L)).thenReturn(Optional.empty());
         when(repository.calcularSaldo(1L)).thenReturn(20);
 
         assertThatThrownBy(() -> service.canjear(usuario, 50, "PEDIDO", 10L, null))
@@ -103,8 +107,8 @@ class QueuePointsServiceTest {
     @Test
     @DisplayName("canjear con saldo suficiente inserta movimiento CANJEADO")
     void shouldCanjearWhenSaldoSuficiente() {
-        when(repository.findFirstByTipoAndReferenciaTipoAndReferenciaId(
-            TipoMovimiento.CANJEADO, "PEDIDO", 10L)).thenReturn(Optional.empty());
+        when(repository.findFirstByUsuarioIdAndTipoAndReferenciaTipoAndReferenciaId(
+            1L, TipoMovimiento.CANJEADO, "PEDIDO", 10L)).thenReturn(Optional.empty());
         when(repository.calcularSaldo(1L)).thenReturn(100);
         when(repository.save(any(MovimientoQueuePoints.class)))
             .thenAnswer(i -> i.getArgument(0));
@@ -114,6 +118,23 @@ class QueuePointsServiceTest {
         assertThat(mov.getTipo()).isEqualTo(TipoMovimiento.CANJEADO);
         assertThat(mov.getMonto()).isEqualTo(30);
         assertThat(mov.getReferenciaId()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("canjear: el canje de otro usuario sobre la misma referencia no cuenta como idempotencia y se valida el saldo propio")
+    void shouldValidarSaldoPropioWhenOtroUsuarioCanjeoLaMismaReferencia() {
+        // A ya canjeó contra (PEDIDO, 10); el finder por usuario hace que B no lo vea como propio
+        Usuario otroUsuario = Usuario.builder().email("bruno@utec.edu.pe").build();
+        otroUsuario.setId(2L);
+        when(usuarioRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(otroUsuario));
+        when(repository.findFirstByUsuarioIdAndTipoAndReferenciaTipoAndReferenciaId(
+            2L, TipoMovimiento.CANJEADO, "PEDIDO", 10L)).thenReturn(Optional.empty());
+        when(repository.calcularSaldo(2L)).thenReturn(0);
+
+        assertThatThrownBy(() -> service.canjear(otroUsuario, 30, "PEDIDO", 10L, "Descuento"))
+            .isInstanceOf(InsufficientPointsException.class)
+            .hasMessageContaining("Saldo insuficiente");
+        verify(repository, never()).save(any());
     }
 
     @Test
