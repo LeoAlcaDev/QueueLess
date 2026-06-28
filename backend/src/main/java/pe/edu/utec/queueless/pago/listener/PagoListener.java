@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
+import pe.edu.utec.queueless.pago.event.ReembolsoRequeridoEvent;
 import pe.edu.utec.queueless.pago.service.ReembolsoService;
 import pe.edu.utec.queueless.pedido.entity.EstadoPedido;
 import pe.edu.utec.queueless.pedido.event.PedidoEstadoCambiadoEvent;
@@ -35,5 +36,19 @@ public class PagoListener {
                 event.getPedidoId(), event.getEstadoAnterior());
             reembolsoService.emitirReembolso(event.getPedidoId());
         }
+    }
+
+    /**
+     * Reembolsa cuando un pago se confirma sobre un pedido que ya estaba terminal: el
+     * dinero se capturó pero el pedido no puede recibirlo. Corre tras el commit de la
+     * confirmación, así la pasarela queda fuera de esa transacción. Termina en el mismo
+     * {@code emitirReembolso} que el camino de cancelación.
+     */
+    @Async("queuelessTaskExecutor")
+    @TransactionalEventListener
+    public void onReembolsoRequerido(ReembolsoRequeridoEvent event) {
+        log.info("Reembolsando el pago del pedido {}: llegó un pago sobre un pedido ya terminal",
+            event.getPedidoId());
+        reembolsoService.emitirReembolso(event.getPedidoId());
     }
 }
