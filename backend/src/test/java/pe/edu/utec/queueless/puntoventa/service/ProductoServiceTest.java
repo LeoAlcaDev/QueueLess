@@ -18,10 +18,12 @@ import pe.edu.utec.queueless.puntoventa.repository.ProductoRepository;
 import pe.edu.utec.queueless.puntoventa.repository.PuntoDeVentaRepository;
 import pe.edu.utec.queueless.shared.domain.Alergeno;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
+import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
 import pe.edu.utec.queueless.shared.storage.StorageService;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.Optional;
@@ -96,7 +98,7 @@ class ProductoServiceTest {
     }
 
     @Test
-    @DisplayName("crear un producto en un local ajeno lanza BusinessRuleException")
+    @DisplayName("crear un producto en un local ajeno lanza ResourceNotFoundException")
     void shouldFallarWhenCreaEnLocalAjeno() {
         // Arrange
         Usuario comercio = usuario(2L);
@@ -105,8 +107,39 @@ class ProductoServiceTest {
 
         // Act + Assert
         assertThatThrownBy(() -> service.crear(comercio, crearRequest(80L)))
-            .isInstanceOf(BusinessRuleException.class);
+            .isInstanceOf(ResourceNotFoundException.class);
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("actualizar un producto de un local ajeno lanza ResourceNotFoundException")
+    void shouldFallarWhenActualizaProductoAjeno() {
+        // Arrange
+        Usuario comercio = usuario(2L);
+        Usuario otro = usuario(3L);
+        Producto ajeno = producto(10L, localDe(otro), true);
+        when(repository.findById(10L)).thenReturn(Optional.of(ajeno));
+        ActualizarProductoRequest request = new ActualizarProductoRequest();
+        request.setNombre("Sandwich");
+        request.setPrecio(new BigDecimal("12.50"));
+        request.setTipoPreparacion(TipoPreparacion.PREPARADO);
+
+        // Act + Assert
+        assertThatThrownBy(() -> service.actualizar(comercio, 10L, request))
+            .isInstanceOf(ResourceNotFoundException.class);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("listar el catálogo de un local inactivo o inexistente lanza ResourceNotFoundException")
+    void shouldFallarWhenListaCatalogoDeLocalInexistente() {
+        // Arrange
+        when(puntoDeVentaRepository.findByIdAndActivoTrue(80L)).thenReturn(Optional.empty());
+
+        // Act + Assert
+        assertThatThrownBy(() -> service.listarPorPuntoDeVenta(80L))
+            .isInstanceOf(ResourceNotFoundException.class);
+        verify(repository, never()).findByPuntoDeVentaIdAndDisponibleTrue(any());
     }
 
     @Test
@@ -283,6 +316,42 @@ class ProductoServiceTest {
         request.setVentanaRecojoInicio(LocalTime.of(12, 30));
         request.setVentanaRecojoFin(LocalTime.of(14, 0));
 
+        assertThatThrownBy(() -> service.actualizar(comercio, 10L, request))
+            .isInstanceOf(BusinessRuleException.class);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("crear con vigencia que empieza después de terminar falla")
+    void shouldFallarWhenVigenciaInvertidaAlCrear() {
+        // Arrange
+        Usuario comercio = usuario(2L);
+        when(puntoDeVentaRepository.findByIdAndActivoTrue(80L)).thenReturn(Optional.of(localDe(comercio)));
+        CrearProductoRequest request = preparadoRequest();
+        request.setVigenciaInicio(LocalDate.of(2026, 6, 10));
+        request.setVigenciaFin(LocalDate.of(2026, 6, 5));
+
+        // Act + Assert
+        assertThatThrownBy(() -> service.crear(comercio, request))
+            .isInstanceOf(BusinessRuleException.class);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("actualizar con vigencia que empieza después de terminar falla")
+    void shouldFallarWhenVigenciaInvertidaAlActualizar() {
+        // Arrange
+        Usuario comercio = usuario(2L);
+        Producto producto = producto(10L, localDe(comercio), true);
+        when(repository.findById(10L)).thenReturn(Optional.of(producto));
+        ActualizarProductoRequest request = new ActualizarProductoRequest();
+        request.setNombre("Sandwich");
+        request.setPrecio(new BigDecimal("12.50"));
+        request.setTipoPreparacion(TipoPreparacion.PREPARADO);
+        request.setVigenciaInicio(LocalDate.of(2026, 6, 10));
+        request.setVigenciaFin(LocalDate.of(2026, 6, 5));
+
+        // Act + Assert
         assertThatThrownBy(() -> service.actualizar(comercio, 10L, request))
             .isInstanceOf(BusinessRuleException.class);
         verify(repository, never()).save(any());

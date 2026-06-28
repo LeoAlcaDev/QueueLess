@@ -99,4 +99,21 @@ class RegistroSseTest {
         verify(caido, times(1)).send(any(SseEmitter.SseEventBuilder.class));
         verify(bueno, times(2)).send(any(SseEmitter.SseEventBuilder.class));
     }
+
+    @Test
+    void unEmisorQueFallaAlEnviarSeCierraConCompleteWithError() throws IOException {
+        // Arrange: una conexión que revienta al enviar.
+        SseEmitter caido = mock(SseEmitter.class);
+        IOException fallo = new IOException("el cliente se fue");
+        doThrow(fallo).when(caido).send(any(SseEmitter.SseEventBuilder.class));
+        registro.registrarCliente(1L, caido);
+
+        // Act: dos envíos seguidos.
+        registro.enviarACliente(1L, eventoCualquiera());
+        registro.enviarACliente(1L, eventoCualquiera());
+
+        // Assert: se cerró con el error y, al haberse soltado, el segundo envío ya no lo toca.
+        verify(caido).completeWithError(fallo);
+        verify(caido, times(1)).send(any(SseEmitter.SseEventBuilder.class));
+    }
 }

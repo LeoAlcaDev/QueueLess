@@ -30,6 +30,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Lógica del flujo de SolicitudDelivery. La creación la dispara el listener
@@ -203,12 +204,10 @@ public class SolicitudDeliveryService {
      * para notificar a los repartidores. Solo aplica si la búsqueda anterior ya
      * venció o quedó sin repartidor.
      *
-     * <p>No se protege contra reintentos simultáneos del mismo cliente sobre el
-     * mismo pedido: dos peticiones a la vez podrían reactivar la solicitud y
-     * publicar dos eventos, generando dos rondas de notificaciones. La mitigación
-     * (tomar la solicitud con bloqueo al reactivar, o un campo de versión en la
-     * entidad) queda para una fase futura; en la práctica, la app deshabilita el
-     * botón mientras la primera petición está en curso.
+     * <p>Tomamos la solicitud con bloqueo antes de reactivarla para no pisar una
+     * aceptación que entre al mismo tiempo ni reactivar dos veces ante reintentos
+     * concurrentes del mismo cliente: el segundo en entrar relee la fila ya en
+     * BUSCANDO con ventana vigente y recibe el rechazo.
      */
     @Transactional
     public SolicitudDeliveryResponse reintentarBusqueda(Usuario cliente, Long pedidoId) {
@@ -217,7 +216,9 @@ public class SolicitudDeliveryService {
             throw new BusinessRuleException(
                 "Solo se puede reintentar mientras el pedido está buscando repartidor");
         }
-        SolicitudDelivery solicitud = findByPedidoId(pedidoId);
+        Long solicitudId = findByPedidoId(pedidoId).getId();
+        SolicitudDelivery solicitud = repository.findByIdForUpdate(solicitudId)
+            .orElseThrow(() -> new ResourceNotFoundException("SolicitudDelivery", solicitudId));
         boolean busquedaVigente = solicitud.getEstado() == EstadoSolicitudDelivery.BUSCANDO
             && solicitud.getBusquedaFinAt().isAfter(Instant.now());
         if (busquedaVigente) {
@@ -265,6 +266,28 @@ public class SolicitudDeliveryService {
         repository.save(solicitud);
         log.info("Solicitud {} cancelada por cambio a recojo en tienda (pedido {})",
             solicitud.getId(), pedidoId);
+    }
+
+    /**
+     * La invoca el job de timeout: relee la solicitud con bloqueo y, solo si
+     * sigue en BUSCANDO y su ventana ya venció, la pasa a SIN_REPARTIDOR.
+     * Devuelve el id del cliente a avisar cuando degradó de verdad; si otra
+     * transacción ya la asignó o el cliente la reactivó, devuelve vacío y no
+     * toca nada (así el job no notifica de más).
+     */
+    @Transactional
+    public Optional<Long> expirarBusqueda(Long solicitudId) {
+        SolicitudDelivery solicitud = repository.findByIdForUpdate(solicitudId).orElse(null);
+        boolean siguePendiente = solicitud != null
+            && solicitud.getEstado() == EstadoSolicitudDelivery.BUSCANDO
+            && !solicitud.getBusquedaFinAt().isAfter(Instant.now());
+        if (!siguePendiente) {
+            return Optional.empty();
+        }
+        solicitud.setEstado(EstadoSolicitudDelivery.SIN_REPARTIDOR);
+        repository.save(solicitud);
+        log.info("Timeout de búsqueda para solicitud {}", solicitudId);
+        return Optional.of(solicitud.getPedido().getCliente().getId());
     }
 
     // ---------------------------------------------------------------------------

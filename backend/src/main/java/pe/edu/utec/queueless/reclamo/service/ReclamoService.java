@@ -91,6 +91,12 @@ public class ReclamoService {
             throw new ResourceNotFoundException("Reclamo", reclamoId);
         }
 
+        // El chequeo de estado va después del de propiedad para no revelarle la existencia
+        // de un reclamo a un comercio ajeno.
+        if (reclamo.getEstado() != EstadoReclamo.PENDIENTE) {
+            throw new BusinessRuleException("El reclamo ya fue respondido");
+        }
+
         reclamo.setRespuesta(request.getRespuesta());
         reclamo.setEstado(EstadoReclamo.RESPONDIDO);
         reclamo.setRespondidoAt(Instant.now());

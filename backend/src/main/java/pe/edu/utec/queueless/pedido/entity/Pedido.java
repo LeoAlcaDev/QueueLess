@@ -103,7 +103,12 @@ public class Pedido {
         this.estado = nuevoEstado;
         Instant ahora = Instant.now();
         switch (nuevoEstado) {
-            case PAGADO_ESPERANDO_COMERCIO, PAGADO_BUSCANDO_REPARTIDOR -> this.pagadoAt = ahora;
+            case PAGADO_ESPERANDO_COMERCIO, PAGADO_BUSCANDO_REPARTIDOR -> {
+                // El pago ocurre una sola vez, así que al rebotar entre estados pagados conservamos la marca original.
+                if (this.pagadoAt == null) {
+                    this.pagadoAt = ahora;
+                }
+            }
             case ACEPTADO                                              -> this.aceptadoAt = ahora;
             case LISTO_PARA_RECOGER, LISTO_PARA_DELIVERY               -> this.listoAt = ahora;
             case ENTREGADO                                             -> this.entregadoAt = ahora;

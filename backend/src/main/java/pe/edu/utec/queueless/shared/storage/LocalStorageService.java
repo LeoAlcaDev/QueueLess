@@ -5,14 +5,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import pe.edu.utec.queueless.shared.exception.InvalidFileException;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -26,7 +24,6 @@ import java.util.UUID;
 public class LocalStorageService implements StorageService {
 
     private static final String URL_PREFIX = "/uploads/";
-    private static final Set<String> EXTENSIONES_PERMITIDAS = Set.of("jpg", "jpeg", "png", "webp");
 
     private final String basePath;
 
@@ -36,13 +33,7 @@ public class LocalStorageService implements StorageService {
 
     @Override
     public String upload(String folder, MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new InvalidFileException("El archivo a subir esta vacio");
-        }
-        String extension = extraerExtension(file.getOriginalFilename());
-        if (!EXTENSIONES_PERMITIDAS.contains(extension)) {
-            throw new InvalidFileException("Extension de archivo no permitida: " + extension);
-        }
+        String extension = ImagenUploadSupport.validarYExtraerExtension(file);
 
         // Nombre unico para que dos archivos con el mismo nombre no se pisen.
         String nombreUnico = UUID.randomUUID() + "." + extension;
@@ -73,16 +64,5 @@ public class LocalStorageService implements StorageService {
         } catch (IOException ex) {
             log.warn("No se pudo borrar el archivo {}: {}", archivo, ex.getMessage());
         }
-    }
-
-    private String extraerExtension(String nombreOriginal) {
-        if (nombreOriginal == null) {
-            return "";
-        }
-        int punto = nombreOriginal.lastIndexOf('.');
-        if (punto < 0 || punto == nombreOriginal.length() - 1) {
-            return "";
-        }
-        return nombreOriginal.substring(punto + 1).toLowerCase();
     }
 }

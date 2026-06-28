@@ -29,10 +29,19 @@ public interface MovimientoQueuePointsRepository extends JpaRepository<Movimient
     /**
      * Idempotencia del ledger (ADR-0008): si ya existe un movimiento del mismo
      * tipo para la misma referencia, no se inserta uno nuevo y se devuelve el
-     * existente.
+     * existente. Lo usa el GANADO, donde la referencia (el pedido entregado) ya
+     * identifica al único usuario que puede ganar esos puntos.
      */
     Optional<MovimientoQueuePoints> findFirstByTipoAndReferenciaTipoAndReferenciaId(
         TipoMovimiento tipo, String referenciaTipo, Long referenciaId);
+
+    /**
+     * Idempotencia del canje acotada al usuario: distintos usuarios pueden canjear
+     * contra la misma referencia (por ejemplo, una promoción compartida), así que
+     * el movimiento de uno no debe contar como el del otro.
+     */
+    Optional<MovimientoQueuePoints> findFirstByUsuarioIdAndTipoAndReferenciaTipoAndReferenciaId(
+        Long usuarioId, TipoMovimiento tipo, String referenciaTipo, Long referenciaId);
 
     /**
      * Saldo neto del usuario: suma de GANADO menos suma de CANJEADO.

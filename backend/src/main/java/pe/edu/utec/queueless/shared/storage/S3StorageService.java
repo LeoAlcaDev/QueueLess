@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import pe.edu.utec.queueless.shared.exception.InvalidFileException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -17,7 +16,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -33,7 +31,6 @@ import java.util.UUID;
 @ConditionalOnProperty(name = "queueless.storage.impl", havingValue = "s3")
 public class S3StorageService implements StorageService {
 
-    private static final Set<String> EXTENSIONES_PERMITIDAS = Set.of("jpg", "jpeg", "png", "webp");
     private static final Map<String, String> CONTENT_TYPES = Map.of(
         "jpg", "image/jpeg",
         "jpeg", "image/jpeg",
@@ -63,13 +60,7 @@ public class S3StorageService implements StorageService {
 
     @Override
     public String upload(String folder, MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new InvalidFileException("El archivo a subir esta vacio");
-        }
-        String extension = extraerExtension(file.getOriginalFilename());
-        if (!EXTENSIONES_PERMITIDAS.contains(extension)) {
-            throw new InvalidFileException("Extension de archivo no permitida: " + extension);
-        }
+        String extension = ImagenUploadSupport.validarYExtraerExtension(file);
 
         String key = folder + "/" + UUID.randomUUID() + "." + extension;
         PutObjectRequest request = PutObjectRequest.builder()
@@ -110,16 +101,5 @@ public class S3StorageService implements StorageService {
             return "";
         }
         return path.startsWith("/") ? path.substring(1) : path;
-    }
-
-    private String extraerExtension(String nombreOriginal) {
-        if (nombreOriginal == null) {
-            return "";
-        }
-        int punto = nombreOriginal.lastIndexOf('.');
-        if (punto < 0 || punto == nombreOriginal.length() - 1) {
-            return "";
-        }
-        return nombreOriginal.substring(punto + 1).toLowerCase();
     }
 }

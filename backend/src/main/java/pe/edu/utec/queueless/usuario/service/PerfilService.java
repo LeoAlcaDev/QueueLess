@@ -66,6 +66,7 @@ public class PerfilService {
                     perfilRepartidorRepository.save(PerfilRepartidor.builder().usuario(usuario).build());
                 }
             }
+            default -> throw new IllegalStateException("Rol sin perfil asociado: " + rol);
         }
     }
 

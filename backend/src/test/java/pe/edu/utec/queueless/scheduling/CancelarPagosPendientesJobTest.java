@@ -9,10 +9,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import pe.edu.utec.queueless.notification.dto.PushNotification;
+import pe.edu.utec.queueless.notification.service.NotificationService;
 import pe.edu.utec.queueless.pedido.entity.EstadoPedido;
 import pe.edu.utec.queueless.pedido.entity.Pedido;
 import pe.edu.utec.queueless.pedido.repository.PedidoRepository;
 import pe.edu.utec.queueless.pedido.service.PedidoService;
+import pe.edu.utec.queueless.usuario.entity.Usuario;
 
 import java.time.Instant;
 import java.util.List;
@@ -32,6 +35,7 @@ class CancelarPagosPendientesJobTest {
 
     @Mock private PedidoRepository pedidoRepository;
     @Mock private PedidoService pedidoService;
+    @Mock private NotificationService notificationService;
 
     @InjectMocks private CancelarPagosPendientesJob job;
 
@@ -75,6 +79,20 @@ class CancelarPagosPendientesJobTest {
     }
 
     @Test
+    @DisplayName("tras cancelar un pedido abandonado avisa al cliente de la cancelación")
+    void avisaAlClienteTrasCancelar() {
+        Pedido pedido = pedido(7L);
+        when(pedidoRepository.findByEstadoAndCreadoAtBefore(eq(EstadoPedido.PENDIENTE_PAGO), any()))
+            .thenReturn(List.of(pedido));
+
+        job.cancelarPendientes();
+
+        ArgumentCaptor<PushNotification> aviso = ArgumentCaptor.forClass(PushNotification.class);
+        verify(notificationService).notificar(aviso.capture());
+        assertThat(aviso.getValue().getTopic()).isEqualTo("cliente-" + pedido.getCliente().getId());
+    }
+
+    @Test
     @DisplayName("busca pendientes de pago con un corte de tiempo en el pasado")
     void buscaConCorteEnElPasado() {
         when(pedidoRepository.findByEstadoAndCreadoAtBefore(eq(EstadoPedido.PENDIENTE_PAGO), any()))
@@ -88,7 +106,10 @@ class CancelarPagosPendientesJobTest {
     }
 
     private Pedido pedido(Long id) {
-        Pedido pedido = Pedido.builder().codigo("QL-" + id).estado(EstadoPedido.PENDIENTE_PAGO).build();
+        Usuario cliente = Usuario.builder().email("cli@utec.edu.pe").build();
+        cliente.setId(900L + id);
+        Pedido pedido = Pedido.builder()
+            .codigo("QL-" + id).cliente(cliente).estado(EstadoPedido.PENDIENTE_PAGO).build();
         pedido.setId(id);
         return pedido;
     }

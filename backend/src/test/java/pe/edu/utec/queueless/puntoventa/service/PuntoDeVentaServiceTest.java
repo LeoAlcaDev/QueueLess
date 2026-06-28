@@ -115,7 +115,7 @@ class PuntoDeVentaServiceTest {
     }
 
     @Test
-    @DisplayName("actualizar un local de otro comercio lanza BusinessRuleException")
+    @DisplayName("actualizar un local de otro comercio lanza ResourceNotFoundException")
     void shouldFallarWhenActualizaLocalAjeno() {
         // Arrange
         Usuario comercio = usuario(2L, Rol.COMERCIO);
@@ -125,7 +125,7 @@ class PuntoDeVentaServiceTest {
 
         // Act + Assert
         assertThatThrownBy(() -> service.actualizar(comercio, 50L, actualizarRequest()))
-            .isInstanceOf(BusinessRuleException.class);
+            .isInstanceOf(ResourceNotFoundException.class);
         verify(repository, never()).save(any());
     }
 
