@@ -1,6 +1,6 @@
 # Términos y Condiciones de QueueLess
 
-**Versión vigente: 2026-06-23**
+**Versión vigente: 2026-06-28**
 
 Este documento explica, en lenguaje claro, qué es QueueLess, qué datos te pedimos y
 para qué, y qué reglas aceptás al usar la plataforma. Está escrito para que lo entiendas
@@ -45,9 +45,10 @@ En tu perfil de cliente podés guardar, todo opcional:
 - Tu **dirección de entrega preferida**, para no tipearla cada vez.
 - Tus **alergias** (en texto libre) y los **alérgenos que evitás** (de una lista cerrada),
   tus **restricciones de dieta** (por ejemplo, vegetariano o vegano), tu **tolerancia al
-  picante** y un **presupuesto de referencia**. Sirven para que, más adelante, la
-  plataforma pueda ayudarte a filtrar el catálogo según lo que comés. Sobre los alérgenos,
-  leé el punto 3, que es importante.
+  picante** y un **presupuesto de referencia**. Sirven para que la plataforma pueda
+  ayudarte a filtrar el catálogo según lo que comés y para el asistente de recomendación
+  (ver más abajo, "El asistente de recomendación"). Sobre los alérgenos, leé el punto 3,
+  que es importante.
 
 ### Si sos comercio
 
@@ -61,6 +62,23 @@ En tu perfil de cliente podés guardar, todo opcional:
 
 Una misma persona puede tener varios de estos roles a la vez (por ejemplo, ser cliente y
 repartidor), y en ese caso guardamos los datos de cada rol que tengas activo.
+
+### El asistente de recomendación y el uso de inteligencia artificial
+
+La plataforma incluye un **asistente que te recomienda platos**. Para armar la
+recomendación, le enviamos a un **proveedor de inteligencia artificial externo** —elegido
+por nosotros; hoy pensamos usar los modelos de Google— tu **mensaje**, los **platos
+candidatos** del catálogo (nombre, precio, descripción y local) y un **resumen de tu
+conversación reciente** con el asistente. No le mandamos tu correo, tu contraseña ni tus
+datos de pago. La decisión de qué platos son seguros para vos según tus alérgenos y
+restricciones la toma la plataforma, no el proveedor de IA.
+
+Una aclaración importante sobre el alcance: **lo que decimos acá describe el tratamiento
+en producción.** En la demo de evaluación usamos el nivel gratuito del proveedor (Google
+AI Studio), donde los datos enviados **pueden usarse para entrenar sus modelos**; por eso
+la demo no necesariamente sigue al pie lo que este documento promete para producción. En
+producción no usaríamos un nivel que exponga así los datos de los usuarios. Si cambiamos de
+proveedor o de tratamiento, actualizamos estos términos y subimos su versión.
 
 ## 3. Sobre los alérgenos (leelo)
 

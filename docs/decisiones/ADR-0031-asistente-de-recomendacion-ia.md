@@ -312,6 +312,10 @@ conversación a un costo bajo, sin persistir nada.
 - **Latencia del modelo.** Una respuesta lenta del modelo retrasaría la respuesta al cliente.
   Mitigación: timeout configurado que, al vencer, cae al degradado en vez de colgar la petición.
 
+## Actualización — Fase 3: los Términos ya declaran el tratamiento
+
+El cuerpo deja la declaración del tratamiento de datos condicionada a "un uso más real que la demo". Al consolidar el proyecto la adelantamos: los Términos (`docs/legal/terminos-y-condiciones.md`) ya declaran que el asistente envía el mensaje del cliente y el contexto de platos a un proveedor de IA externo elegido por nosotros (hoy, los modelos de Google), y aclaran que **lo que el documento promete describe el tratamiento en producción**, mientras que la demo usa el free tier de Google AI Studio, donde esos datos pueden usarse para entrenar. Así el texto dice la verdad de lo que pasa hoy sin comprometer a producción a un tratamiento que no queremos. Si cambiamos de proveedor o de tier, se vuelven a actualizar los Términos (y se sube su versión, como hicimos acá: la fecha vigente pasó a `2026-06-28`).
+
 ## Anexo — Glosario de términos técnicos
 
 **Modelo de lenguaje (LLM).** Un programa entrenado para producir texto: se le da un texto de entrada y
