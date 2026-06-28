@@ -152,6 +152,24 @@ class ReclamoServiceTest {
             .isInstanceOf(ResourceNotFoundException.class);
     }
 
+    @Test
+    void responderDosVecesLaSegundaFalla() {
+        // Arrange: el mock de save devuelve la misma instancia, así que la primera respuesta
+        // deja el reclamo en RESPONDIDO en memoria para la segunda invocación.
+        Reclamo reclamo = reclamoContraComercio(2L);
+        when(reclamoRepository.findById(7L)).thenReturn(Optional.of(reclamo));
+        Usuario gestor = usuarioConId(2L);
+        ResponderReclamoRequest request = new ResponderReclamoRequest();
+        request.setRespuesta("Lo resolvimos, disculpá la demora");
+
+        // Act
+        service.responder(gestor, 7L, request);
+
+        // Assert
+        assertThatThrownBy(() -> service.responder(gestor, 7L, request))
+            .isInstanceOf(BusinessRuleException.class);
+    }
+
     private Usuario usuarioConId(long id) {
         Usuario usuario = new Usuario();
         usuario.setId(id);
