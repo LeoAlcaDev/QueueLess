@@ -567,6 +567,26 @@ class PedidoServiceTest {
         verify(pedidoRepository, never()).save(any());
     }
 
+    @Test
+    @DisplayName("cambiar a recojo en tienda conserva el pagado_at original del pedido")
+    void shouldConservarPagadoAtWhenCambiaAPickup() {
+        // Arrange
+        Usuario cliente = usuario(1L, Rol.CLIENTE);
+        PuntoDeVenta local = local(10L, usuario(2L, Rol.COMERCIO), true);
+        Pedido pedido = pedido(50L, cliente, local,
+            EstadoPedido.PAGADO_BUSCANDO_REPARTIDOR, TipoEntrega.DELIVERY);
+        Instant pagadoOriginal = Instant.parse("2026-06-21T12:00:00Z");
+        pedido.setPagadoAt(pagadoOriginal);
+        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
+
+        // Act
+        PedidoResponse response = service.cambiarAPickup(pedido);
+
+        // Assert
+        assertThat(response.getEstado()).isEqualTo(EstadoPedido.PAGADO_ESPERANDO_COMERCIO);
+        assertThat(response.getPagadoAt()).isEqualTo(pagadoOriginal);
+    }
+
     // ----------------------------------------------------------------------
     // Horario de atención del local (lógica pura, con horas fijas)
     // ----------------------------------------------------------------------
