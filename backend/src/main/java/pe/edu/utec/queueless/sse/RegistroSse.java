@@ -76,8 +76,14 @@ public class RegistroSse {
             try {
                 emitter.send(SseEmitter.event().name(EVENTO_CAMBIO_ESTADO).data(evento));
             } catch (IOException | IllegalStateException ex) {
-                // El cliente ya se fue o el emisor ya estaba cerrado; lo soltamos.
+                // El cliente ya se fue o el emisor ya estaba cerrado; lo soltamos y lo
+                // cerramos para no dejar la conexión colgada.
                 conexiones.remove(emitter);
+                try {
+                    emitter.completeWithError(ex);
+                } catch (IllegalStateException yaCerrado) {
+                    // el emisor ya estaba completado, no hay nada que cerrar
+                }
             }
         }
     }
