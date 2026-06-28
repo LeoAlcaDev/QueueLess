@@ -132,7 +132,7 @@ Al cierre de Fase 5:
 | Tipo | Estado | Disparador | Resultado |
 |---|---|---|---|
 | `GANADO` | **Implementado** | `EntregaCompletadaListener` reacciona a la transición del pedido a `ENTREGADO` cuando hay `SolicitudDelivery`. | INSERT en `movimiento_queuepoints` con monto 50 (configurable). Idempotente por `(referenciaTipo, referenciaId)`. |
-| `CANJEADO` | **Implementado** | El cliente invoca `POST /api/me/queuepoints/canjear` con monto y referencia. | INSERT con el monto solicitado, previa validación de saldo suficiente. Idempotente por `(referenciaTipo, referenciaId)`. |
+| `CANJEADO` | **Implementado** | El cliente invoca `POST /api/me/queuepoints/canjear` con monto y referencia. | INSERT con el monto solicitado, previa validación de saldo suficiente. Idempotente por `(usuario, tipo, referenciaTipo, referenciaId)` y serializado con un bloqueo pesimista sobre la fila del usuario (ver "Actualización — Fase 1"). |
 | `EXPIRADO` | **Diseñado, diferido** | Job programado que detectaría puntos `GANADO` con `created_at` anterior a un umbral (por ejemplo, 1 año) y aún no consumidos. | INSERT por el monto expirado. Falta decidir el umbral exacto y el orden en que se cuentan los puntos a expirar (los más viejos primero, o el saldo completo en bloque). |
 | `REVERTIDO` | **Diseñado, diferido** | Listener que reaccionaría a la cancelación de un pedido para deshacer movimientos `GANADO` o `CANJEADO` asociados a ese pedido. | INSERT por el mismo monto del movimiento original, manteniendo el original intacto. |
 
@@ -213,6 +213,14 @@ Modelar TODO el dominio como una secuencia de eventos persistidos, no solo los p
 
 - **Riesgo de movimientos huérfanos.** Si por error agregamos un movimiento `GANADO` sin que haya entrega real, el saldo se infla. Mitigación: la `referenciaId` apunta al pedido/entrega; un job de consistencia puede verificar que cada movimiento `GANADO` tipo `ENTREGA` corresponda a una SolicitudDelivery en estado `ENTREGADO`.
 - **Riesgo de duplicación.** Si un listener async procesa dos veces el mismo evento (por reintento), se duplican movimientos. Mitigación: idempotencia en el listener (verificar que no exista ya un movimiento con esa `referenciaTipo` + `referenciaId`).
+
+## Actualización — Fase 1: idempotencia del canje por usuario y bloqueo pesimista
+
+Al integrar el canje al flujo, su idempotencia y su concurrencia quedaron más precisas que lo que anticipaba el cuerpo. Lo de la tabla ya quedó corregido arriba; acá va el detalle:
+
+- **El canje deduplica por `(usuario, tipo, referenciaTipo, referenciaId)`, no solo por la referencia.** `QueuePointsService.canjear` usa `findFirstByUsuarioIdAndTipoAndReferenciaTipoAndReferenciaId`. Sumamos el usuario a la clave porque la referencia del canje la elige el cliente, y dos clientes podrían apuntar a la misma referencia sin que el canje de uno deba colisionar con el del otro.
+- **El canje toma un bloqueo pesimista sobre la fila del usuario.** Antes de leer el saldo, `canjear` llama a `usuarioRepository.findByIdForUpdate`, que serializa los canjes concurrentes de un mismo usuario para que no gasten dos veces el mismo saldo. Es una excepción acotada al "concurrencia sin locks" del cuerpo: aplica solo al canje, donde sí hay que leer el saldo y decidir contra él dentro de la misma transacción. La acumulación de puntos (`GANADO`) sigue siendo INSERT puro sin locks.
+- **El `GANADO` sigue deduplicando solo por `(tipo, referenciaTipo, referenciaId)`, sin el usuario.** Ahí la referencia la genera el servidor (el pedido entregado), así que no hay riesgo de colisión entre usuarios y no hace falta sumar el usuario a la clave. El `EntregaCompletadaListener` async se apoya en esa clave para no duplicar puntos si el evento se reentrega.
 
 ## Anexo — Glosario de términos técnicos
 

@@ -71,7 +71,7 @@ Al crear o editar un producto, el service valida:
 
 ### Catálogo público: muestra todo, marca lo que no está disponible
 
-El endpoint público del catálogo (`GET /api/puntos-de-venta/{id}/productos`) no filtra por horario. Devuelve todos los productos disponibles del local, pero cada `ProductoResponse` incluye un flag derivado:
+El endpoint público del catálogo (`GET /api/v1/puntos-de-venta/{id}/productos`) no filtra por horario. Devuelve todos los productos disponibles del local, pero cada `ProductoResponse` incluye un flag derivado:
 
 ```java
 private Boolean disponibleAhora;

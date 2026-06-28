@@ -152,7 +152,7 @@ En producción, MercadoPago llama a `/api/pago/webhook/mercadopago` con el paylo
 
 El flujo dev queda:
 
-1. Cliente: `POST /api/cliente/pagos/iniciar` → recibe `referencia` y `urlCheckout`.
+1. Cliente: `POST /api/v1/cliente/pagos/iniciar` → recibe `referencia` y `urlCheckout`.
 2. Tester (vía curl o Postman): `POST /api/pago/webhook/mock?referencia={ref}` → simula que MercadoPago confirmó.
 3. Sistema: `PagoService.confirmar` transiciona el pedido, publica el evento.
 
@@ -175,7 +175,7 @@ La alternativa era abrir otra transacción en el controller o pasar toda la veri
 
 Esta no es decisión nueva de Fase 4, pero la implementación inicial del módulo respondía 422, así que la corrección queda documentada acá para que no se repita.
 
-Cuando un cliente intenta acceder a un pago que no le pertenece (por ejemplo, `GET /api/cliente/pagos/123` y el pago 123 es de otro cliente), la respuesta es **404 Not Found**, no 422 Unprocessable Entity ni 403 Forbidden.
+Cuando un cliente intenta acceder a un pago que no le pertenece (por ejemplo, `GET /api/v1/cliente/pagos/123` y el pago 123 es de otro cliente), la respuesta es **404 Not Found**, no 422 Unprocessable Entity ni 403 Forbidden.
 
 El proyecto estableció esta convención en Fase 3 con el método `PedidoService.buscarPedidoDelCliente`. La regla es: **no revelar la existencia del recurso al usuario que no tiene acceso**. Devolver 403 ("existe pero no podés verlo") es una fuga de información sutil: un atacante podría iterar IDs y mapear el rango de recursos existentes en el sistema. 404 mantiene la ambigüedad.
 
@@ -193,7 +193,7 @@ if (pago.getEstado() == EstadoPago.CONFIRMADO) {
     return pago;
 }
 if (pago.getEstado() != EstadoPago.PENDIENTE) {
-    throw new BusinessRuleException("No se puede confirmar un pago en estado " + pago.getEstado());
+    throw new PaymentException("No se puede confirmar un pago en estado " + pago.getEstado());
 }
 ```
 
@@ -223,7 +223,7 @@ PaymentGateway gatewayNoDisponible(
 Para tener la vista de pájaro, así fluye un pago desde que el cliente lo inicia hasta que (eventualmente) se reembolsa:
 
 ```
-1. Cliente: POST /api/cliente/pagos/iniciar { pedidoId: 42 }
+1. Cliente: POST /api/v1/cliente/pagos/iniciar { pedidoId: 42 }
    ↓
 2. PagoController.iniciar
    ↓
@@ -343,6 +343,15 @@ Descartada por consistencia con el resto del proyecto (Fase 3 estableció 404) y
 - **Secret de webhook se filtra por error en un repo público**. Mitigación: el secret va en variable de entorno, nunca en el código ni en el `.env.example` (que solo lista la variable, no su valor). Para producción se rota desde el panel de MercadoPago si pasa.
 - **`@PostConstruct` del validador asume que `getActiveProfiles()` no devuelve null**. Spring siempre llena el array (vacío si no hay perfiles activos, no null), pero si alguna versión futura cambia ese comportamiento, podría romper el arranque. Mitigación: cubierto por el test del bean.
 
+## Actualización — Fase 2
+
+Al consolidar el módulo afinamos dos cosas del flujo de reembolso:
+
+- **La llamada a la pasarela sale de la transacción de base de datos.** Antes `ReembolsoService.emitirReembolso` corría dentro de una transacción, así que la conexión a la base quedaba tomada durante la llamada de red a MercadoPago. Ahora orquesta con un `TransactionTemplate`: lee y valida el pago, llama a `paymentGateway.reembolsar(pago)` **fuera de toda transacción**, y recién después abre una transacción corta para marcar el pago `REEMBOLSADO`. Si la pasarela falla, el pago queda `CONFIRMADO` (reintentable) y el error se **registra en el log y se propaga**, en lugar de perderse en silencio. Es un refinamiento de lo que describe arriba "Listener de reembolso asíncrono": el pago no reembolsado se sigue recuperando a mano, pero el fallo ahora es visible.
+- **Un pago aprobado sobre un pedido ya terminal también dispara reembolso.** Si la confirmación llega cuando el pedido ya está en un estado terminal (por ejemplo, el job de pago pendiente lo canceló desde `PENDIENTE_PAGO` antes de que entrara el webhook), transicionarlo al siguiente estado sería ilegal y haría rollback de la confirmación, dejando el dinero capturado sin devolver. En vez de eso, `PagoService.confirmarInterno` detecta `pedido.getEstado().esTerminal()`, reconoce el pago como `CONFIRMADO` y publica un evento nuevo, `ReembolsoRequeridoEvent`, sin intentar la transición. Un listener propio del módulo, `PagoListener.onReembolsoRequerido` (`@Async @TransactionalEventListener`), lo recibe tras el commit y llama a `emitirReembolso`.
+
+Quedan entonces **dos disparadores del mismo `emitirReembolso`**: la cancelación de un pedido desde un estado en `GATILLAN_REEMBOLSO` (vía `PedidoEstadoCambiadoEvent`, descrito arriba) y este pago tardío sobre un pedido terminal (vía `ReembolsoRequeridoEvent`). El mecanismo de reembolso es el mismo; lo único distinto es el evento que lo gatilla, porque el caso terminal no es una cancelación y no hay una transición de pedido a la que engancharse.
+
 ## Anexo — Glosario de términos técnicos
 
 **Pasarela de pagos**. Servicio externo que procesa transacciones con tarjetas, billeteras digitales, etc. Mantiene los datos sensibles del medio de pago (números de tarjeta, CVV) en su propia infraestructura, certificada por los estándares de seguridad del rubro, para que nuestra app no tenga que. En Perú las más usadas son MercadoPago, Culqi y Niubiz.
@@ -357,7 +366,7 @@ Descartada por consistencia con el resto del proyecto (Fase 3 estableció 404) y
 
 **Idempotencia**. Propiedad de una operación que da el mismo resultado si se ejecuta una o múltiples veces con los mismos datos de entrada. Confirmar un pago dos veces tiene que dejar el sistema en el mismo estado que confirmarlo una vez (sin cobrar dos veces ni romper nada).
 
-**IDOR (Insecure Direct Object Reference)**. Vulnerabilidad de seguridad clásica donde un usuario accede a recursos de otros usuarios cambiando un id en la URL. Ejemplo: `GET /api/cliente/pagos/123` cuando el pago 123 es de otra persona. La defensa es validar siempre que el recurso pertenece al usuario autenticado antes de devolverlo.
+**IDOR (Insecure Direct Object Reference)**. Vulnerabilidad de seguridad clásica donde un usuario accede a recursos de otros usuarios cambiando un id en la URL. Ejemplo: `GET /api/v1/cliente/pagos/123` cuando el pago 123 es de otra persona. La defensa es validar siempre que el recurso pertenece al usuario autenticado antes de devolverlo.
 
 **`@ConditionalOnProperty`**. Anotación de Spring Boot que carga una clase (un "bean", en jerga de Spring) solo si una propiedad de configuración tiene cierto valor. Nos permite tener varias implementaciones de una misma interfaz y elegir cuál usar según el ambiente (mock en dev, MercadoPago en producción).
 
@@ -382,7 +391,7 @@ Descartada por consistencia con el resto del proyecto (Fase 3 estableció 404) y
 ## Referencias
 
 - ADR-0001 — Estructura feature-first.
-- ADR-0003 — Modelo de 12 entidades (`Pago` como entidad y bounded context).
+- ADR-0003 — Modelo de entidades del dominio (`Pago` como entidad y bounded context).
 - ADR-0009 — Eventos de dominio (cómo el `PagoListener` se engancha a las cancelaciones).
 - ADR-0010 — Postgres puerto y env (de dónde sale `MERCADOPAGO_WEBHOOK_SECRET`).
 - `backend/src/main/java/pe/edu/utec/queueless/pago/gateway/PaymentGateway.java` — interfaz.
@@ -392,7 +401,8 @@ Descartada por consistencia con el resto del proyecto (Fase 3 estableció 404) y
 - `backend/src/main/java/pe/edu/utec/queueless/pago/gateway/PagoGatewayConfig.java` — fallback de configuración inválida.
 - `backend/src/main/java/pe/edu/utec/queueless/pago/service/PagoService.java` — orquestación.
 - `backend/src/main/java/pe/edu/utec/queueless/pago/service/ReembolsoService.java` — reembolsos.
-- `backend/src/main/java/pe/edu/utec/queueless/pago/listener/PagoListener.java` — listener de cancelaciones.
+- `backend/src/main/java/pe/edu/utec/queueless/pago/listener/PagoListener.java` — listener de cancelaciones y de reembolsos requeridos.
+- `backend/src/main/java/pe/edu/utec/queueless/pago/event/ReembolsoRequeridoEvent.java` — evento que pide el reembolso de un pago aprobado sobre un pedido ya terminal.
 - `backend/src/main/java/pe/edu/utec/queueless/pago/controller/WebhookController.java` — endpoint público del webhook MP (solo se carga con gateway mercadopago).
 - `backend/src/main/java/pe/edu/utec/queueless/pago/controller/MockWebhookController.java` — endpoint auxiliar para simular confirmación en dev.
 - `backend/src/main/java/pe/edu/utec/queueless/pago/repository/PagoRepository.java` — consultas con `JOIN FETCH` para evitar accesos perezosos fuera de transacción.

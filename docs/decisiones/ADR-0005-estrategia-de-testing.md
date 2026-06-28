@@ -149,6 +149,33 @@ Lo que seguimos sin adoptar: `@WebMvcTest` (preferimos el contexto completo por 
 y H2 (sigue vigente la Alternativa 2: TestContainers da el mismo Postgres que producción).
 La pirámide no cambia de forma; ganamos dos capas intermedias bien delimitadas.
 
+## Actualización — Smoke test habilitado en local y en CI
+
+El estado del smoke test cambió respecto de lo que cuentan las secciones de arriba. Tres
+cosas son distintas hoy:
+
+- **Se renombró a `QueuelessApplicationIT`.** Pasó de `QueuelessApplicationTests` a
+  `QueuelessApplicationIT`, para que el nombre respete la convención: es un test de
+  integración (levanta el contexto completo con TestContainers heredando de
+  `AbstractIntegrationTest`), así que lo corre Failsafe en la fase `verify`, no Surefire en
+  `test`. Como `*IT`, siempre corrió y sigue corriendo en CI con `mvn verify`.
+
+- **Ya no está `@Disabled`.** No queda ningún `@Disabled` en la suite. El bug de
+  `docker-java` contra el named pipe de Docker Desktop en Windows que motivó el `@Disabled`
+  lo resolvimos por configuración, no apagando el test.
+
+- **El workaround vive en un perfil de Maven, `windows-docker-desktop`.** Se auto-activa por
+  sistema operativo (`<os><family>windows</family>`) y le fija tanto a Surefire como a
+  Failsafe la variable `DOCKER_HOST=tcp://localhost:2375`. Eso enruta TestContainers al
+  daemon de Docker Desktop por TCP local en vez del named pipe, evitando el handshake que
+  fallaba. El único requisito es tener activado en Docker Desktop «Expose daemon on
+  tcp://localhost:2375 without TLS» (documentado en `backend/README.md`). En Linux y en
+  GitHub Actions el perfil no se activa y TestContainers usa el socket Unix por defecto.
+
+El resultado: el smoke —y el resto de los `*IT`— corre estable tanto en local Windows como en
+CI. La decisión de `@Disabled` quedó superada; dejamos su historia arriba para registro de
+por qué existió.
+
 ## Consecuencias
 
 ### Positivas
@@ -220,7 +247,7 @@ assertThat(pedido.getPagadoAt()).isNotNull();
 
 - `backend/src/test/java/pe/edu/utec/queueless/pedido/PedidoStateMachineTest.java` — los 5 unit tests de máquina de estados.
 - `backend/src/test/java/pe/edu/utec/queueless/integration/AbstractIntegrationTest.java` — clase base para tests de integración.
-- `backend/src/test/java/pe/edu/utec/queueless/QueuelessApplicationTests.java` — smoke test con `@Disabled`.
+- `backend/src/test/java/pe/edu/utec/queueless/QueuelessApplicationIT.java` — smoke test (corre en `verify` con Failsafe; ver «Actualización — Smoke test habilitado en local y en CI»).
 - `backend/pom.xml` — configuración de `maven-surefire-plugin` y `maven-failsafe-plugin`.
 - `backend/README.md` — sección "Tests con TestContainers" con setup de Docker Desktop.
 - ADR-0009 — eventos de dominio (testing de listeners async tendrá su sección ahí).

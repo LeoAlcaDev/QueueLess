@@ -123,9 +123,9 @@ Las tres opciones son:
 
 | Opción | Endpoint | Efecto |
 |---|---|---|
-| Reintentar búsqueda | `POST /api/cliente/pedidos/{id}/solicitud-delivery/reintentar` | Crea una **nueva** `SolicitudDelivery` en `BUSCANDO` (la anterior queda en `SIN_REPARTIDOR` como histórico) y reinicia el countdown de 4 minutos. El endpoint no resucita la solicitud anterior, crea otra. |
-| Cambiar a pickup | `POST /api/cliente/pedidos/{id}/cambiar-a-pickup` | Cambia `tipoEntrega` del pedido a `PICKUP`, transiciona el pedido a `PAGADO_ESPERANDO_COMERCIO`, cancela la solicitud actual (`CANCELADO`). El comercio ya puede aceptar como pickup normal. |
-| Cancelar el pedido | `POST /api/cliente/pedidos/{id}/cancelar` (ya existe desde Fase 4) | Cancela el pedido. Como estaba en `PAGADO_BUSCANDO_REPARTIDOR` (incluido en `GATILLAN_REEMBOLSO`), el reembolso es automático. |
+| Reintentar búsqueda | `POST /api/v1/cliente/pedidos/{id}/solicitud-delivery/reintentar` | Reusa la **misma** `SolicitudDelivery` del pedido: la relee por `pedidoId`, la vuelve a `BUSCANDO`, limpia el repartidor y reinicia la ventana de búsqueda (countdown de 4 minutos), y vuelve a publicar el evento para notificar a los repartidores. Como la columna `pedido_id` es única, no se crea otra fila: es la misma solicitud reactivada. Solo aplica si la búsqueda anterior ya venció o quedó `SIN_REPARTIDOR`; si sigue vigente, se rechaza. |
+| Cambiar a pickup | `POST /api/v1/cliente/pedidos/{id}/cambiar-a-pickup` | Cambia `tipoEntrega` del pedido a `PICKUP`, transiciona el pedido a `PAGADO_ESPERANDO_COMERCIO`, cancela la solicitud actual (`CANCELADO`). El comercio ya puede aceptar como pickup normal. |
+| Cancelar el pedido | `POST /api/v1/cliente/pedidos/{id}/cancelar` (ya existe desde Fase 4) | Cancela el pedido. Como estaba en `PAGADO_BUSCANDO_REPARTIDOR` (incluido en `GATILLAN_REEMBOLSO`), el reembolso es automático. |
 
 Las tres opciones también están disponibles **durante** la espera de 4 minutos, no solo después del timeout. Si el cliente cambia de opinión a los 30 segundos y prefiere pickup, no tiene que esperar a que el countdown termine.
 
@@ -139,7 +139,7 @@ La razón es que cualquier número tope sería arbitrario (¿3 reintentos? ¿5?)
 
 ### Endpoint de canje de QueuePoints
 
-Exponemos `POST /api/me/queuepoints/canjear` con el DTO `CanjearPuntosRequest` que ya estaba implementado en el módulo. El service ya hace toda la lógica (validar saldo, idempotencia por `referenciaTipo` + `referenciaId`); lo que faltaba era el endpoint público.
+Exponemos `POST /api/v1/me/queuepoints/canjear` con el DTO `CanjearPuntosRequest` que ya estaba implementado en el módulo. El service ya hace toda la lógica (validar saldo, idempotencia por `referenciaTipo` + `referenciaId`); lo que faltaba era el endpoint público.
 
 El endpoint es del rol cliente porque cualquier usuario autenticado con saldo positivo puede canjear (no requiere rol específico). La integración con el flujo de pago (descontar puntos al pagar un pedido) queda para una fase futura.
 
@@ -244,7 +244,7 @@ Queda pendiente como issue de seguimiento que se abrirá al cerrar las fases de 
 
 ## Política de devolución de QueuePoints cuando un pedido se cancela
 
-Cuando se implemente el endpoint de canje (`POST /api/me/queuepoints/canjear`, parte de Fase 5), aparece naturalmente una pregunta: ¿qué pasa con los puntos canjeados si el pedido al que se aplicaron termina cancelado?
+Cuando se implemente el endpoint de canje (`POST /api/v1/me/queuepoints/canjear`, parte de Fase 5), aparece naturalmente una pregunta: ¿qué pasa con los puntos canjeados si el pedido al que se aplicaron termina cancelado?
 
 La regla general es: **si el servicio prometido no se prestó por causa ajena al cliente, los puntos se devuelven**. La política completa con todos los casos (cancelación por comercio, por cliente, expiración, etc.) y su implementación con movimientos `REVERTIDO` queda documentada en la **actualización del ADR-0008**, sección "Estado actual y flujos futuros". Mantenemos la política en un solo lugar para evitar que se desincronicen las dos versiones.
 
@@ -270,6 +270,40 @@ En Fase 5 dejamos un TODO en el código del listener de QueuePoints que apunta a
 
 - **Solicitudes huérfanas si el cliente abandona**. Si el cliente cierra la app y no decide nada después del timeout, la solicitud queda en `SIN_REPARTIDOR` y el pedido en `PAGADO_BUSCANDO_REPARTIDOR` para siempre. Mitigación: en una fase futura, un job de limpieza puede cancelar pedidos en `PAGADO_BUSCANDO_REPARTIDOR` que no tuvieron actividad en X horas (con reembolso automático). Por ahora se asume que el cliente cierra el ciclo.
 - **Saturación del sistema de notificaciones por abuso de reintentos**. Sin límite, un usuario malicioso podría reintentar muchas veces seguidas; cada reintento manda push a todos los repartidores disponibles. Mitigación: si los datos reales muestran que ocurre, agregamos rate limiting al endpoint de reintento o un tope por pedido. No hay evidencia de que sea un problema real hoy.
+
+## Actualización — concurrencia por bloqueo
+
+Los jobs programados compiten con acciones del usuario sobre la misma fila: el
+`BusquedaTimeoutJob` (delivery) corre mientras un repartidor podría estar
+aceptando la solicitud justo ahora, y el `ExpirarPedidosJob` (pedido) corre
+mientras el comercio podría estar marcando el pedido como entregado. Para que el
+job no pise una asignación o una entrega recién hecha, las Fases 1/2 fijaron un
+patrón: el job arma la lista de candidatos (solicitudes vencidas, pedidos sin
+recoger) pero delega la transición real a un service que **relee la fila con
+bloqueo** —`@Lock(PESSIMISTIC_WRITE)` vía `findByIdForUpdate`— y **re-chequea el
+estado** antes de tocar nada.
+
+- `SolicitudDeliveryService.expirarBusqueda` toma la solicitud con bloqueo y solo
+  la pasa a `SIN_REPARTIDOR` si sigue en `BUSCANDO` y su ventana ya venció. Si
+  otra transacción la asignó o el cliente la reactivó, devuelve vacío y el job no
+  notifica de más.
+- `PedidoService.expirarRecojo` toma el pedido con bloqueo y solo lo pasa a
+  `EXPIRADO` si sigue en `LISTO_PARA_RECOGER`. Si el comercio ya lo entregó, no
+  lo toca.
+
+El mismo bloqueo protege la aceptación del repartidor (`aceptar`) y el reintento
+de búsqueda del cliente (`reintentarBusqueda`): los dos releen la solicitud con
+`findByIdForUpdate` y verifican el estado, de modo que dos acciones concurrentes
+sobre el mismo pedido se serializan y la segunda recibe el rechazo en vez de
+pisar a la primera.
+
+Decidimos **no** usar versionado optimista global (`@Version` en las entidades).
+El bloqueo pesimista sobre la fila puntual, en el momento puntual de la
+transición, alcanza para los pocos puntos de contención que tenemos —asignación
+de solicitud, cierre de entrega, canje de QueuePoints— sin obligarnos a manejar
+`OptimisticLockException` ni reintentos a lo largo de todo el dominio. Si en el
+futuro aparecen más caminos concurrentes y el bloqueo pesimista empieza a costar,
+lo reconsideramos.
 
 ## Anexo — Glosario de términos técnicos
 
@@ -316,6 +350,8 @@ Cubierto en detalle en ADR-0008.
 - `backend/src/main/java/pe/edu/utec/queueless/delivery/listener/CrearSolicitudDeliveryListener.java` — listener del pedido pagado.
 - `backend/src/main/java/pe/edu/utec/queueless/delivery/event/SolicitudDeliveryCreadaEvent.java` — evento del bounded context delivery.
 - `backend/src/main/java/pe/edu/utec/queueless/scheduling/BusquedaTimeoutJob.java` — job de timeout de 4 minutos.
+- `backend/src/main/java/pe/edu/utec/queueless/scheduling/ExpirarPedidosJob.java` — job de expiración del recojo en tienda.
+- `backend/src/main/java/pe/edu/utec/queueless/delivery/repository/SolicitudDeliveryRepository.java` y `pedido/repository/PedidoRepository.java` — `findByIdForUpdate` con `@Lock(PESSIMISTIC_WRITE)`.
 - `backend/src/main/java/pe/edu/utec/queueless/pedido/controller/PedidoClienteController.java` — endpoints de reintento y cambio a pickup.
 - `backend/src/main/java/pe/edu/utec/queueless/queuepoints/listener/EntregaCompletadaListener.java` — listener de puntos al entregar.
 - `backend/src/main/java/pe/edu/utec/queueless/queuepoints/controller/QueuePointsController.java` — endpoint de canje.
