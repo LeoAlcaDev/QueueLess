@@ -55,6 +55,8 @@ integraciones externas vacías se autodeshabilitan (correo, Firebase, S3) o usan
 | `AWS_REGION` / `AWS_S3_BUCKET` | S3 para fotos de productos | vacío |
 | `FIREBASE_ENABLED` | Activa el push real | `false` |
 | `FIREBASE_CREDENTIALS_JSON` | Service account de Firebase en base64 | vacío |
+| `RECOMENDADOR_PROVEEDOR` | Proveedor del asistente de IA: `gemini` o `fake` | `gemini` |
+| `GEMINI_API_KEY` | API key del asistente (vacío en dev → degrada con aviso; en prod el arranque aborta) | vacío |
 | `MAIL_HOST` | Host SMTP — **vacío deshabilita el correo** (modo `[EMAIL DEV]`) | vacío |
 | `MAIL_PORT` | Puerto SMTP | `587` |
 | `MAIL_USERNAME` / `MAIL_PASSWORD` | Credenciales SMTP (App Password de Gmail o token de SES) | vacío |
@@ -90,9 +92,9 @@ los `*IT` se validan sobre todo en la **CI del classroom** (Linux), donde corren
 
 ## Correr la colección Postman
 
-Importá `postman_collection.json` y `QueueLess.dev.postman_environment.json` (raíz del repo),
-elegí el environment **QueueLess dev** y corré la colección con el Collection Runner. Recorre
-los 8 flujos end-to-end. Guía completa en [`docs/postman/README.md`](docs/postman/README.md).
+Importá la colección y el environment desde [`docs/postman/`](docs/postman/), elegí el
+environment **QueueLess dev** y corré la colección con el Collection Runner. Cubre los flujos
+end-to-end y los endpoints por rol. Guía completa en [`docs/postman/README.md`](docs/postman/README.md).
 
 ## Encender el deployment de AWS
 

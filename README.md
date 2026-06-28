@@ -81,6 +81,16 @@ delivery interno (DELIVERY). Funcionalidades principales (el detalle vive en los
   [ADR-0021](docs/decisiones/ADR-0021-email-complementario-al-push.md).
 - **Reseñas** con verificación de pedido entregado, y **storage** de fotos en S3 con fallback
   local ([ADR-0017](docs/decisiones/ADR-0017-almacenamiento-de-archivos.md)).
+- **Asistente de recomendación con IA**: filtra el catálogo por el perfil del cliente (alérgenos,
+  dieta, picante, presupuesto) en código y deja que el modelo solo ordene y explique
+  ([ADR-0031](docs/decisiones/ADR-0031-asistente-de-recomendacion-ia.md)).
+- **Libro de reclamaciones** con acuse, código de constancia y plazo de respuesta
+  ([ADR-0029](docs/decisiones/ADR-0029-libro-de-reclamaciones.md)).
+- **Ocupación de locales por franja horaria**, que alimenta el contexto del tiempo de espera
+  ([ADR-0028](docs/decisiones/ADR-0028-ocupacion-por-hora.md)).
+- **Seguimiento del pedido en tiempo real** por Server-Sent Events (SSE).
+- **Aceptación de términos y condiciones** versionada por usuario
+  ([ADR-0030](docs/decisiones/ADR-0030-terminos-y-condiciones.md)).
 
 **Tecnologías:** Java 21, Spring Boot 3.3, PostgreSQL 16 + Flyway, JWT (jjwt) + BCrypt,
 MercadoPago / AWS S3 / Firebase Admin / JavaMail, JUnit 5 + AssertJ + Mockito + TestContainers,
@@ -88,7 +98,7 @@ Docker, GitHub Actions, ECS Fargate + RDS + ALB.
 
 ## Modelo de entidades
 
-El dominio son **12 entidades**. El diagrama Entidad-Relación completo, con tipos, FKs, UKs y
+El dominio son **13 entidades**. El diagrama Entidad-Relación completo, con tipos, FKs, UKs y
 las referencias polimórficas, está en [`docs/diagramas/entidades.md`](docs/diagramas/entidades.md).
 
 | Entidad | Para qué |
@@ -100,6 +110,7 @@ las referencias polimórficas, está en [`docs/diagramas/entidades.md`](docs/dia
 | `SolicitudDelivery` | Solo para pedidos DELIVERY: matching del repartidor |
 | `Resena` | Reseña del local o del repartidor tras la entrega |
 | `MovimientoQueuePoints` | Ledger de puntos (no hay campo saldo) |
+| `Reclamo` | Libro de reclamaciones (contra un comercio o la plataforma) |
 
 Decisiones clave: perfiles separados con `@MapsId` (multi-rol genuino, ADR-0007), referencias
 polimórficas blandas en `Resena` y `MovimientoQueuePoints`, soft delete con flag `activo`, y
@@ -172,7 +183,7 @@ y apaga el deployment de AWS bajo demanda. Detalle en
 En dev casi todo tiene default seguro (las integraciones externas vacías se autodeshabilitan).
 La lista exhaustiva, con sus defaults, está en [`DEVELOPMENT.md`](DEVELOPMENT.md). Las
 principales: `JWT_SECRET`, `JWT_ACCESS_EXPIRATION_MS`, `JWT_REFRESH_EXPIRATION_MS`,
-`POSTGRES_HOST_PORT`, `PAGO_GATEWAY`, `MERCADOPAGO_ACCESS_TOKEN`, `STORAGE_IMPL`,
+`POSTGRES_HOST_PORT`, `PAGO_GATEWAY`, `MERCADOPAGO_ACCESS_TOKEN`, `GEMINI_API_KEY`, `STORAGE_IMPL`,
 `AWS_REGION`/`AWS_S3_BUCKET`, `FIREBASE_ENABLED`/`FIREBASE_CREDENTIALS_JSON`, y el bloque de
 correo `MAIL_HOST`/`MAIL_PORT`/`MAIL_USERNAME`/`MAIL_PASSWORD`/`MAIL_FROM`/`MAIL_FROM_NAME`. En
 producción se suman `DB_URL`/`DB_USERNAME`/`DB_PASSWORD`, inyectadas desde Secrets Manager.
@@ -187,7 +198,7 @@ cd backend && ./mvnw spring-boot:run "-Dspring-boot.run.profiles=dev"
 ```
 
 - API: `http://localhost:8090` · Swagger: `http://localhost:8090/swagger-ui.html`
-- Postman: importá `postman_collection.json` + `QueueLess.dev.postman_environment.json`.
+- Postman: importá la colección y el environment de [`docs/postman/`](docs/postman/).
 
 La guía completa (perfiles, tests, setup de Docker en Windows, troubleshooting) está en
 [`DEVELOPMENT.md`](DEVELOPMENT.md).
@@ -196,8 +207,9 @@ La guía completa (perfiles, tests, setup de Docker en Windows, troubleshooting)
 
 El contrato vive como código: **Swagger UI** en `/swagger-ui.html` lista todos los endpoints
 con sus esquemas y permite probarlos ([ADR-0004](docs/decisiones/ADR-0004-swagger-openapi.md)).
-Para validación end-to-end, la **colección Postman** en la raíz recorre los 8 flujos completos
-(auth, catálogo, PICKUP, reseña, DELIVERY, QueuePoints); ver
+Para validación end-to-end, la **colección Postman** en [`docs/postman/`](docs/postman/) cubre los
+endpoints de la API por rol y flujo (auth, perfil, catálogo, PICKUP, DELIVERY, pagos, reseñas,
+reclamos, TyC, ocupación, asistente y QueuePoints); ver
 [`docs/postman/README.md`](docs/postman/README.md).
 
 ## Decisiones de diseño
