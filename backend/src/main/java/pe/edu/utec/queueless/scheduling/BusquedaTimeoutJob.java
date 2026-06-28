@@ -4,16 +4,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utec.queueless.delivery.entity.EstadoSolicitudDelivery;
 import pe.edu.utec.queueless.delivery.entity.SolicitudDelivery;
 import pe.edu.utec.queueless.delivery.repository.SolicitudDeliveryRepository;
+import pe.edu.utec.queueless.delivery.service.SolicitudDeliveryService;
 import pe.edu.utec.queueless.notification.dto.PushNotification;
 import pe.edu.utec.queueless.notification.service.NotificationService;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Cuando una SolicitudDelivery cumple su deadline (4 minutos por defecto) y
@@ -29,24 +30,28 @@ import java.util.Map;
 public class BusquedaTimeoutJob {
 
     private final SolicitudDeliveryRepository repository;
+    private final SolicitudDeliveryService solicitudDeliveryService;
     private final NotificationService notificationService;
 
     /** Corre cada 30 segundos. */
     @Scheduled(fixedDelayString = "PT30S")
-    @Transactional
     public void procesarTimeouts() {
         List<SolicitudDelivery> vencidas = repository.findByEstadoAndBusquedaFinAtBefore(
             EstadoSolicitudDelivery.BUSCANDO, Instant.now());
         for (SolicitudDelivery solicitud : vencidas) {
-            log.info("Timeout de búsqueda para solicitud {}", solicitud.getId());
-            solicitud.setEstado(EstadoSolicitudDelivery.SIN_REPARTIDOR);
-            repository.save(solicitud);
-            notificarCliente(solicitud);
+            try {
+                // el service relee la fila con bloqueo para no pisar una asignación que entró justo ahora
+                Optional<Long> clienteId = solicitudDeliveryService.expirarBusqueda(solicitud.getId());
+                if (clienteId.isPresent()) {
+                    notificarCliente(solicitud, clienteId.get());
+                }
+            } catch (RuntimeException e) {
+                log.error("No se pudo expirar la búsqueda de la solicitud {}", solicitud.getId(), e);
+            }
         }
     }
 
-    private void notificarCliente(SolicitudDelivery solicitud) {
-        Long clienteId = solicitud.getPedido().getCliente().getId();
+    private void notificarCliente(SolicitudDelivery solicitud, Long clienteId) {
         notificationService.notificar(PushNotification.builder()
             .topic("cliente-" + clienteId)
             .titulo("No encontramos repartidor")

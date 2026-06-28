@@ -108,11 +108,27 @@ class SolicitudDeliveryServiceTest {
         solicitud.setBusquedaFinAt(Instant.now().plus(2, ChronoUnit.MINUTES));
         when(pedidoService.buscarPedidoDelCliente(cliente, PEDIDO_ID)).thenReturn(pedido);
         when(repository.findByPedidoId(PEDIDO_ID)).thenReturn(Optional.of(solicitud));
+        when(repository.findByIdForUpdate(SOLICITUD_ID)).thenReturn(Optional.of(solicitud));
 
         assertThatThrownBy(() -> service.reintentarBusqueda(cliente, PEDIDO_ID))
             .isInstanceOf(BusinessRuleException.class)
             .hasMessageContaining("sigue activa");
         verify(eventPublisher, never()).publishEvent(any());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("expirar una búsqueda ya asignada no la degrada ni devuelve cliente")
+    void shouldNoDegradarWhenSolicitudYaAsignada() {
+        Pedido pedido = pedidoConLocal(EstadoPedido.PAGADO_ESPERANDO_COMERCIO);
+        SolicitudDelivery solicitud = solicitud(EstadoSolicitudDelivery.ASIGNADO, pedido);
+        solicitud.setBusquedaFinAt(Instant.now().minus(5, ChronoUnit.MINUTES));
+        when(repository.findByIdForUpdate(SOLICITUD_ID)).thenReturn(Optional.of(solicitud));
+
+        Optional<Long> clienteId = service.expirarBusqueda(SOLICITUD_ID);
+
+        assertThat(clienteId).isEmpty();
+        assertThat(solicitud.getEstado()).isEqualTo(EstadoSolicitudDelivery.ASIGNADO);
         verify(repository, never()).save(any());
     }
 
