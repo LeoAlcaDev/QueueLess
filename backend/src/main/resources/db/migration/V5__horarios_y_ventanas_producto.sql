@@ -1,3 +1,4 @@
+-- =============================================================================
 -- Horarios de servicio y ventanas de pedido/recojo por producto.
 -- Dos reglas nuevas, ambas opcionales:
 --  - Horario de servicio: el producto se vende solo en una franja del dia
@@ -13,6 +14,7 @@
 -- Las combinaciones validas (las 4 ventanas obligatorias cuando el flag esta en
 -- true, etc.) se validan en el service, no con un check en la base. Modelado y
 -- alternativas descartadas en ADR-0012.
+-- =============================================================================
 
 ALTER TABLE producto
     ADD COLUMN horario_servicio_inicio TIME,

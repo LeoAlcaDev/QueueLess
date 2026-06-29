@@ -22,6 +22,9 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    # V99 (seed) quedó aplicada antes que V6..V10; out-of-order permite
+    # aplicar esas migraciones pendientes aunque tengan versión menor a V99.
+    out-of-order: true
     locations: classpath:db/migration
   servlet:
     multipart:
