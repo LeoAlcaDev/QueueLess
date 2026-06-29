@@ -3,7 +3,7 @@
 --
 -- Esta migración usa el prefijo V99 para correr al final, después de cualquier
 -- migración real del schema. En perfil `test` está excluida vía:
---   spring.flyway.target=10  (en application-test.yml)
+--   spring.flyway.target=2  (en application-test.yml)
 -- En perfil `prod` esto carga también, así que NO debe contener datos sensibles
 -- de prueba que afecten producción. Para ese caso, mover a otro mecanismo.
 -- =============================================================================
@@ -83,27 +83,6 @@ BEGIN
             '07:00', '10:30', FALSE, NULL, NULL, NULL, NULL),
         (1, 'Almuerzo del día',  'Menú del día preparado por lote. Se pide temprano y se recoge al mediodía.', 15.00, 'Almuerzos', 'PREPARADO', TRUE,
             NULL, NULL, TRUE, '11:00', '13:00', '12:30', '14:00');
-
-    -- ---------- Atributos para el asistente de recomendación (Fase E) ----------
-    -- Declaramos en algunos productos demo lo que realmente cumplen, para que el
-    -- asistente tenga con qué cruzar los alérgenos, las restricciones y el picante del
-    -- cliente. Solo declaramos lo cierto; la ausencia no significa aptitud (ADR-0025).
-    INSERT INTO producto_alergeno (producto_id, alergeno)
-    SELECT id, 'GLUTEN' FROM producto WHERE nombre IN ('Sandwich de pollo', 'Desayuno completo');
-    INSERT INTO producto_alergeno (producto_id, alergeno)
-    SELECT id, 'HUEVO' FROM producto WHERE nombre = 'Desayuno completo';
-    INSERT INTO producto_alergeno (producto_id, alergeno)
-    SELECT id, 'PESCADO' FROM producto WHERE nombre = 'Roll California';
-
-    INSERT INTO producto_aptitud_dietetica (producto_id, aptitud)
-    SELECT id, 'VEGANO' FROM producto
-    WHERE nombre IN ('Bowl quinoa', 'Jugo verde', 'Edamame', 'Jugo de fresa', 'Café americano');
-    INSERT INTO producto_aptitud_dietetica (producto_id, aptitud)
-    SELECT id, 'VEGETARIANO' FROM producto WHERE nombre = 'Desayuno completo';
-
-    UPDATE producto SET nivel_picante = 'NINGUNA'
-    WHERE nombre IN ('Bowl quinoa', 'Edamame', 'Jugo de fresa', 'Café americano', 'Sandwich de pollo');
-    UPDATE producto SET nivel_picante = 'BAJA' WHERE nombre = 'Jugo verde';  -- el jengibre pica apenas
 
     -- Sincronizar las secuencias después del INSERT con IDs explícitos
     PERFORM setval('usuario_id_seq', (SELECT MAX(id) FROM usuario));
