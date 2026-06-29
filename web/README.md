@@ -120,23 +120,6 @@ src/
   por pedido). El pago espera la confirmación **asíncrona** del webhook por
   polling de `GET /cliente/pagos/{id}` (en dev, botón para disparar el mock).
 
-## Estado de avance
-
-| Etapa | Alcance                                             | Estado |
-| ----- | --------------------------------------------------- | ------ |
-| 0     | Bootstrap, tokens y primitivos UI (demo en `/_design`) | ✅ |
-| 1     | Núcleo de API, parsing, sesión (refresh-on-403), SSE/QR | ✅ |
-| 2     | Layout responsive, rutas por rol, landing, login/registro, TyC, cuenta/perfiles | ✅ |
-| 3     | Rol Cliente (catálogo, pedido, pago, seguimiento, QR, points, reclamos, asistente) | ✅ |
-| 4     | Rol Comercio (cola en vivo por SSE, acciones por estado, CRUD locales/productos + foto, ocupación, reclamos) | ✅ |
-| 5     | Rol Repartidor (tomar solicitudes, confirmar recogida/entrega con código, historial, points) | ✅ |
-| 6     | Transversales: estado offline, ESLint 9, a11y AA, copy español neutro | ✅ |
-| 7     | Build, entorno y deploy (env, nota de CORS, `preview`) | ✅ |
-
-> `npm run build` (tsc estricto + vite) sale **limpio**, con code-splitting por
-> área. La verificación end-to-end contra el backend dev (`:8090`) se hace a
-> medida que llegan las pantallas de cada rol.
-
 ## Deploy
 
 SPA estática: `npm run build` genera `dist/` (servible por cualquier CDN/host
