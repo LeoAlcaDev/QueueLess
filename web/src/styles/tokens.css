@@ -1,0 +1,448 @@
+/* ==========================================================================
+   QueueLess — Colors & Type Tokens (arquitectura de 2 marcas)
+   ==========================================================================
+   DOS marcas conviven en un mismo sistema, conmutables por atributo:
+
+     data-brand="orange"  → NARANJA (rebrand, identidad nueva)  ← DEFAULT (:root)
+     data-brand="green"   → VERDE (legacy, prototipo original)
+
+   Cruzadas con el modo:
+
+     data-theme="dark"    → modo oscuro (sobre cualquier marca)
+
+   Combinaciones:
+     <html>                                  naranja claro   (default)
+     <html data-theme="dark">                naranja oscuro
+     <html data-brand="green">               verde claro
+     <html data-brand="green" data-theme="dark">  verde oscuro
+
+   Se pueden anidar: poné data-brand/data-theme en cualquier subárbol para
+   MEZCLAR ambas marcas en una misma pantalla (objetivo del prototipo).
+
+   Reglas:
+   - Componentes referencian SOLO tokens semánticos (--color-brand, etc.),
+     nunca un hex de paleta. Así una pieza se ve naranja o verde según el
+     data-brand activo en su ancestro.
+   - Tokens COMPARTIDOS (no cambian por marca): estados semánticos
+     (success/warning/error/info/neutral), espaciado, sombras, familia y
+     escala tipográfica base. Definidos en :root y en [data-theme="dark"].
+   - Tokens POR MARCA: brand*, accent*, points*, neutros (bg/surface/text/
+     border), radios, focus, escala tipográfica fina.
+   ========================================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap");
+
+/* ==========================================================================
+   :root — COMPARTIDO + MARCA NARANJA (default, claro)
+   ========================================================================== */
+:root {
+  /* ---------- RAW — NARANJA ---------- */
+  --orange-500: #f97316; /* marca / identidad */
+  --orange-600: #ea580c; /* botón sólido (texto blanco, AA) */
+  --orange-700: #c2410c; /* hover/active */
+  --orange-100: #fff1e6; /* suave */
+  --orange-300: #fb923c; /* marca en oscuro */
+
+  /* ---------- RAW — VERDE (legacy) ---------- */
+  --green-500: #22c55e;
+  --green-600: #16a34a;
+  --green-700: #15803d;
+  --green-100: #dcfce7;
+
+  /* ---------- RAW — QueuePoints (morado) ---------- */
+  --purple-600: #9333ea; /* naranja: puntos */
+  --violet-500: #a855f7; /* verde: puntos (legacy) */
+  --purple-800: #7e22ce;
+  --violet-800: #6b21a8;
+
+  /* ---------- RAW — estados (compartidos) ---------- */
+  --c-success: #16a34a;
+  --c-warning: #f59e0b;
+  --c-error: #dc2626;
+  --c-info: #2563eb;
+
+  /* ---------- RAW — neutros tibios (naranja) ---------- */
+  --stone-bg: #fffbf7;
+  --stone-surface: #ffffff;
+  --stone-surface2: #f5f5f4;
+  --stone-border: #e7e5e4;
+  --stone-border2: #d6d3d1;
+  --stone-900: #1c1917;
+  --stone-500: #78716c;
+  --stone-400: #a8a29e;
+
+  /* ---------- RAW — neutros fríos (verde legacy) ---------- */
+  --gray-50: #f9fafb;
+  --gray-200: #e5e7eb;
+  --gray-700: #374151;
+  --gray-900: #111827;
+
+  /* ======================================================================
+     COMPARTIDO — ESPACIADO (escala base 4px)
+     ====================================================================== */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* ======================================================================
+     COMPARTIDO — TIPOGRAFÍA (familia + leading). Escala fina por marca.
+     ====================================================================== */
+  --font-sans:
+    "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    sans-serif;
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-body: 1.5;
+
+  /* ======================================================================
+     COMPARTIDO — ESTADOS SEMÁNTICOS (light). Mismos en ambas marcas.
+     Cada estado = bg suave + fg de texto AA + dot.
+     ====================================================================== */
+  --color-success-bg: rgba(22, 163, 74, 0.12);
+  --color-success-fg: #15803d;
+  --color-success-dot: var(--c-success);
+
+  --color-warning-bg: rgba(245, 158, 11, 0.14);
+  --color-warning-fg: #b45309;
+  --color-warning-dot: var(--c-warning);
+
+  --color-error-bg: rgba(220, 38, 38, 0.12);
+  --color-error-fg: #b91c1c;
+  --color-error-dot: var(--c-error);
+
+  --color-info-bg: rgba(37, 99, 235, 0.12);
+  --color-info-fg: #1d4ed8;
+  --color-info-dot: var(--c-info);
+
+  /* neutral (cancelado/expirado) — se apoya en los neutros de la marca */
+  --color-neutral-bg: var(--color-bg-surface-2);
+  --color-neutral-fg: var(--color-text-secondary);
+  --color-neutral-dot: var(--color-text-muted);
+
+  /* ---- Alias retro-compat (componentes/cards verdes existentes) ---- */
+  --color-status-pending-bg: var(--color-warning-bg);
+  --color-status-pending-fg: var(--color-warning-fg);
+  --color-status-pending-dot: var(--color-warning-dot);
+  --color-status-ready-bg: var(--color-info-bg);
+  --color-status-ready-fg: var(--color-info-fg);
+  --color-status-ready-dot: var(--color-info-dot);
+  --color-status-success-bg: var(--color-success-bg);
+  --color-status-success-fg: var(--color-success-fg);
+  --color-status-success-dot: var(--color-success-dot);
+  --color-status-error-bg: var(--color-error-bg);
+  --color-status-error-fg: var(--color-error-fg);
+  --color-status-error-dot: var(--color-error-dot);
+  --color-wait-fast-bg: var(--color-success-bg);
+  --color-wait-fast-fg: var(--color-success-fg);
+  --color-wait-mid-bg: var(--color-warning-bg);
+  --color-wait-mid-fg: var(--color-warning-fg);
+  --color-wait-slow-bg: var(--color-error-bg);
+  --color-wait-slow-fg: var(--color-error-fg);
+
+  /* ======================================================================
+     COMPARTIDO — SOMBRAS (light, neutro tibio)
+     ====================================================================== */
+  --shadow-sm:
+    0 1px 2px 0 rgba(28, 25, 23, 0.05), 0 1px 3px 0 rgba(28, 25, 23, 0.07);
+  --shadow-md:
+    0 4px 6px -1px rgba(28, 25, 23, 0.07), 0 2px 4px -2px rgba(28, 25, 23, 0.07);
+  --shadow-lg:
+    0 12px 20px -4px rgba(28, 25, 23, 0.1),
+    0 6px 8px -5px rgba(28, 25, 23, 0.07);
+
+  /* ======================================================================
+     MARCA NARANJA (default) — colores, neutros, radios, type, focus
+     ====================================================================== */
+
+  /* Brand */
+  --color-brand: var(--orange-500); /* identidad / acentos / iconos */
+  --color-brand-strong: var(
+    --orange-600
+  ); /* relleno de botón sólido (AA con blanco) */
+  --color-brand-hover: var(--orange-700);
+  --color-brand-soft: var(--orange-100);
+  --color-on-brand: #ffffff;
+  --color-text-brand: var(
+    --orange-700
+  ); /* texto color marca sobre fondo claro (AA) */
+
+  /* Accent (verde de soporte: frescura / "listo" / éxito) */
+  --color-accent: var(--c-success);
+  --color-accent-soft: rgba(22, 163, 74, 0.12);
+  --color-accent-text: #15803d;
+
+  /* QueuePoints (morado) */
+  --color-points: var(--purple-600);
+  --color-points-soft: rgba(147, 51, 234, 0.12);
+  --color-points-strong: var(--purple-800);
+
+  /* Neutros tibios */
+  --color-bg-page: var(--stone-bg);
+  --color-bg-surface: var(--stone-surface);
+  --color-bg-surface-2: var(--stone-surface2);
+  --color-bg-overlay: rgba(28, 25, 23, 0.5);
+  --color-text-primary: var(--stone-900);
+  --color-text-secondary: var(--stone-500);
+  --color-text-muted: var(--stone-400);
+  --color-text-inverse: #ffffff;
+  --color-border-default: var(--stone-border);
+  --color-border-strong: var(--stone-border2);
+  --color-border-focus: var(--orange-500);
+
+  /* Radios (naranja: más redondeado) */
+  --radius-input: 10px;
+  --radius-button: 10px;
+  --radius-card: 14px;
+  --radius-modal: 16px;
+  --radius-pill: 999px;
+
+  /* Type (escala naranja: H1 32 / H2 24 / H3 20 / body 16 / small 14 / caption 12) */
+  --text-display: 36px;
+  --text-h1: 32px;
+  --text-h2: 24px;
+  --text-h3: 20px;
+  --text-body: 16px;
+  --text-small: 14px;
+  --text-badge: 12px;
+
+  /* Focus ring (naranja) */
+  --shadow-focus-ring: 0 0 0 4px rgba(234, 88, 12, 0.22);
+}
+
+/* ==========================================================================
+   MARCA VERDE (legacy, claro) — sobre-escribe marca/neutros/radios/type/focus
+   (estados, espaciado, sombras y familia se heredan de :root)
+   ========================================================================== */
+[data-brand="green"] {
+  --color-brand: var(--green-500);
+  --color-brand-strong: var(
+    --green-500
+  ); /* look legacy: relleno = verde brillante */
+  --color-brand-hover: var(--green-700);
+  --color-brand-soft: var(--green-100);
+  --color-on-brand: #ffffff;
+  --color-text-brand: var(--green-700);
+
+  /* Accent (en verde, el acento de soporte es el morado secundario) */
+  --color-accent: var(--violet-500);
+  --color-accent-soft: rgba(168, 85, 247, 0.12);
+  --color-accent-text: var(--violet-800);
+
+  /* QueuePoints (violeta legacy) */
+  --color-points: var(--violet-500);
+  --color-points-soft: #f3e8ff;
+  --color-points-strong: var(--violet-800);
+
+  /* Neutros fríos */
+  --color-bg-page: var(--gray-50);
+  --color-bg-surface: #ffffff;
+  --color-bg-surface-2: var(--gray-50);
+  --color-bg-overlay: rgba(17, 24, 39, 0.5);
+  --color-text-primary: var(--gray-900);
+  --color-text-secondary: var(--gray-700);
+  --color-text-muted: #6b7280;
+  --color-text-inverse: #ffffff;
+  --color-border-default: var(--gray-200);
+  --color-border-strong: #d1d5db;
+  --color-border-focus: var(--green-500);
+
+  /* Radios (verde: menos redondeado) */
+  --radius-input: 8px;
+  --radius-button: 8px;
+  --radius-card: 12px;
+  --radius-modal: 12px;
+  --radius-pill: 999px;
+
+  /* Type (escala verde original) */
+  --text-display: 30px;
+  --text-h1: 24px;
+  --text-h2: 20px;
+  --text-h3: 17px;
+  --text-body: 15px;
+  --text-small: 13px;
+  --text-badge: 12px;
+
+  --shadow-focus-ring: 0 0 0 4px rgba(34, 197, 94, 0.18);
+}
+
+/* ==========================================================================
+   MODO OSCURO — compartido (estados + sombras) + MARCA NARANJA oscura
+   Aplica a cualquier marca; la verde lo refina más abajo.
+   ========================================================================== */
+[data-theme="dark"] {
+  /* Estados (dark, compartidos) */
+  --color-success-bg: rgba(22, 163, 74, 0.18);
+  --color-success-fg: #86efac;
+  --color-success-dot: #22c55e;
+  --color-warning-bg: rgba(245, 158, 11, 0.18);
+  --color-warning-fg: #fcd34d;
+  --color-warning-dot: #f59e0b;
+  --color-error-bg: rgba(220, 38, 38, 0.18);
+  --color-error-fg: #fca5a5;
+  --color-error-dot: #ef4444;
+  --color-info-bg: rgba(37, 99, 235, 0.2);
+  --color-info-fg: #93c5fd;
+  --color-info-dot: #60a5fa;
+
+  /* Sombras dark */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.45), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md:
+    0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.35);
+  --shadow-lg:
+    0 12px 20px -4px rgba(0, 0, 0, 0.55), 0 6px 8px -5px rgba(0, 0, 0, 0.4);
+
+  /* Marca naranja (dark) */
+  --color-brand: var(--orange-300); /* naranja más claro para contraste */
+  --color-brand-strong: var(--orange-600);
+  --color-brand-hover: var(--orange-500);
+  --color-brand-soft: rgba(249, 115, 22, 0.16);
+  --color-on-brand: #ffffff;
+  --color-text-brand: var(--orange-300);
+
+  --color-accent: #4ade80;
+  --color-accent-soft: rgba(22, 163, 74, 0.18);
+  --color-accent-text: #86efac;
+
+  --color-points: #c084fc;
+  --color-points-soft: rgba(147, 51, 234, 0.2);
+  --color-points-strong: #e9d5ff;
+
+  /* Neutros tibios oscuros */
+  --color-bg-page: #1c1917;
+  --color-bg-surface: #292524;
+  --color-bg-surface-2: #44403c;
+  --color-bg-overlay: rgba(0, 0, 0, 0.6);
+  --color-text-primary: #fafaf9;
+  --color-text-secondary: #d6d3d1;
+  --color-text-muted: #a8a29e;
+  --color-text-inverse: #1c1917;
+  --color-border-default: #57534e;
+  --color-border-strong: #6b655f;
+  --color-border-focus: var(--orange-300);
+
+  --shadow-focus-ring: 0 0 0 4px rgba(251, 146, 60, 0.26);
+}
+
+/* ==========================================================================
+   MARCA VERDE — modo oscuro (refina marca + neutros fríos oscuros)
+   Estados/sombras dark se heredan de [data-theme="dark"] (mismo elemento).
+   ========================================================================== */
+[data-brand="green"][data-theme="dark"] {
+  --color-brand: #22c55e;
+  --color-brand-strong: #22c55e;
+  --color-brand-hover: #16a34a;
+  --color-brand-soft: rgba(34, 197, 94, 0.14);
+  --color-on-brand: #06120a;
+  --color-text-brand: #4ade80;
+
+  --color-accent: #c084fc;
+  --color-accent-soft: rgba(168, 85, 247, 0.16);
+  --color-accent-text: #e9d5ff;
+
+  --color-points: #c084fc;
+  --color-points-soft: rgba(168, 85, 247, 0.16);
+  --color-points-strong: #e9d5ff;
+
+  --color-bg-page: #0b0f14;
+  --color-bg-surface: #11161d;
+  --color-bg-surface-2: #161c25;
+  --color-bg-overlay: rgba(0, 0, 0, 0.6);
+  --color-text-primary: #f3f4f6;
+  --color-text-secondary: #c7ccd3;
+  --color-text-muted: #8a93a0;
+  --color-text-inverse: #0b0f14;
+  --color-border-default: #232a35;
+  --color-border-strong: #2e3744;
+  --color-border-focus: #4ade80;
+}
+
+/* ==========================================================================
+   CLASES TIPOGRÁFICAS SEMÁNTICAS (usan la escala de la marca activa)
+   ========================================================================== */
+.ql-display {
+  font-family: var(--font-sans);
+  font-size: var(--text-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: var(--leading-tight);
+  color: var(--color-text-primary);
+}
+.ql-h1 {
+  font-family: var(--font-sans);
+  font-size: var(--text-h1);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: var(--leading-tight);
+  color: var(--color-text-primary);
+}
+.ql-h2 {
+  font-family: var(--font-sans);
+  font-size: var(--text-h2);
+  font-weight: 600;
+  line-height: var(--leading-snug);
+  color: var(--color-text-primary);
+}
+.ql-h3 {
+  font-family: var(--font-sans);
+  font-size: var(--text-h3);
+  font-weight: 600;
+  line-height: var(--leading-snug);
+  color: var(--color-text-primary);
+}
+.ql-body {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-weight: 400;
+  line-height: var(--leading-body);
+  color: var(--color-text-primary);
+}
+.ql-body-secondary {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-weight: 400;
+  line-height: var(--leading-body);
+  color: var(--color-text-secondary);
+}
+.ql-small {
+  font-family: var(--font-sans);
+  font-size: var(--text-small);
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+.ql-label {
+  font-family: var(--font-sans);
+  font-size: var(--text-small);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+}
+.ql-badge {
+  font-family: var(--font-sans);
+  font-size: var(--text-badge);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+.ql-section-label {
+  font-family: var(--font-sans);
+  font-size: var(--text-badge);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* Base reset para cualquier página que importe este archivo */
+html,
+body {
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
