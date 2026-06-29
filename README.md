@@ -246,9 +246,6 @@ de tiempos entrenado con datos reales, y la integración con medios de pago del 
 **Licencia.** Proyecto académico; uso restringido a la evaluación del curso CS2031.
 
 **Referencias.**
-
-- Repositorio (classroom): https://github.com/CS2031-DBP/proyecto-1-queueless
-- Repositorio público (mirror de respaldo): https://github.com/LeoAlcaDev/QueueLess
 - **Deployment AWS:** http://queueless-prod-alb-1673624815.us-east-1.elb.amazonaws.com/
   > Está **apagado por defecto** para no gastar créditos. Para activarlo: pestaña **Actions**
   > → workflow **`Power (start/stop demo)`** → `start`, esperar ~3 min a que el ECS Fargate
