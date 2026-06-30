@@ -9,8 +9,10 @@ on:
       - ".github/workflows/backend-deploy.yml"
   workflow_dispatch: {}
 
-# Secret requerido (Settings > Secrets and variables > Actions > Secrets):
+# Secrets requeridos (Settings > Secrets and variables > Actions > Secrets):
 #   AWS_DEPLOY_ROLE_ARN  -> output github_actions_role_arn de Terraform
+#   GEMINI_API_KEY       -> API key de Gemini (o un valor falso no vacio para
+#                           probar el deploy: el asistente degrada al usarse)
 #
 # Variables requeridas (Settings > Secrets and variables > Actions > Variables):
 #   AWS_REGION           -> ej. us-east-1
@@ -100,6 +102,10 @@ jobs:
           echo "--- rendered task definition ---"
           cat task-definition.rendered.json
 
+      # GEMINI_API_KEY se inyecta como variable de entorno desde un GitHub Secret
+      # (no via Secrets Manager). El action la setea sin volcarla a un archivo ni
+      # imprimirla; GitHub la enmascara en los logs. Sin ella el backend aborta el
+      # arranque en prod (ADR-0031) y ECS nunca marca la tarea sana.
       - name: Render new task definition with updated image
         id: render
         uses: aws-actions/amazon-ecs-render-task-definition@v1
@@ -107,6 +113,8 @@ jobs:
           task-definition: task-definition.rendered.json
           container-name: ${{ vars.ECS_CONTAINER_NAME }}
           image: ${{ steps.build.outputs.image }}
+          environment-variables: |
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
 
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
