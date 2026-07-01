@@ -2,11 +2,52 @@
   "expo": {
     "name": "QueueLess",
     "slug": "queueless",
+    "scheme": "queueless",
     "version": "0.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "splash": { "backgroundColor": "#22C55E" },
-    "ios": { "supportsTablet": true },
-    "android": { "adaptiveIcon": { "backgroundColor": "#22C55E" } }
+    "splash": {
+      "backgroundColor": "#F97316"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "pe.edu.utec.queueless",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "pe.edu.utec.queueless",
+      "adaptiveIcon": {
+        "backgroundColor": "#F97316"
+      }
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "QueueLess usa la cámara para escanear el código QR de entrega o recojo."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "QueueLess accede a tus fotos para que el comercio suba la imagen de un producto."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "QueueLess usa Face ID para iniciar sesión más rápido."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "653b096d-e8a3-4b60-b466-d95e9e3fea35"
+      }
+    }
   }
 }
