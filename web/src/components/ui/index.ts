@@ -1,0 +1,31 @@
+// Librería de componentes base. Toda la app importa la UI desde aca, asi cada pantalla
+// usa las mismas piezas y no inventa variantes nuevas.
+export { Button } from './Button';
+export { IconButton } from './IconButton';
+export { Icon, type IconName } from './Icon';
+export { Spinner } from './Spinner';
+export { Card } from './Card';
+export { Price } from './Price';
+export { Avatar } from './Avatar';
+export { Chip } from './Chip';
+export { StatusPill } from './StatusPill';
+export { WaitTimeBadge } from './WaitTimeBadge';
+export { QueuePointsBadge } from './QueuePointsBadge';
+export { Stars } from './Stars';
+export { Skeleton, SkeletonCard } from './Skeleton';
+export { EmptyState } from './EmptyState';
+export { StateBanner } from './StateBanner';
+export { Field } from './Field';
+export { TextArea } from './TextArea';
+export { Select } from './Select';
+export { Checkbox } from './Checkbox';
+export { Toggle } from './Toggle';
+export { Segmented } from './Segmented';
+export { ChipMultiSelect } from './ChipMultiSelect';
+export { Stepper } from './Stepper';
+export { SearchBar } from './SearchBar';
+export { Tabs } from './Tabs';
+export { Pagination } from './Pagination';
+export { Modal } from './Modal';
+export { ConfirmDialog } from './ConfirmDialog';
+export { Toast, type ToastTone } from './Toast';

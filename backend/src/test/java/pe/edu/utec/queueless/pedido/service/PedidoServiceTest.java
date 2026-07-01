@@ -665,12 +665,18 @@ class PedidoServiceTest {
     }
 
     @Test
-    @DisplayName("un horario que cruza medianoche se rechaza como configuración inválida")
-    void shouldFallarWhenHorarioNocturno() {
+    @DisplayName("un horario que cruza medianoche atiende después de abrir y antes de cerrar")
+    void shouldSoportarHorarioQueCruzaMedianoche() {
         PuntoDeVenta local = localConHorario(LocalTime.of(18, 0), LocalTime.of(2, 0));
-        assertThatThrownBy(() -> service.validarHorarioDeAtencion(local, LocalTime.of(20, 0)))
+        // dentro: después de la apertura y antes del cierre del día siguiente
+        assertThatCode(() -> service.validarHorarioDeAtencion(local, LocalTime.of(20, 0)))
+            .doesNotThrowAnyException();
+        assertThatCode(() -> service.validarHorarioDeAtencion(local, LocalTime.of(1, 0)))
+            .doesNotThrowAnyException();
+        // fuera: entre el cierre y la próxima apertura
+        assertThatThrownBy(() -> service.validarHorarioDeAtencion(local, LocalTime.of(15, 0)))
             .isInstanceOf(BusinessRuleException.class)
-            .hasMessageContaining("Configuración de horario no válida");
+            .hasMessageContaining("no atiende");
     }
 
     // ----------------------------------------------------------------------

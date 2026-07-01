@@ -1,10 +1,12 @@
+-- =============================================================================
 -- Seed de datos para PERFIL DEV únicamente.
 --
 -- Esta migración usa el prefijo V99 para correr al final, después de cualquier
 -- migración real del schema. En perfil `test` está excluida vía:
---   spring.flyway.target=10  (en application-test.yml)
+--   spring.flyway.target=2  (en application-test.yml)
 -- En perfil `prod` esto carga también, así que NO debe contener datos sensibles
 -- de prueba que afecten producción. Para ese caso, mover a otro mecanismo.
+-- =============================================================================
 
 -- Solo cargar si la base aún no tiene usuarios (idempotente)
 DO $$
@@ -14,7 +16,7 @@ BEGIN
         RETURN;
     END IF;
 
-    -- Usuarios demo
+    -- ---------- Usuarios demo ----------
     -- Password de todos los demos: "password123"
     -- Hash BCrypt de "password123": $2a$10$ecAdBXqZr8.SUW3Plm9MleJFDq./jk9xluyZAOpCS8ZQcd.rYFxXi
     INSERT INTO usuario (id, email, password_hash, nombre_completo) VALUES
@@ -51,14 +53,14 @@ BEGIN
         (1, 'GANADO', 50, 'ENTREGA', 'Entrega comunitaria · Patios centrales'),
         (1, 'GANADO', 50, 'ENTREGA', 'Entrega comunitaria · Bloque C');
 
-    -- Punto de venta demo
+    -- ---------- Punto de venta demo ----------
     INSERT INTO punto_de_venta (id, nombre, ubicacion, horario_apertura, horario_cierre,
                                 tiempo_promedio_declarado, abierto, gestor_usuario_id) VALUES
         (1, 'Café del Bloque A',  'Bloque A · 1er piso',         '07:30', '20:00',  3, TRUE, 2),
         (2, 'Verde y Vivo',       'Bloque B · 2do piso',         '08:00', '17:00',  9, TRUE, 2),
         (3, 'Sushi Express UTEC', 'Bloque C · planta baja',      '11:00', '20:00', 22, TRUE, 2);
 
-    -- Productos demo
+    -- ---------- Productos demo ----------
     INSERT INTO producto (punto_de_venta_id, nombre, descripcion, precio, categoria, tipo_preparacion, disponible) VALUES
         (1, 'Sandwich de pollo', 'Pollo a la parrilla, palta y tomate fresco en pan ciabatta.', 14.50, 'Almuerzos', 'PREPARADO',   TRUE),
         (1, 'Café americano',    'Doble shot de espresso con agua caliente. 12 oz.',            7.00, 'Café',      'PREPARADO',   TRUE),
@@ -68,7 +70,7 @@ BEGIN
         (3, 'Roll California',   '8 piezas. Palta, kanikama, pepino.',                         18.00, 'Almuerzos', 'PREPARADO',   TRUE),
         (3, 'Edamame',           'Vainas hervidas con sal de mar.',                             6.00, 'Snacks',    'PREPARADO',   TRUE);
 
-    -- Productos demo con reglas de horario
+    -- ---------- Productos demo con reglas de horario ----------
     -- Uno con horario de servicio (solo en la mañana) y uno por lote (almuerzo del
     -- día), para probar la disponibilidad por franja y la validación al pedir.
     INSERT INTO producto (punto_de_venta_id, nombre, descripcion, precio, categoria,
@@ -81,27 +83,6 @@ BEGIN
             '07:00', '10:30', FALSE, NULL, NULL, NULL, NULL),
         (1, 'Almuerzo del día',  'Menú del día preparado por lote. Se pide temprano y se recoge al mediodía.', 15.00, 'Almuerzos', 'PREPARADO', TRUE,
             NULL, NULL, TRUE, '11:00', '13:00', '12:30', '14:00');
-
-    -- Atributos para el asistente de recomendación (Fase E)
-    -- Declaramos en algunos productos demo lo que realmente cumplen, para que el
-    -- asistente tenga con qué cruzar los alérgenos, las restricciones y el picante del
-    -- cliente. Solo declaramos lo cierto; la ausencia no significa aptitud (ADR-0025).
-    INSERT INTO producto_alergeno (producto_id, alergeno)
-    SELECT id, 'GLUTEN' FROM producto WHERE nombre IN ('Sandwich de pollo', 'Desayuno completo');
-    INSERT INTO producto_alergeno (producto_id, alergeno)
-    SELECT id, 'HUEVO' FROM producto WHERE nombre = 'Desayuno completo';
-    INSERT INTO producto_alergeno (producto_id, alergeno)
-    SELECT id, 'PESCADO' FROM producto WHERE nombre = 'Roll California';
-
-    INSERT INTO producto_aptitud_dietetica (producto_id, aptitud)
-    SELECT id, 'VEGANO' FROM producto
-    WHERE nombre IN ('Bowl quinoa', 'Jugo verde', 'Edamame', 'Jugo de fresa', 'Café americano');
-    INSERT INTO producto_aptitud_dietetica (producto_id, aptitud)
-    SELECT id, 'VEGETARIANO' FROM producto WHERE nombre = 'Desayuno completo';
-
-    UPDATE producto SET nivel_picante = 'NINGUNA'
-    WHERE nombre IN ('Bowl quinoa', 'Edamame', 'Jugo de fresa', 'Café americano', 'Sandwich de pollo');
-    UPDATE producto SET nivel_picante = 'BAJA' WHERE nombre = 'Jugo verde';  -- el jengibre pica apenas
 
     -- Sincronizar las secuencias después del INSERT con IDs explícitos
     PERFORM setval('usuario_id_seq', (SELECT MAX(id) FROM usuario));

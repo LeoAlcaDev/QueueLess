@@ -1,0 +1,222 @@
+/* Tokens de color y tipografía de QueueLess.
+   Marca naranja (identidad) + modo oscuro vía [data-theme="dark"]. El verde se
+   conserva solo como color de éxito y acento, no como marca. Los componentes
+   referencian SIEMPRE el token semántico (--color-brand, etc.), nunca un hex de
+   paleta, así el modo oscuro funciona solo por cascada. La fuente Manrope se carga
+   en index.html. */
+
+:root {
+  /* Paleta cruda: naranja (marca), morado (QueuePoints), estados, neutros tibios */
+  --orange-500: #f97316;
+  --orange-600: #ea580c;
+  --orange-700: #c2410c;
+  --orange-100: #fff1e6;
+  --orange-300: #fb923c;
+
+  --purple-600: #9333ea;
+  --purple-800: #7e22ce;
+
+  --c-success: #16a34a;
+  --c-warning: #f59e0b;
+  --c-error: #dc2626;
+  --c-info: #2563eb;
+
+  --stone-bg: #fffbf7;
+  --stone-surface: #ffffff;
+  --stone-surface2: #f5f5f4;
+  --stone-border: #e7e5e4;
+  --stone-border2: #d6d3d1;
+  --stone-900: #1c1917;
+  --stone-500: #78716c;
+  --stone-400: #a8a29e;
+
+  /* Tipografía: familia y leading se comparten; la escala fina la define la marca */
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-body: 1.5;
+
+  /* Estados semánticos (claro): fondo suave + texto AA + punto */
+  --color-success-bg: rgba(22, 163, 74, 0.12);
+  --color-success-fg: #15803d;
+  --color-success-dot: var(--c-success);
+  --color-warning-bg: rgba(245, 158, 11, 0.14);
+  --color-warning-fg: #b45309;
+  --color-warning-dot: var(--c-warning);
+  --color-error-bg: rgba(220, 38, 38, 0.12);
+  --color-error-fg: #b91c1c;
+  --color-error-dot: var(--c-error);
+  --color-info-bg: rgba(37, 99, 235, 0.12);
+  --color-info-fg: #1d4ed8;
+  --color-info-dot: var(--c-info);
+
+  /* neutral lo usan los estados cancelado/expirado, se apoya en los neutros */
+  --color-neutral-bg: var(--color-bg-surface-2);
+  --color-neutral-fg: var(--color-text-secondary);
+  --color-neutral-dot: var(--color-text-muted);
+
+  /* alias por estado de pedido y por tiempo de espera, para badges */
+  --color-status-pending-bg: var(--color-warning-bg);
+  --color-status-pending-fg: var(--color-warning-fg);
+  --color-status-pending-dot: var(--color-warning-dot);
+  --color-status-ready-bg: var(--color-info-bg);
+  --color-status-ready-fg: var(--color-info-fg);
+  --color-status-ready-dot: var(--color-info-dot);
+  --color-wait-fast-bg: var(--color-success-bg);
+  --color-wait-fast-fg: var(--color-success-fg);
+  --color-wait-mid-bg: var(--color-warning-bg);
+  --color-wait-mid-fg: var(--color-warning-fg);
+  --color-wait-slow-bg: var(--color-error-bg);
+  --color-wait-slow-fg: var(--color-error-fg);
+
+  /* Sombras (claro, sobre neutro tibio) */
+  --shadow-sm: 0 1px 2px 0 rgba(28, 25, 23, 0.05), 0 1px 3px 0 rgba(28, 25, 23, 0.07);
+  --shadow-md: 0 4px 6px -1px rgba(28, 25, 23, 0.07), 0 2px 4px -2px rgba(28, 25, 23, 0.07);
+  --shadow-lg: 0 12px 20px -4px rgba(28, 25, 23, 0.1), 0 6px 8px -5px rgba(28, 25, 23, 0.07);
+
+  /* Marca naranja: color, neutros, radios, tipografía, foco */
+  --color-brand: var(--orange-500);
+  --color-brand-strong: var(--orange-600);
+  --color-brand-hover: var(--orange-700);
+  --color-brand-soft: var(--orange-100);
+  --color-on-brand: #ffffff;
+  --color-text-brand: var(--orange-700);
+
+  --color-accent: var(--c-success);
+  --color-accent-soft: rgba(22, 163, 74, 0.12);
+  --color-accent-text: #15803d;
+
+  --color-points: var(--purple-600);
+  --color-points-soft: rgba(147, 51, 234, 0.12);
+  --color-points-strong: var(--purple-800);
+
+  --color-bg-page: var(--stone-bg);
+  --color-bg-surface: var(--stone-surface);
+  --color-bg-surface-2: var(--stone-surface2);
+  --color-bg-overlay: rgba(28, 25, 23, 0.5);
+  --color-text-primary: var(--stone-900);
+  --color-text-secondary: var(--stone-500);
+  --color-text-muted: var(--stone-400);
+  --color-text-inverse: #ffffff;
+  --color-border-default: var(--stone-border);
+  --color-border-strong: var(--stone-border2);
+  --color-border-focus: var(--orange-500);
+
+  --radius-input: 10px;
+  --radius-button: 10px;
+  --radius-card: 14px;
+  --radius-modal: 16px;
+  --radius-pill: 999px;
+
+  --text-display: 36px;
+  --text-h1: 32px;
+  --text-h2: 24px;
+  --text-h3: 20px;
+  --text-body: 16px;
+  --text-small: 14px;
+  --text-badge: 12px;
+
+  --shadow-focus-ring: 0 0 0 4px rgba(234, 88, 12, 0.22);
+}
+
+/* Modo oscuro: refina estados, sombras, marca naranja y neutros tibios oscuros */
+[data-theme='dark'] {
+  --color-success-bg: rgba(22, 163, 74, 0.18);
+  --color-success-fg: #86efac;
+  --color-success-dot: #22c55e;
+  --color-warning-bg: rgba(245, 158, 11, 0.18);
+  --color-warning-fg: #fcd34d;
+  --color-warning-dot: #f59e0b;
+  --color-error-bg: rgba(220, 38, 38, 0.18);
+  --color-error-fg: #fca5a5;
+  --color-error-dot: #ef4444;
+  --color-info-bg: rgba(37, 99, 235, 0.2);
+  --color-info-fg: #93c5fd;
+  --color-info-dot: #60a5fa;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.45), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 12px 20px -4px rgba(0, 0, 0, 0.55), 0 6px 8px -5px rgba(0, 0, 0, 0.4);
+
+  --color-brand: var(--orange-300);
+  --color-brand-strong: var(--orange-600);
+  --color-brand-hover: var(--orange-500);
+  --color-brand-soft: rgba(249, 115, 22, 0.16);
+  --color-on-brand: #ffffff;
+  --color-text-brand: var(--orange-300);
+
+  --color-accent: #4ade80;
+  --color-accent-soft: rgba(22, 163, 74, 0.18);
+  --color-accent-text: #86efac;
+
+  --color-points: #c084fc;
+  --color-points-soft: rgba(147, 51, 234, 0.2);
+  --color-points-strong: #e9d5ff;
+
+  --color-bg-page: #1c1917;
+  --color-bg-surface: #292524;
+  --color-bg-surface-2: #44403c;
+  --color-bg-overlay: rgba(0, 0, 0, 0.6);
+  --color-text-primary: #fafaf9;
+  --color-text-secondary: #d6d3d1;
+  --color-text-muted: #a8a29e;
+  --color-text-inverse: #1c1917;
+  --color-border-default: #57534e;
+  --color-border-strong: #6b655f;
+  --color-border-focus: var(--orange-300);
+
+  --shadow-focus-ring: 0 0 0 4px rgba(251, 146, 60, 0.26);
+}
+
+/* Clases tipográficas semánticas: usan la escala de la marca activa */
+.ql-display {
+  font-size: var(--text-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: var(--leading-tight);
+  color: var(--color-text-primary);
+}
+.ql-h1 {
+  font-size: var(--text-h1);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: var(--leading-tight);
+  color: var(--color-text-primary);
+}
+.ql-h2 {
+  font-size: var(--text-h2);
+  font-weight: 600;
+  line-height: var(--leading-snug);
+  color: var(--color-text-primary);
+}
+.ql-h3 {
+  font-size: var(--text-h3);
+  font-weight: 600;
+  line-height: var(--leading-snug);
+  color: var(--color-text-primary);
+}
+.ql-body {
+  font-size: var(--text-body);
+  font-weight: 400;
+  line-height: var(--leading-body);
+  color: var(--color-text-primary);
+}
+.ql-small {
+  font-size: var(--text-small);
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+.ql-label {
+  font-size: var(--text-small);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+}
+.ql-section-label {
+  font-size: var(--text-badge);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}

@@ -1,10 +1,21 @@
+import { RouterProvider } from 'react-router-dom';
+import { AuthProvider } from '@/auth';
+import { ThemeProvider } from '@/context/ThemeContext';
+import { ErrorBoundary, ToastProvider } from '@/components/feedback';
+import { router } from '@/routes';
+
+// Arbol de providers de la app. El ErrorBoundary envuelve todo para que un fallo de render
+// no deje la pantalla en blanco; debajo van tema, sesion, toasts y el router.
 export default function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-queueless-primary-dark">QueueLess</h1>
-        <p className="mt-2 text-slate-600">Panel del comercio — en construcción</p>
-      </div>
-    </div>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <RouterProvider router={router} />
+          </ToastProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

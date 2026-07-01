@@ -22,6 +22,9 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    # V99 (seed) quedó aplicada antes que V6..V10; out-of-order permite
+    # aplicar esas migraciones pendientes aunque tengan versión menor a V99.
+    out-of-order: true
     locations: classpath:db/migration
   servlet:
     multipart:
@@ -107,9 +110,9 @@ queueless:
     proveedor: ${RECOMENDADOR_PROVEEDOR:gemini}     # gemini | fake
     gemini:
       api-key: ${GEMINI_API_KEY:}                   # secreto; sin él el asistente degrada (warning en dev, falla en prod)
-      modelo: ${GEMINI_MODELO:gemini-3.5-flash}     # intercambiable en una línea, sin tocar código
+      modelo: ${GEMINI_MODELO:gemini-2.5-flash}     # GA/estable; intercambiable en una línea, sin tocar código
       base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
-      timeout-ms: ${RECOMENDADOR_TIMEOUT_MS:8000}   # al vencer, cae al degradado en vez de colgar la petición
+      timeout-ms: ${RECOMENDADOR_TIMEOUT_MS:15000}  # al vencer, cae al degradado en vez de colgar la petición
     historial-maximo-turnos: 6                      # últimos turnos que viajan al modelo (no se persiste la charla)
     maximo-candidatos: 20                           # tope de candidatos al modelo: solo lo mínimo necesario
 

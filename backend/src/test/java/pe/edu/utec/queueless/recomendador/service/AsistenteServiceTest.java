@@ -70,7 +70,7 @@ class AsistenteServiceTest {
     }
 
     @Test
-    @DisplayName("Respeta el orden del modelo, pero ignora los ids que no están en el conjunto seguro")
+    @DisplayName("Respeta el orden del modelo, ignora ids ajenos y no agrega los que el modelo no eligió")
     void respetaElOrdenDelModeloPeroIgnoraIdsAjenos() {
         // Arrange: el conjunto seguro es 1, 2, 3; el modelo pide 3, 99 (ajeno), 1
         when(ensamblador.ensamblar(any(), any()))
@@ -81,10 +81,28 @@ class AsistenteServiceTest {
         // Act
         AsistenteResponse respuesta = asistenteService.recomendar(usuario, request);
 
-        // Assert: 99 se ignora; el 2, que el modelo no nombró, queda al final
+        // Assert: 99 se ignora; el 2, que el modelo no eligió, no aparece (respuesta fiel al pedido)
         assertThat(respuesta.isAsistenteDisponible()).isTrue();
         assertThat(respuesta.getExplicacion()).isEqualTo("te ordené por rapidez");
-        assertThat(respuesta.getRecomendaciones()).extracting(RecomendacionItem::productoId).containsExactly(3L, 1L, 2L);
+        assertThat(respuesta.getRecomendaciones()).extracting(RecomendacionItem::productoId).containsExactly(3L, 1L);
+    }
+
+    @Test
+    @DisplayName("Si el modelo no elige ningún plato, la respuesta va sin platos y solo con su mensaje")
+    void sinPlatosCuandoElModeloNoEligeNinguno() {
+        // Arrange: hay opciones seguras, pero el modelo no recomienda ninguna (un saludo, algo
+        // fuera de tema o sin match): la respuesta debe ser fiel y no listar todo el catálogo.
+        when(ensamblador.ensamblar(any(), any())).thenReturn(List.of(candidato(1L), candidato(2L)));
+        when(modelo.ordenarYExplicar(anyList(), anyList(), anyString()))
+            .thenReturn(new RespuestaModelo(List.of(), "¡Hola! Contame qué se te antoja y te recomiendo algo."));
+
+        // Act
+        AsistenteResponse respuesta = asistenteService.recomendar(usuario, request);
+
+        // Assert
+        assertThat(respuesta.isAsistenteDisponible()).isTrue();
+        assertThat(respuesta.getRecomendaciones()).isEmpty();
+        assertThat(respuesta.getExplicacion()).contains("Contame");
     }
 
     @Test

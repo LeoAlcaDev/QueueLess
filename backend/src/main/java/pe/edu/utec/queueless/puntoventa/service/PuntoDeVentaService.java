@@ -12,6 +12,7 @@ import pe.edu.utec.queueless.puntoventa.repository.PuntoDeVentaRepository;
 import pe.edu.utec.queueless.shared.exception.BusinessRuleException;
 import pe.edu.utec.queueless.shared.exception.ForbiddenOperationException;
 import pe.edu.utec.queueless.shared.exception.ResourceNotFoundException;
+import pe.edu.utec.queueless.shared.util.TiempoLima;
 import pe.edu.utec.queueless.usuario.entity.Rol;
 import pe.edu.utec.queueless.usuario.entity.Usuario;
 
@@ -151,19 +152,19 @@ public class PuntoDeVentaService {
         return tiempo;
     }
 
-    // El DTO expone tiempoEsperaEstimado, pero por ahora refleja el tiempo declarado
-    // por el comercio; el calculo predictivo real entra en una fase posterior.
+    // Vista del comercio: 'abierto' es el switch manual que ellos controlan desde su panel.
     private PuntoDeVentaResponse toResponse(PuntoDeVenta puntoDeVenta) {
-        return construir(puntoDeVenta, null);
+        return construir(puntoDeVenta, puntoDeVenta.getAbierto(), null);
     }
 
-    /** Igual que toResponse pero con la tasa de cumplimiento del comercio, para las vistas públicas. */
+    // Vista pública y del cliente: 'abierto' es si el local atiende ahora (switch manual más el
+    // horario en hora de Lima), no solo el switch. Ademas lleva la tasa de cumplimiento.
     private PuntoDeVentaResponse toResponsePublico(PuntoDeVenta puntoDeVenta) {
         BigDecimal tasa = tasaCumplimientoService.calcular(puntoDeVenta.getGestor().getId());
-        return construir(puntoDeVenta, tasa);
+        return construir(puntoDeVenta, puntoDeVenta.estaAtendiendo(TiempoLima.ahora()), tasa);
     }
 
-    private PuntoDeVentaResponse construir(PuntoDeVenta puntoDeVenta, BigDecimal tasaCumplimiento) {
+    private PuntoDeVentaResponse construir(PuntoDeVenta puntoDeVenta, boolean abierto, BigDecimal tasaCumplimiento) {
         return PuntoDeVentaResponse.builder()
             .id(puntoDeVenta.getId())
             .nombre(puntoDeVenta.getNombre())
@@ -171,7 +172,7 @@ public class PuntoDeVentaService {
             .horarioApertura(puntoDeVenta.getHorarioApertura())
             .horarioCierre(puntoDeVenta.getHorarioCierre())
             .tiempoEsperaEstimado(puntoDeVenta.getTiempoPromedioDeclarado())
-            .abierto(puntoDeVenta.getAbierto())
+            .abierto(abierto)
             .tasaCumplimiento(tasaCumplimiento)
             .build();
     }

@@ -1,0 +1,13 @@
+node_modules
+dist
+dist-ssr
+*.local
+
+# variables de entorno: se versiona el ejemplo y la config de produccion (sin secretos)
+.env
+.env.*
+!.env.example
+!.env.production
+
+*.tsbuildinfo
+.DS_Store

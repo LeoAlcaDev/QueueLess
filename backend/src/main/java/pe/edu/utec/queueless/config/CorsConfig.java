@@ -19,11 +19,16 @@ public class CorsConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuracion = new CorsConfiguration();
-        configuracion.setAllowedOrigins(List.of(
+        // Usamos patrones para que el frontend desplegado en Vercel pueda llamar a la API: el
+        // dominio de produccion y los previews viven bajo *.vercel.app. En dev seguimos con
+        // localhost. El navegador manda el Origin tambien cuando el front pega via un proxy, asi
+        // que sin el dominio real de Vercel el backend respondia 403 "Invalid CORS request".
+        configuracion.setAllowedOriginPatterns(List.of(
             "http://localhost:3000",   // web dev
             "http://localhost:5173",   // Vite dev
             "http://localhost:8081",   // Expo
-            "http://localhost:19006"   // Expo web
+            "http://localhost:19006",  // Expo web
+            "https://*.vercel.app"     // frontend en Vercel (produccion y previews)
         ));
         configuracion.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuracion.setAllowedHeaders(List.of("*"));
