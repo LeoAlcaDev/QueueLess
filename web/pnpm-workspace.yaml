@@ -1,0 +1,5 @@
+# pnpm 11 pide aprobar aca los build scripts de dependencias. esbuild (lo usa Vite)
+# trae un script de instalacion; lo habilitamos para que pnpm install termine limpio.
+# No declaramos packages, asi que web sigue siendo un proyecto independiente.
+allowBuilds:
+  esbuild: true

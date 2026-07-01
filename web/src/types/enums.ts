@@ -1,106 +1,191 @@
-// Enums espejo del backend (valores EXACTOS — usados en formularios y badges).
-// Fuente: entidades en backend/.../entity y MAPA-FRONTEND §3.
+// Enums del dominio (replican los del backend) y sus etiquetas en espanol para la
+// interfaz. Todo lo que muestre un enum lee de aca, asi nadie reescribe los textos a
+// mano y quedan consistentes en toda la app.
 
-export const ROLES = ["CLIENTE", "COMERCIO", "REPARTIDOR"] as const;
-export type Rol = (typeof ROLES)[number];
+export type Rol = 'CLIENTE' | 'COMERCIO' | 'REPARTIDOR';
+export type TipoEntrega = 'PICKUP' | 'DELIVERY';
 
-export const TIPOS_ENTREGA = ["PICKUP", "DELIVERY"] as const;
-export type TipoEntrega = (typeof TIPOS_ENTREGA)[number];
+export type EstadoPedido =
+  | 'PENDIENTE_PAGO'
+  | 'PAGADO_BUSCANDO_REPARTIDOR'
+  | 'PAGADO_ESPERANDO_COMERCIO'
+  | 'ACEPTADO'
+  | 'EN_PREPARACION'
+  | 'LISTO_PARA_RECOGER'
+  | 'LISTO_PARA_DELIVERY'
+  | 'ENTREGADO'
+  | 'CANCELADO_POR_CLIENTE'
+  | 'CANCELADO_POR_COMERCIO'
+  | 'EXPIRADO';
 
-// Los 11 estados del pedido (máquina de estados). El orden importa para la UI.
-export const ESTADOS_PEDIDO = [
-  "PENDIENTE_PAGO",
-  "PAGADO_BUSCANDO_REPARTIDOR",
-  "PAGADO_ESPERANDO_COMERCIO",
-  "ACEPTADO",
-  "EN_PREPARACION",
-  "LISTO_PARA_RECOGER",
-  "LISTO_PARA_DELIVERY",
-  "ENTREGADO",
-  "CANCELADO_POR_CLIENTE",
-  "CANCELADO_POR_COMERCIO",
-  "EXPIRADO",
-] as const;
-export type EstadoPedido = (typeof ESTADOS_PEDIDO)[number];
+export type Alergeno =
+  | 'MANI'
+  | 'FRUTOS_SECOS'
+  | 'MARISCOS'
+  | 'PESCADO'
+  | 'LACTEOS'
+  | 'HUEVO'
+  | 'GLUTEN'
+  | 'SOYA'
+  | 'AJONJOLI';
 
-export const MOTIVOS_CANCELACION = [
-  "PRODUCTO_AGOTADO",
-  "FALTA_INGREDIENTE",
-  "FUERA_DE_HORARIO_PRODUCTO",
-  "LOCAL_SATURADO",
-  "LOCAL_POR_CERRAR",
-  "PROBLEMA_OPERATIVO",
-  "OTRO",
-  "COMERCIO_NO_ATENDIO",
-  "COMERCIO_NO_PREPARO",
-] as const;
-export type MotivoCancelacion = (typeof MOTIVOS_CANCELACION)[number];
+export type RestriccionDietetica = 'VEGETARIANO' | 'VEGANO' | 'SIN_GLUTEN';
+export type AptitudDietetica = 'VEGETARIANO' | 'VEGANO';
+export type ToleranciaPicante = 'NINGUNA' | 'BAJA' | 'MEDIA' | 'ALTA';
+export type TipoPreparacion = 'PREPARADO' | 'INSTANTANEO';
+export type EstadoPago = 'PENDIENTE' | 'CONFIRMADO' | 'FALLIDO' | 'REEMBOLSADO';
 
-export const ALERGENOS = [
-  "MANI",
-  "FRUTOS_SECOS",
-  "MARISCOS",
-  "PESCADO",
-  "LACTEOS",
-  "HUEVO",
-  "GLUTEN",
-  "SOYA",
-  "AJONJOLI",
-] as const;
-export type Alergeno = (typeof ALERGENOS)[number];
-
-export const RESTRICCIONES_DIETETICAS = [
-  "VEGETARIANO",
-  "VEGANO",
-  "SIN_GLUTEN",
-] as const;
-export type RestriccionDietetica = (typeof RESTRICCIONES_DIETETICAS)[number];
-
-export const APTITUDES_DIETETICAS = ["VEGETARIANO", "VEGANO"] as const;
-export type AptitudDietetica = (typeof APTITUDES_DIETETICAS)[number];
-
-export const TOLERANCIAS_PICANTE = [
-  "NINGUNA",
-  "BAJA",
-  "MEDIA",
-  "ALTA",
-] as const;
-export type ToleranciaPicante = (typeof TOLERANCIAS_PICANTE)[number];
-
-export const TIPOS_PREPARACION = ["PREPARADO", "INSTANTANEO"] as const;
-export type TipoPreparacion = (typeof TIPOS_PREPARACION)[number];
-
-export const ESTADOS_SOLICITUD_DELIVERY = [
-  "BUSCANDO",
-  "ASIGNADO",
-  "RECOGIDO",
-  "ENTREGADO",
-  "SIN_REPARTIDOR",
-] as const;
 export type EstadoSolicitudDelivery =
-  (typeof ESTADOS_SOLICITUD_DELIVERY)[number];
+  | 'BUSCANDO'
+  | 'ASIGNADO'
+  | 'RECOGIDO'
+  | 'ENTREGADO'
+  | 'SIN_REPARTIDOR'
+  | 'CANCELADO';
 
-export const ESTADOS_PAGO = [
-  "PENDIENTE",
-  "CONFIRMADO",
-  "FALLIDO",
-  "REEMBOLSADO",
-] as const;
-export type EstadoPago = (typeof ESTADOS_PAGO)[number];
+export type MotivoCancelacion =
+  | 'PRODUCTO_AGOTADO'
+  | 'FALTA_INGREDIENTE'
+  | 'FUERA_DE_HORARIO_PRODUCTO'
+  | 'LOCAL_SATURADO'
+  | 'LOCAL_POR_CERRAR'
+  | 'PROBLEMA_OPERATIVO'
+  | 'OTRO'
+  | 'COMERCIO_NO_ATENDIO'
+  | 'COMERCIO_NO_PREPARO';
 
-export const TIPOS_MOVIMIENTO = ["GANADO", "CANJEADO"] as const;
-export type TipoMovimiento = (typeof TIPOS_MOVIMIENTO)[number];
+export type TipoReclamo = 'RECLAMO' | 'QUEJA';
+export type DestinatarioReclamo = 'COMERCIO' | 'PLATAFORMA';
+export type EstadoReclamo = 'PENDIENTE' | 'RESPONDIDO';
+export type ObjetivoResena = 'PUNTO_DE_VENTA' | 'REPARTIDOR';
+export type TipoMovimientoQueuePoints = 'GANADO' | 'CANJEADO' | 'EXPIRADO' | 'REVERTIDO';
+// turnos del chat con el asistente
+export type RolConversacion = 'USUARIO' | 'ASISTENTE';
 
-export const TIPOS_RECLAMO = ["RECLAMO", "QUEJA"] as const;
-export type TipoReclamo = (typeof TIPOS_RECLAMO)[number];
+export const ROL_LABELS: Record<Rol, string> = {
+  CLIENTE: 'Cliente',
+  COMERCIO: 'Comercio',
+  REPARTIDOR: 'Repartidor',
+};
 
-export const DESTINATARIOS_RECLAMO = ["COMERCIO", "PLATAFORMA"] as const;
-export type DestinatarioReclamo = (typeof DESTINATARIOS_RECLAMO)[number];
+export const TIPO_ENTREGA_LABELS: Record<TipoEntrega, string> = {
+  PICKUP: 'Recojo en tienda',
+  DELIVERY: 'Delivery',
+};
 
-export const ESTADOS_RECLAMO = ["PENDIENTE", "RESPONDIDO"] as const;
-export type EstadoReclamo = (typeof ESTADOS_RECLAMO)[number];
+export const ALERGENO_LABELS: Record<Alergeno, string> = {
+  MANI: 'Maní',
+  FRUTOS_SECOS: 'Frutos secos',
+  MARISCOS: 'Mariscos',
+  PESCADO: 'Pescado',
+  LACTEOS: 'Lácteos',
+  HUEVO: 'Huevo',
+  GLUTEN: 'Gluten',
+  SOYA: 'Soya',
+  AJONJOLI: 'Ajonjolí',
+};
 
-export const OBJETIVOS_RESENA = ["PUNTO_DE_VENTA", "REPARTIDOR"] as const;
-export type ObjetivoResena = (typeof OBJETIVOS_RESENA)[number];
+export const RESTRICCION_LABELS: Record<RestriccionDietetica, string> = {
+  VEGETARIANO: 'Vegetariano',
+  VEGANO: 'Vegano',
+  SIN_GLUTEN: 'Sin gluten',
+};
 
-export type RolConversacion = "USUARIO" | "ASISTENTE";
+export const APTITUD_LABELS: Record<AptitudDietetica, string> = {
+  VEGETARIANO: 'Apto vegetariano',
+  VEGANO: 'Apto vegano',
+};
+
+export const PICANTE_LABELS: Record<ToleranciaPicante, string> = {
+  NINGUNA: 'Ninguna',
+  BAJA: 'Baja',
+  MEDIA: 'Media',
+  ALTA: 'Alta',
+};
+
+export const PREPARACION_LABELS: Record<TipoPreparacion, string> = {
+  PREPARADO: 'Preparado',
+  INSTANTANEO: 'Instantáneo (listo para servir)',
+};
+
+export const ESTADO_PAGO_LABELS: Record<EstadoPago, string> = {
+  PENDIENTE: 'Pendiente',
+  CONFIRMADO: 'Confirmado',
+  FALLIDO: 'Fallido',
+  REEMBOLSADO: 'Reembolsado',
+};
+
+export const ESTADO_SOLICITUD_LABELS: Record<EstadoSolicitudDelivery, string> = {
+  BUSCANDO: 'Buscando repartidor',
+  ASIGNADO: 'Asignado',
+  RECOGIDO: 'Recogido',
+  ENTREGADO: 'Entregado',
+  SIN_REPARTIDOR: 'Sin repartidor',
+  CANCELADO: 'Cancelado',
+};
+
+export const MOTIVO_CANCELACION_LABELS: Record<MotivoCancelacion, string> = {
+  PRODUCTO_AGOTADO: 'Producto agotado',
+  FALTA_INGREDIENTE: 'Falta de ingrediente',
+  FUERA_DE_HORARIO_PRODUCTO: 'Fuera de horario del producto',
+  LOCAL_SATURADO: 'Local saturado',
+  LOCAL_POR_CERRAR: 'Local por cerrar',
+  PROBLEMA_OPERATIVO: 'Problema operativo',
+  OTRO: 'Otro',
+  COMERCIO_NO_ATENDIO: 'El comercio no atendió',
+  COMERCIO_NO_PREPARO: 'El comercio no preparó',
+};
+
+export const TIPO_RECLAMO_LABELS: Record<TipoReclamo, string> = {
+  RECLAMO: 'Reclamo',
+  QUEJA: 'Queja',
+};
+
+export const DESTINATARIO_RECLAMO_LABELS: Record<DestinatarioReclamo, string> = {
+  COMERCIO: 'Un comercio',
+  PLATAFORMA: 'La plataforma',
+};
+
+export const OBJETIVO_RESENA_LABELS: Record<ObjetivoResena, string> = {
+  PUNTO_DE_VENTA: 'Local',
+  REPARTIDOR: 'Repartidor',
+};
+
+export const TIPO_MOVIMIENTO_LABELS: Record<TipoMovimientoQueuePoints, string> = {
+  GANADO: 'Ganado',
+  CANJEADO: 'Canjeado',
+  EXPIRADO: 'Expirado',
+  REVERTIDO: 'Revertido',
+};
+
+export const ESTADO_RECLAMO_LABELS: Record<EstadoReclamo, string> = {
+  PENDIENTE: 'Pendiente',
+  RESPONDIDO: 'Respondido',
+};
+
+// El tono mapea a los colores semanticos del sistema de diseno (badge de estado).
+export type StatusTone = 'warning' | 'info' | 'brand' | 'success' | 'neutral';
+
+export const ORDER_STATES: Record<EstadoPedido, { label: string; tone: StatusTone }> = {
+  PENDIENTE_PAGO: { label: 'Pendiente de pago', tone: 'warning' },
+  PAGADO_BUSCANDO_REPARTIDOR: { label: 'Buscando repartidor', tone: 'info' },
+  PAGADO_ESPERANDO_COMERCIO: { label: 'Esperando al comercio', tone: 'info' },
+  ACEPTADO: { label: 'Aceptado', tone: 'brand' },
+  EN_PREPARACION: { label: 'En preparación', tone: 'brand' },
+  LISTO_PARA_RECOGER: { label: 'Listo para recoger', tone: 'success' },
+  LISTO_PARA_DELIVERY: { label: 'Listo para delivery', tone: 'success' },
+  ENTREGADO: { label: 'Entregado', tone: 'success' },
+  CANCELADO_POR_CLIENTE: { label: 'Cancelado', tone: 'neutral' },
+  CANCELADO_POR_COMERCIO: { label: 'Cancelado por el comercio', tone: 'neutral' },
+  EXPIRADO: { label: 'Expirado', tone: 'neutral' },
+};
+
+// Pasos del camino feliz para el stepper de progreso del cliente.
+export const ORDER_TIMELINE: EstadoPedido[] = [
+  'PENDIENTE_PAGO',
+  'PAGADO_ESPERANDO_COMERCIO',
+  'ACEPTADO',
+  'EN_PREPARACION',
+  'LISTO_PARA_RECOGER',
+  'ENTREGADO',
+];

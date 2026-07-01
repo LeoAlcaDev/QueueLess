@@ -1,29 +1,35 @@
-import type { HTMLAttributes } from "react";
-import { cn } from "@/lib/cn";
+import { type HTMLAttributes, type ReactNode } from 'react';
+import { cn } from '@/lib/cn';
 
-export interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  /** Eleva la tarjeta con sombra (reservado para elementos flotantes/destacados). */
-  elevated?: boolean;
-  /** Quita el padding interno por defecto. */
-  flush?: boolean;
+type Pad = 'none' | 'sm' | 'md' | 'lg';
+
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  pad?: Pad;
+  selected?: boolean;
+  hover?: boolean;
+  children: ReactNode;
 }
 
-/** Contenedor de superficie: fondo surface, borde 1px y radio de card. */
-export function Card({
-  elevated = false,
-  flush = false,
-  className,
-  ...rest
-}: CardProps) {
+const PAD: Record<Pad, string> = {
+  none: 'p-0',
+  sm: 'p-3',
+  md: 'p-4',
+  lg: 'p-5',
+};
+
+export function Card({ pad = 'md', selected, hover, className, children, ...rest }: CardProps) {
   return (
     <div
       className={cn(
-        "rounded-card border border-line bg-surface",
-        !flush && "p-4",
-        elevated && "shadow-md",
+        'rounded-card border bg-surface transition-shadow',
+        selected ? 'border-brand' : 'border-line',
+        hover && 'hover:shadow-md',
+        PAD[pad],
         className,
       )}
       {...rest}
-    />
+    >
+      {children}
+    </div>
   );
 }

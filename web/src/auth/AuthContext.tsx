@@ -1,166 +1,164 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import { authApi, usuariosApi } from "@/api";
-import type { LoginRequest, RegisterRequest, Rol } from "@/types";
-import {
-  clearTokens,
-  getAccessToken,
-  getRefreshToken,
-  onSessionCleared,
-  setTokens,
-} from "@/lib/storage";
+import { createContext, useCallback, useEffect, useState, type ReactNode } from 'react';
+import { http, endpoints, AUTH_ENDPOINTS, SESSION_EXPIRED_EVENT, type AuthResponse } from '@/api';
+import type { Rol } from '@/types/enums';
+import { tokenStorage } from './tokenStorage';
 
-/** Usuario de la sesión (normalizado entre AuthResponse y UsuarioResponse). */
-export interface SessionUser {
+export interface AuthUser {
   id: number;
   email: string;
   nombreCompleto: string;
   roles: Rol[];
 }
 
-type AuthStatus = "loading" | "authenticated" | "anonymous";
-
-interface AuthContextValue {
-  user: SessionUser | null;
-  status: AuthStatus;
-  isAuthenticated: boolean;
+// lo que devuelve GET /usuarios/me
+interface UsuarioResponse {
+  id: number;
+  email: string;
+  nombreCompleto: string;
   roles: Rol[];
-  hasRole: (rol: Rol) => boolean;
-  login: (credentials: LoginRequest) => Promise<void>;
-  register: (body: RegisterRequest) => Promise<void>;
-  logout: () => void;
-  /** Refresca el access token y recarga el usuario (claims/roles actualizados). */
-  refreshTokens: () => Promise<void>;
-  /** Activa un rol y refresca el token para que el access incluya la nueva autoridad. */
-  activarRol: (rol: Rol) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+export interface RegisterInput {
+  email: string;
+  password: string;
+  nombreCompleto: string;
+  roles: Rol[];
+}
+
+export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+
+export interface AuthContextValue {
+  user: AuthUser | null;
+  status: AuthStatus;
+  roles: Rol[];
+  // rol con el que el usuario esta navegando ahora (para el panel y el switcher)
+  activeRole: Rol | null;
+  login: (email: string, password: string) => Promise<void>;
+  register: (input: RegisterInput) => Promise<void>;
+  logout: () => void;
+  activarRol: (rol: Rol) => Promise<void>;
+  setActiveRole: (rol: Rol) => void;
+  refreshUser: () => Promise<void>;
+}
+
+const ACTIVE_ROLE_KEY = 'queueless.activeRole';
+
+export const AuthContext = createContext<AuthContextValue | null>(null);
+
+function userFromAuth(auth: AuthResponse): AuthUser {
+  return {
+    id: auth.usuarioId,
+    email: auth.email,
+    nombreCompleto: auth.nombreCompleto,
+    roles: auth.roles,
+  };
+}
+
+// elige el rol activo: respeta el guardado si todavia es valido, si no toma el primero
+function pickActiveRole(roles: Rol[]): Rol | null {
+  if (roles.length === 0) return null;
+  const saved = localStorage.getItem(ACTIVE_ROLE_KEY) as Rol | null;
+  if (saved && roles.includes(saved)) return saved;
+  return roles[0];
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [status, setStatus] = useState<AuthStatus>("loading");
-  // Evita cargas concurrentes en el StrictMode doble-montaje.
-  const bootstrapped = useRef(false);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [status, setStatus] = useState<AuthStatus>('loading');
+  const [activeRole, setActiveRoleState] = useState<Rol | null>(null);
 
-  // Al montar: si hay token, validar con /usuarios/me; si falla, sesión anónima.
-  useEffect(() => {
-    if (bootstrapped.current) return;
-    bootstrapped.current = true;
-
-    if (!getAccessToken() && !getRefreshToken()) {
-      setStatus("anonymous");
-      return;
-    }
-    usuariosApi
-      .getMe()
-      .then((me) => {
-        setUser({
-          id: me.id,
-          email: me.email,
-          nombreCompleto: me.nombreCompleto,
-          roles: me.roles,
-        });
-        setStatus("authenticated");
-      })
-      .catch(() => {
-        clearTokens();
-        setUser(null);
-        setStatus("anonymous");
-      });
+  const applySession = useCallback((next: AuthUser) => {
+    setUser(next);
+    setStatus('authenticated');
+    setActiveRoleState((prev) => (prev && next.roles.includes(prev) ? prev : pickActiveRole(next.roles)));
   }, []);
 
-  // La sesión se cayó desde el interceptor (refresh falló) → volver a anónimo.
-  useEffect(() => {
-    return onSessionCleared(() => {
-      setUser(null);
-      setStatus("anonymous");
-    });
-  }, []);
-
-  const login = useCallback(async (credentials: LoginRequest) => {
-    const auth = await authApi.login(credentials);
-    setTokens(auth.accessToken, auth.refreshToken);
-    setUser({
-      id: auth.usuarioId,
-      email: auth.email,
-      nombreCompleto: auth.nombreCompleto,
-      roles: auth.roles,
-    });
-    setStatus("authenticated");
-  }, []);
-
-  const register = useCallback(async (body: RegisterRequest) => {
-    const auth = await authApi.register(body);
-    setTokens(auth.accessToken, auth.refreshToken);
-    setUser({
-      id: auth.usuarioId,
-      email: auth.email,
-      nombreCompleto: auth.nombreCompleto,
-      roles: auth.roles,
-    });
-    setStatus("authenticated");
-  }, []);
-
-  // logout = descartar tokens (no hay logout de servidor, MAPA §2.2).
-  const logout = useCallback(() => {
-    clearTokens();
+  const clearSession = useCallback(() => {
+    tokenStorage.clear();
+    localStorage.removeItem(ACTIVE_ROLE_KEY);
     setUser(null);
-    setStatus("anonymous");
+    setActiveRoleState(null);
+    setStatus('unauthenticated');
   }, []);
 
-  const refreshTokens = useCallback(async () => {
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) throw new Error("no refresh token");
-    const auth = await authApi.refresh({ refreshToken });
-    setTokens(auth.accessToken, auth.refreshToken);
-    setUser({
-      id: auth.usuarioId,
-      email: auth.email,
-      nombreCompleto: auth.nombreCompleto,
-      roles: auth.roles,
-    });
-    setStatus("authenticated");
-  }, []);
+  // al cargar la app: si hay tokens, traemos el usuario actual; si falla, sesion limpia
+  useEffect(() => {
+    let active = true;
+    async function restore() {
+      if (!tokenStorage.getAccess()) {
+        setStatus('unauthenticated');
+        return;
+      }
+      try {
+        const me = await http.get<UsuarioResponse>(endpoints.usuarios.me);
+        if (active) applySession(me);
+      } catch {
+        if (active) clearSession();
+      }
+    }
+    restore();
+    return () => {
+      active = false;
+    };
+  }, [applySession, clearSession]);
 
-  const activarRol = useCallback(
-    async (rol: Rol) => {
-      await usuariosApi.activarRol({ rol });
-      // El claim roles se fija al emitir el access: hay que refrescar (MAPA §2.4).
-      await refreshTokens();
-    },
-    [refreshTokens],
-  );
+  // el interceptor avisa cuando el refresh fallo de verdad: cerramos sesion local
+  useEffect(() => {
+    function onExpired() {
+      clearSession();
+    }
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+  }, [clearSession]);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      user,
-      status,
-      isAuthenticated: status === "authenticated",
-      roles: user?.roles ?? [],
-      hasRole: (rol: Rol) => !!user?.roles.includes(rol),
-      login,
-      register,
-      logout,
-      refreshTokens,
-      activarRol,
-    }),
-    [user, status, login, register, logout, refreshTokens, activarRol],
-  );
+  const login = async (email: string, password: string) => {
+    const auth = await http.post<AuthResponse>(AUTH_ENDPOINTS.login, { email, password });
+    tokenStorage.set(auth.accessToken, auth.refreshToken);
+    applySession(userFromAuth(auth));
+  };
+
+  const register = async (input: RegisterInput) => {
+    const auth = await http.post<AuthResponse>(AUTH_ENDPOINTS.register, input);
+    tokenStorage.set(auth.accessToken, auth.refreshToken);
+    applySession(userFromAuth(auth));
+  };
+
+  const logout = () => {
+    clearSession();
+  };
+
+  // activar un rol nuevo lo cambia en el backend, pero el access token actual todavia no
+  // lo trae; por eso pedimos un refresh para obtener un token que ya incluya el rol.
+  const activarRol = async (rol: Rol) => {
+    await http.post(endpoints.usuarios.activarRol, { rol });
+    const refreshToken = tokenStorage.getRefresh();
+    const auth = await http.post<AuthResponse>(AUTH_ENDPOINTS.refresh, { refreshToken });
+    tokenStorage.set(auth.accessToken, auth.refreshToken);
+    applySession(userFromAuth(auth));
+  };
+
+  const setActiveRole = (rol: Rol) => {
+    localStorage.setItem(ACTIVE_ROLE_KEY, rol);
+    setActiveRoleState(rol);
+  };
+
+  const refreshUser = async () => {
+    const me = await http.get<UsuarioResponse>(endpoints.usuarios.me);
+    applySession(me);
+  };
+
+  const value: AuthContextValue = {
+    user,
+    status,
+    roles: user?.roles ?? [],
+    activeRole,
+    login,
+    register,
+    logout,
+    activarRol,
+    setActiveRole,
+    refreshUser,
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth debe usarse dentro de <AuthProvider>");
-  return ctx;
 }

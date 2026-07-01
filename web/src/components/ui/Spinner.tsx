@@ -1,27 +1,22 @@
-import { cn } from "@/lib/cn";
+import { cn } from '@/lib/cn';
 
-export interface SpinnerProps {
-  /** Diámetro en px. */
+interface SpinnerProps {
   size?: number;
   className?: string;
-  "aria-label"?: string;
 }
 
-/** Indicador de carga circular. Hereda el color del texto (currentColor). */
-export function Spinner({
-  size = 18,
-  className,
-  "aria-label": ariaLabel,
-}: SpinnerProps) {
+export function Spinner({ size = 18, className }: SpinnerProps) {
   return (
-    <span
-      role="status"
-      aria-label={ariaLabel ?? "Cargando"}
-      className={cn(
-        "inline-block animate-spin rounded-full border-2 border-current border-t-transparent",
-        className,
-      )}
-      style={{ width: size, height: size, opacity: 0.9 }}
-    />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className={cn('animate-spin', className)}
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.5" strokeOpacity="0.25" />
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
   );
 }

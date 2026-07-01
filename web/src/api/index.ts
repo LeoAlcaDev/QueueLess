@@ -1,20 +1,8 @@
-// Punto único de acceso a la API. Namespaces por feature para evitar choques de
-// nombres (p. ej. getPedido existe en cliente y en comercio).
-export { api, http, API_URL } from "./client";
-
-export * as authApi from "./auth";
-export * as usuariosApi from "./usuarios";
-export * as perfilesApi from "./perfiles";
-export * as catalogoApi from "./catalogo";
-export * as pedidosClienteApi from "./pedidosCliente";
-export * as pagosApi from "./pagos";
-export * as pedidosComercioApi from "./pedidosComercio";
-export * as localesApi from "./locales";
-export * as productosApi from "./productos";
-export * as repartidorApi from "./repartidor";
-export * as queuepointsApi from "./queuepoints";
-export * as resenasApi from "./resenas";
-export * as reclamosApi from "./reclamos";
-export * as tycApi from "./tyc";
-export * as asistenteApi from "./asistente";
-export * as ocupacionApi from "./ocupacion";
+// Punto de entrada de la capa de API. Las pantallas importan desde '@/api' y de aca
+// salen el wrapper http, las rutas, el ApiError y los tipos de transporte.
+export { apiClient, SESSION_EXPIRED_EVENT, getValidAccessToken } from './client';
+export { http, unwrap } from './http';
+export { endpoints, AUTH_ENDPOINTS } from './endpoints';
+export { ApiError, isApiError, normalizeError } from './errors';
+export type { ApiErrorKind } from './errors';
+export type { ApiResponse, PageResponse, ErrorResponse, FieldError, AuthResponse } from './types';

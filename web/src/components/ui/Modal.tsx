@@ -1,38 +1,28 @@
-import { useEffect, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { X } from "lucide-react";
-import { cn } from "@/lib/cn";
+import { useEffect, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { cn } from '@/lib/cn';
 
-export interface ModalProps {
+interface ModalProps {
   open: boolean;
   onClose: () => void;
-  title?: ReactNode;
   children: ReactNode;
-  /** Pie con acciones (botones). */
-  footer?: ReactNode;
-  /** En móvil se ancla abajo como sheet; en desktop, centrado. */
+  width?: number;
   className?: string;
 }
 
-/** Diálogo modal responsive: bottom-sheet en móvil, centrado en desktop.
- *  Cierra con Escape o click en el overlay. */
-export function Modal({
-  open,
-  onClose,
-  title,
-  children,
-  footer,
-  className,
-}: ModalProps) {
+// Modal centrado, montado en un portal sobre el body. Cierra al tocar el fondo o con Esc
+// y bloquea el scroll del fondo mientras esta abierto.
+export function Modal({ open, onClose, children, width = 440, className }: ModalProps) {
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
     return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
     };
   }, [open, onClose]);
 
@@ -40,34 +30,17 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-overlay sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-5"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className={cn(
-          "flex w-full max-h-[90vh] flex-col overflow-hidden bg-surface shadow-lg",
-          "rounded-t-modal sm:max-w-md sm:rounded-modal",
-          className,
-        )}
+        className={cn('max-h-[92vh] w-full overflow-y-auto rounded-modal bg-surface shadow-lg', className)}
+        style={{ maxWidth: width }}
       >
-        {title && (
-          <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-            <h2 className="text-h3 font-semibold text-content">{title}</h2>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Cerrar"
-              className="grid h-9 w-9 place-items-center rounded-pill text-content-secondary hover:bg-surface-muted focus-visible:shadow-focus focus-visible:outline-none"
-            >
-              <X size={20} aria-hidden="true" />
-            </button>
-          </div>
-        )}
-        <div className="overflow-y-auto p-4">{children}</div>
-        {footer && <div className="border-t border-line p-4">{footer}</div>}
+        {children}
       </div>
     </div>,
     document.body,

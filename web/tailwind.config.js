@@ -1,64 +1,45 @@
 /** @type {import('tailwindcss').Config} */
-// Los colores, radios, sombras y tipografía se cablean a los TOKENS SEMÁNTICOS
-// de src/styles/tokens.css (var(--color-*)). Así una clase como `bg-brand` sigue
-// la marca activa (data-brand) y el tema (data-theme) sin tocar hex crudos.
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  // el modo oscuro se activa con data-theme="dark" en el <html>, igual que los tokens
+  darkMode: ['selector', '[data-theme="dark"]'],
   theme: {
-    // Mobile-first. Breakpoints alineados a las referencias del design system:
-    // móvil 390px (base, sin prefijo), tablet 768px (md), web admin 1280px (xl).
-    // `lg` (1024px) es el corte para pasar a layout de escritorio (sidebar).
-    screens: {
-      sm: '640px',
-      md: '768px',
-      lg: '1024px',
-      xl: '1280px',
-      '2xl': '1536px',
-    },
     extend: {
       colors: {
-        // Marca (acción primaria = brand-strong)
         brand: {
           DEFAULT: 'var(--color-brand)',
           strong: 'var(--color-brand-strong)',
           hover: 'var(--color-brand-hover)',
           soft: 'var(--color-brand-soft)',
+          text: 'var(--color-text-brand)',
         },
-        onbrand: 'var(--color-on-brand)',
-        // Acento de soporte
+        'on-brand': 'var(--color-on-brand)',
         accent: {
           DEFAULT: 'var(--color-accent)',
           soft: 'var(--color-accent-soft)',
           text: 'var(--color-accent-text)',
         },
-        // QueuePoints (morado, exclusivo del flujo de puntos)
         points: {
           DEFAULT: 'var(--color-points)',
           soft: 'var(--color-points-soft)',
           strong: 'var(--color-points-strong)',
         },
-        // Neutros — fondos
         page: 'var(--color-bg-page)',
         surface: {
           DEFAULT: 'var(--color-bg-surface)',
           muted: 'var(--color-bg-surface-2)',
         },
         overlay: 'var(--color-bg-overlay)',
-        // Neutros — texto
-        content: {
+        ink: {
           DEFAULT: 'var(--color-text-primary)',
-          secondary: 'var(--color-text-secondary)',
+          soft: 'var(--color-text-secondary)',
           muted: 'var(--color-text-muted)',
           inverse: 'var(--color-text-inverse)',
-          brand: 'var(--color-text-brand)',
         },
-        // Neutros — bordes
         line: {
           DEFAULT: 'var(--color-border-default)',
           strong: 'var(--color-border-strong)',
-          focus: 'var(--color-border-focus)',
         },
-        // Estados semánticos (bg suave + fg AA + dot)
         success: {
           bg: 'var(--color-success-bg)',
           fg: 'var(--color-success-fg)',
@@ -79,14 +60,26 @@ export default {
           fg: 'var(--color-info-fg)',
           dot: 'var(--color-info-dot)',
         },
-        neutral: {
-          bg: 'var(--color-neutral-bg)',
-          fg: 'var(--color-neutral-fg)',
-          dot: 'var(--color-neutral-dot)',
-        },
       },
-      borderColor: {
-        DEFAULT: 'var(--color-border-default)',
+      fontFamily: {
+        sans: [
+          'Manrope',
+          'ui-sans-serif',
+          'system-ui',
+          '-apple-system',
+          'Segoe UI',
+          'Roboto',
+          'sans-serif',
+        ],
+      },
+      fontSize: {
+        display: ['var(--text-display)', { lineHeight: 'var(--leading-tight)', letterSpacing: '-0.02em', fontWeight: '700' }],
+        h1: ['var(--text-h1)', { lineHeight: 'var(--leading-tight)', letterSpacing: '-0.01em', fontWeight: '700' }],
+        h2: ['var(--text-h2)', { lineHeight: 'var(--leading-snug)', fontWeight: '600' }],
+        h3: ['var(--text-h3)', { lineHeight: 'var(--leading-snug)', fontWeight: '600' }],
+        body: ['var(--text-body)', { lineHeight: 'var(--leading-body)' }],
+        small: ['var(--text-small)', { lineHeight: '1.45' }],
+        badge: ['var(--text-badge)', { lineHeight: '1', letterSpacing: '0.01em', fontWeight: '600' }],
       },
       borderRadius: {
         input: 'var(--radius-input)',
@@ -101,17 +94,9 @@ export default {
         lg: 'var(--shadow-lg)',
         focus: 'var(--shadow-focus-ring)',
       },
-      fontFamily: {
-        sans: ['Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-      },
-      fontSize: {
-        display: ['var(--text-display)', { lineHeight: 'var(--leading-tight)', fontWeight: '700' }],
-        h1: ['var(--text-h1)', { lineHeight: 'var(--leading-tight)', fontWeight: '700' }],
-        h2: ['var(--text-h2)', { lineHeight: 'var(--leading-snug)', fontWeight: '600' }],
-        h3: ['var(--text-h3)', { lineHeight: 'var(--leading-snug)', fontWeight: '600' }],
-        body: ['var(--text-body)', { lineHeight: 'var(--leading-body)' }],
-        small: ['var(--text-small)', { lineHeight: '1.45' }],
-        badge: ['var(--text-badge)', { lineHeight: '1' }],
+      transitionTimingFunction: {
+        // out-quart: el easing del sistema, sin rebotes ni elasticidad
+        quart: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
       },
     },
   },

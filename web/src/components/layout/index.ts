@@ -1,6 +1,4 @@
-export { AppShell } from "./AppShell";
-export { Sidebar } from "./Sidebar";
-export { BottomNav } from "./BottomNav";
-export { Header } from "./Header";
-export { RoleSwitcher } from "./RoleSwitcher";
-export { OfflineBanner } from "./OfflineBanner";
+export { AppShell } from './AppShell';
+export { Sidebar } from './Sidebar';
+export { Logo } from './Logo';
+export { usePageChrome, PageActions } from './pageChrome';

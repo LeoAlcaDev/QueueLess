@@ -1,39 +1,48 @@
-import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
+import { cn } from '@/lib/cn';
+import { Logo } from '@/components/layout/Logo';
+import { paths } from '@/routes/paths';
+import { BrandPanel } from './BrandPanel';
+
+type Width = 'sm' | 'md';
 
 interface AuthLayoutProps {
-  title: string;
-  subtitle?: string;
   children: ReactNode;
-  /** Pie con el enlace a la otra pantalla (login ↔ registro). */
-  footer?: ReactNode;
+  // El registro es mas alto que login/landing: lo alineamos arriba y dejamos que la columna
+  // haga scroll, en vez de centrar todo vertical.
+  align?: 'center' | 'top';
+  // Ancho de la columna del formulario. El registro pide algo mas ancho por las tarjetas de rol.
+  width?: Width;
 }
 
-/** Contenedor centrado para Login y Registro: marca arriba, tarjeta al medio. */
-export function AuthLayout({
-  title,
-  subtitle,
-  children,
-  footer,
-}: AuthLayoutProps) {
+const WIDTH: Record<Width, string> = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+};
+
+// Estructura partida de las pantallas de acceso: el panel naranja a la izquierda (solo en
+// pantallas anchas) y, a la derecha, una columna centrada de ancho acotado con el contenido.
+export function AuthLayout({ children, align = 'center', width = 'sm' }: AuthLayoutProps) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-page px-4 py-10 text-content">
-      <Link to="/" className="flex items-center gap-2">
-        <img src="/queueless-mark.svg" alt="" className="h-9 w-9" />
-        <span className="text-h2 font-bold">QueueLess</span>
-      </Link>
-
-      <div className="w-full max-w-sm rounded-card border border-line bg-surface p-6 shadow-md">
-        <div className="mb-5 flex flex-col gap-1">
-          <h1 className="text-h2 font-bold text-content">{title}</h1>
-          {subtitle && (
-            <p className="text-small text-content-secondary">{subtitle}</p>
-          )}
+    <div className="flex min-h-screen bg-page">
+      <BrandPanel />
+      <div
+        className={cn(
+          'flex flex-1 flex-col px-5 py-10 lg:px-10',
+          align === 'center' ? 'justify-center' : 'overflow-y-auto',
+        )}
+      >
+        <div className={cn('mx-auto w-full', WIDTH[width])}>
+          {/* en pantallas angostas el panel naranja no aparece, asi que mostramos la marca aca */}
+          <div className="mb-8 flex lg:hidden">
+            <Link to={paths.landing} aria-label="Volver al inicio">
+              <Logo size={26} />
+            </Link>
+          </div>
+          {children}
         </div>
-        {children}
       </div>
-
-      {footer && <p className="text-small text-content-secondary">{footer}</p>}
     </div>
   );
 }

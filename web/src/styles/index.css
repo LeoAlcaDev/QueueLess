@@ -1,20 +1,54 @@
-/* Tokens del design system (marca + tema). Debe ir ANTES de las directivas
-   Tailwind: el @import de Manrope que vive dentro de tokens.css queda primero. */
-@import "./tokens.css";
+@import './tokens.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  /* La fuente y los colores base ya los fija tokens.css sobre html/body. */
-  body {
-    font-family: var(--font-sans);
-  }
+html,
+body {
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
 
-  /* Foco visible y accesible en toda la app (regla de oro: foco visible). */
-  :focus-visible {
-    outline: none;
-    box-shadow: var(--shadow-focus-ring);
+/* el skeleton hace un shimmer suave que recorre la pieza mientras carga */
+.ql-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-surface-2) 25%,
+    var(--color-border-default) 37%,
+    var(--color-bg-surface-2) 63%
+  );
+  background-size: 400% 100%;
+  animation: ql-shimmer 1.4s ease infinite;
+}
+
+@keyframes ql-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+/* los toasts entran desde abajo con un fade corto */
+@keyframes ql-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* respetamos a quien pidió menos movimiento en el sistema */
+@media (prefers-reduced-motion: reduce) {
+  .ql-skeleton {
+    animation: none;
   }
 }

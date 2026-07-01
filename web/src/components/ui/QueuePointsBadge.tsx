@@ -1,46 +1,34 @@
-import { Zap } from "lucide-react";
-import { cn } from "@/lib/cn";
+import { cn } from '@/lib/cn';
+import { formatInt } from '@/lib/format';
+import { Icon } from './Icon';
 
-export interface QueuePointsBadgeProps {
-  amount: number;
-  /** Prefijo del monto (p. ej. '+' para ganados). */
-  prefix?: string;
-  /** sm = píldora compacta · lg = texto grande para hero de puntos. */
-  size?: "sm" | "lg";
+interface QueuePointsBadgeProps {
+  points: number;
+  variant?: 'pill' | 'text';
   className?: string;
 }
 
-/** Indicador de QueuePoints. Morado exclusivo del flujo de puntos. */
-export function QueuePointsBadge({
-  amount,
-  prefix = "+",
-  size = "sm",
-  className,
-}: QueuePointsBadgeProps) {
-  if (size === "lg") {
+// QueuePoints en morado en ambas variantes: la pildora compacta para listas y la version
+// con texto para el saldo.
+export function QueuePointsBadge({ points, variant = 'pill', className }: QueuePointsBadgeProps) {
+  if (variant === 'text') {
     return (
-      <span
-        className={cn(
-          "inline-flex items-center gap-2 text-points-strong font-bold text-h3",
-          className,
-        )}
-      >
-        <Zap size={20} aria-hidden="true" />
-        {prefix}
-        {amount} QueuePoints
+      <span className={cn('inline-flex items-center gap-1.5 font-bold text-points-strong', className)}>
+        <Icon name="bolt" size={18} className="text-points" />
+        <span className="tabular-nums">{formatInt(points)}</span>
+        <span className="font-semibold">QueuePoints</span>
       </span>
     );
   }
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-pill bg-points-soft px-2.5 py-1 text-badge font-semibold text-points-strong leading-none",
+        'inline-flex items-center gap-1 rounded-pill bg-points-soft px-2.5 py-1 text-badge font-semibold tabular-nums text-points-strong',
         className,
       )}
     >
-      <Zap size={13} aria-hidden="true" />
-      {prefix}
-      {amount} QueuePoints
+      <Icon name="bolt" size={12} />
+      {formatInt(points)}
     </span>
   );
 }

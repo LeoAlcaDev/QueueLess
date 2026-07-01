@@ -1,91 +1,47 @@
-import { NavLink } from "react-router-dom";
-import { LogOut, Moon, Sun, UserCircle } from "lucide-react";
-import { cn } from "@/lib/cn";
-import { useTheme } from "@/theme/ThemeContext";
-import { RoleSwitcher } from "./RoleSwitcher";
-import type { AreaNav } from "@/app/navigation";
-import type { Rol } from "@/types";
+import { type ReactNode } from 'react';
+import { NavLink } from 'react-router-dom';
+import { Icon } from '@/components/ui';
+import { ROL_LABELS, type Rol } from '@/types/enums';
+import type { NavItem } from '@/routes/navigation';
+import { cn } from '@/lib/cn';
+import { Logo } from './Logo';
 
 interface SidebarProps {
-  area: AreaNav | null;
-  roles: Rol[];
-  onLogout: () => void;
+  role: Rol;
+  items: NavItem[];
+  onNavigate?: () => void;
+  footer?: ReactNode;
 }
 
-const linkBase =
-  "flex items-center gap-3 rounded-button px-3 py-2.5 text-body font-medium focus-visible:shadow-focus focus-visible:outline-none";
-
-function navLinkClass({ isActive }: { isActive: boolean }) {
-  return cn(
-    linkBase,
-    isActive
-      ? "bg-brand-soft text-content-brand"
-      : "text-content-secondary hover:bg-surface-muted hover:text-content",
-  );
-}
-
-/** Barra lateral de escritorio (≥ lg, 240 px). En móvil se reemplaza por BottomNav. */
-export function Sidebar({ area, roles, onLogout }: SidebarProps) {
-  const { theme, toggleTheme } = useTheme();
-
+export function Sidebar({ role, items, onNavigate, footer }: SidebarProps) {
   return (
-    <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col gap-4 border-r border-line bg-surface px-3 py-4 lg:flex">
-      <NavLink to="/" className="flex items-center gap-2 px-2 py-1">
-        <img src="/queueless-mark.svg" alt="" className="h-7 w-7" />
-        <span className="text-h3 font-bold text-content">QueueLess</span>
-      </NavLink>
-
-      <RoleSwitcher roles={roles} active={area} />
-
-      <nav className="flex flex-1 flex-col gap-1">
-        {area?.items.map((item) => {
-          const Icon = item.icon;
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={navLinkClass}
-            >
-              <Icon size={20} aria-hidden="true" />
-              {item.label}
-            </NavLink>
-          );
-        })}
-      </nav>
-
-      <div className="flex flex-col gap-1 border-t border-line pt-3">
-        <NavLink to="/cuenta" className={navLinkClass}>
-          <UserCircle size={20} aria-hidden="true" />
-          Mi cuenta
-        </NavLink>
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className={cn(
-            linkBase,
-            "text-content-secondary hover:bg-surface-muted hover:text-content",
-          )}
-        >
-          {theme === "dark" ? (
-            <Sun size={20} aria-hidden="true" />
-          ) : (
-            <Moon size={20} aria-hidden="true" />
-          )}
-          {theme === "dark" ? "Tema claro" : "Tema oscuro"}
-        </button>
-        <button
-          type="button"
-          onClick={onLogout}
-          className={cn(
-            linkBase,
-            "text-content-secondary hover:bg-surface-muted hover:text-content",
-          )}
-        >
-          <LogOut size={20} aria-hidden="true" />
-          Cerrar sesión
-        </button>
+    <div className="flex h-full w-60 flex-col bg-surface px-3.5 py-5">
+      <div className="px-2 pb-4">
+        <Logo size={24} />
       </div>
-    </aside>
+      <div className="ql-section-label px-2.5 pb-2">{ROL_LABELS[role]}</div>
+      <nav className="flex flex-1 flex-col gap-0.5">
+        {items.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-small transition-colors',
+                isActive
+                  ? 'bg-brand-soft font-bold text-brand-text'
+                  : 'font-medium text-ink-soft hover:bg-surface-muted',
+              )
+            }
+          >
+            <Icon name={item.icon} size={19} />
+            <span className="flex-1">{item.label}</span>
+          </NavLink>
+        ))}
+      </nav>
+      {footer}
+    </div>
   );
 }

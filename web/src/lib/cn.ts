@@ -1,6 +1,5 @@
-import clsx, { type ClassValue } from "clsx";
-
-/** Une clases condicionales (wrapper fino de clsx) para los primitivos UI. */
-export function cn(...inputs: ClassValue[]): string {
-  return clsx(inputs);
+// Junta clases de Tailwind dejando fuera las vacias o condicionales (false, null). Es el
+// HELPER que usamos en toda la UI para componer className sin ensuciar el JSX.
+export function cn(...parts: Array<string | false | null | undefined>): string {
+  return parts.filter(Boolean).join(' ');
 }

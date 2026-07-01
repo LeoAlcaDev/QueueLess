@@ -1,43 +1,35 @@
-import type { LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
-import { cn } from "@/lib/cn";
+import { type ReactNode } from 'react';
+import { cn } from '@/lib/cn';
+import { Icon, type IconName } from './Icon';
 
-export interface EmptyStateProps {
-  icon?: LucideIcon;
+interface EmptyStateProps {
+  icon?: IconName;
   title: string;
   description?: string;
-  /** Acción opcional (normalmente un Button). */
+  // call-to-action: tipicamente un Button que invita a la primera accion
   action?: ReactNode;
+  compact?: boolean;
   className?: string;
 }
 
-/** Estado vacío con copy útil + acción (Design content fundamentals). */
-export function EmptyState({
-  icon: Icon,
-  title,
-  description,
-  action,
-  className,
-}: EmptyStateProps) {
+export function EmptyState({ icon = 'package', title, description, action, compact, className }: EmptyStateProps) {
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-3 px-6 py-12 text-center",
+        'flex flex-col items-center justify-center gap-3 text-center',
+        compact ? 'px-6 py-8' : 'px-6 py-12',
         className,
       )}
     >
-      {Icon && (
-        <span className="grid h-12 w-12 place-items-center rounded-pill bg-surface-muted text-content-secondary">
-          <Icon size={24} aria-hidden="true" />
-        </span>
-      )}
-      <div className="flex flex-col gap-1">
-        <h3 className="text-h3 font-semibold text-content">{title}</h3>
-        {description && (
-          <p className="text-small text-content-secondary">{description}</p>
-        )}
-      </div>
-      {action}
+      <span
+        className="grid place-items-center rounded-pill bg-surface-muted text-ink-muted"
+        style={{ width: 72, height: 72 }}
+      >
+        <Icon name={icon} size={32} strokeWidth={1.5} />
+      </span>
+      <div className="text-h3 font-semibold text-ink">{title}</div>
+      {description && <p className="max-w-xs text-small text-ink-soft">{description}</p>}
+      {action && <div className="mt-1">{action}</div>}
     </div>
   );
 }
