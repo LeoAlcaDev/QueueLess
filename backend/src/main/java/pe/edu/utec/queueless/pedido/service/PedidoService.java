@@ -444,8 +444,9 @@ public class PedidoService {
      * del sistema.
      *
      * <p>Si el local no tiene horario definido (o apertura == cierre) se permite el
-     * pedido. Un horario que cruza medianoche (apertura > cierre) no está soportado en
-     * esta fase y se trata como configuración inválida.
+     * pedido. Soportamos horarios que cruzan medianoche (apertura > cierre, como un café
+     * de 12:30 a 01:00): en ese caso el local está abierto si la hora es posterior a la
+     * apertura o anterior al cierre del día siguiente.
      */
     void validarHorarioDeAtencion(PuntoDeVenta local, LocalTime ahora) {
         LocalTime apertura = local.getHorarioApertura();
@@ -453,12 +454,15 @@ public class PedidoService {
         if (apertura == null || cierre == null || apertura.equals(cierre)) {
             return;
         }
-        if (apertura.isAfter(cierre)) {
-            log.warn("El local {} tiene un horario que cruza medianoche ({} - {}), no soportado",
-                local.getId(), apertura, cierre);
-            throw new BusinessRuleException("Configuración de horario no válida en el local");
+        boolean abierto;
+        if (apertura.isBefore(cierre)) {
+            // horario dentro del mismo día, por ejemplo 08:00 a 20:00
+            abierto = !ahora.isBefore(apertura) && !ahora.isAfter(cierre);
+        } else {
+            // horario que cruza medianoche, por ejemplo 12:30 a 01:00
+            abierto = !ahora.isBefore(apertura) || !ahora.isAfter(cierre);
         }
-        if (ahora.isBefore(apertura) || ahora.isAfter(cierre)) {
+        if (!abierto) {
             throw new BusinessRuleException("El local no atiende en este horario");
         }
     }
