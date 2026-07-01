@@ -92,7 +92,7 @@ public class GeminiModeloRecomendacion implements ModeloRecomendacion {
     }
 
     // Un reintento antes de degradar: Gemini responde 5xx/"high demand" de forma transitoria de
-    // tanto en tanto (sobre todo en modelos preview) y con un solo intento eso se veía como
+    // tanto en tanto (principalmente en modelos preview) y con un solo intento eso se veía como
     // "asistente no disponible" para el cliente aunque la key y el modelo estén bien.
     private static final int INTENTOS = 2;
 
