@@ -91,26 +91,40 @@ public class GeminiModeloRecomendacion implements ModeloRecomendacion {
             "(devuelve la lista segura, sin orden ni explicación del modelo).");
     }
 
+    // Un reintento antes de degradar: Gemini responde 5xx/"high demand" de forma transitoria de
+    // tanto en tanto (principalmente en modelos preview) y con un solo intento eso se veía como
+    // "asistente no disponible" para el cliente aunque la key y el modelo estén bien.
+    private static final int INTENTOS = 2;
+
     @Override
     public RespuestaModelo ordenarYExplicar(List<Candidato> candidatos, List<TurnoConversacion> historial,
                                             String mensaje) {
         if (!configurado) {
             throw new RecomendadorNoDisponibleException("No hay GEMINI_API_KEY configurada");
         }
-        try {
-            GeminiResponse respuesta = restClient.post()
-                .uri("/models/{modelo}:generateContent", modelo)
-                .header("x-goog-api-key", apiKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(construirPeticion(candidatos, historial, mensaje))
-                .retrieve()
-                .body(GeminiResponse.class);
-            return parsearRespuesta(respuesta);
-        } catch (RecomendadorNoDisponibleException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RecomendadorNoDisponibleException("La API de Gemini no respondió correctamente", e);
+        RuntimeException ultimaFalla = null;
+        for (int intento = 1; intento <= INTENTOS; intento++) {
+            try {
+                GeminiResponse respuesta = restClient.post()
+                    .uri("/models/{modelo}:generateContent", modelo)
+                    .header("x-goog-api-key", apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(construirPeticion(candidatos, historial, mensaje))
+                    .retrieve()
+                    .body(GeminiResponse.class);
+                return parsearRespuesta(respuesta);
+            } catch (RecomendadorNoDisponibleException e) {
+                ultimaFalla = e;
+            } catch (Exception e) {
+                ultimaFalla = new RecomendadorNoDisponibleException(
+                    "La API de Gemini no respondió correctamente (intento " + intento + "/" + INTENTOS + ")", e);
+            }
+            if (intento < INTENTOS) {
+                log.warn("Llamada a Gemini falló, reintentando ({}/{}). Causa: {}",
+                    intento, INTENTOS, ultimaFalla.toString());
+            }
         }
+        throw ultimaFalla;
     }
 
     private GeminiRequest construirPeticion(List<Candidato> candidatos, List<TurnoConversacion> historial,
