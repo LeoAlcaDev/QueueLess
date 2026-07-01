@@ -51,4 +51,22 @@ public class PuntoDeVenta extends BaseEntity {
     @OneToMany(mappedBy = "puntoDeVenta", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Producto> productos = new ArrayList<>();
+
+    /**
+     * ¿El local está atendiendo a la hora dada? Requiere el switch manual en abierto y, si hay
+     * horario declarado, que la hora de Lima caiga dentro. Soporta horarios que cruzan
+     * medianoche (apertura posterior al cierre, como un café de 12:30 a 01:00).
+     */
+    public boolean estaAtendiendo(LocalTime ahora) {
+        if (!Boolean.TRUE.equals(abierto)) {
+            return false;
+        }
+        if (horarioApertura == null || horarioCierre == null || horarioApertura.equals(horarioCierre)) {
+            return true;
+        }
+        if (horarioApertura.isBefore(horarioCierre)) {
+            return !ahora.isBefore(horarioApertura) && !ahora.isAfter(horarioCierre);
+        }
+        return !ahora.isBefore(horarioApertura) || !ahora.isAfter(horarioCierre);
+    }
 }
