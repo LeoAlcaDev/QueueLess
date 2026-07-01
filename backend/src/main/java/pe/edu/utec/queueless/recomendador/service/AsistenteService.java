@@ -62,10 +62,12 @@ public class AsistenteService {
         return new ArrayList<>(historial.subList(desde, historial.size()));
     }
 
-    // Reordena los candidatos según el orden que devolvió el modelo, pero SOLO con ids que estén
-    // en el conjunto seguro: cualquier id inventado o ajeno se ignora, y los seguros que el
-    // modelo no haya nombrado se agregan al final para no perderlos. Así, pase lo que pase con el
-    // modelo, todo ítem mostrado salió del conjunto seguro (ADR-0031).
+    // Toma solo los platos que el modelo eligió para esta consulta, en su orden, y siempre
+    // validados contra el conjunto seguro: cualquier id inventado o ajeno se ignora. Ya no
+    // agregamos al final los que el modelo no nombró: si no eligió ninguno (no hubo match, fue un
+    // saludo o algo fuera de tema), la respuesta va sin platos y solo con su mensaje, para ser
+    // fiel a lo que pidió el cliente. La seguridad se mantiene: todo id mostrado salió del
+    // conjunto seguro (ADR-0031).
     private List<RecomendacionItem> ordenarSegunModelo(List<Candidato> seguros, List<Long> ordenIds) {
         Map<Long, Candidato> porId = new LinkedHashMap<>();
         for (Candidato candidato : seguros) {
@@ -80,10 +82,6 @@ public class AsistenteService {
                     ordenados.add(aItem(candidato));
                 }
             }
-        }
-        // Lo que el modelo no nombró conserva el pre-orden y va al final.
-        for (Candidato restante : porId.values()) {
-            ordenados.add(aItem(restante));
         }
         return ordenados;
     }
